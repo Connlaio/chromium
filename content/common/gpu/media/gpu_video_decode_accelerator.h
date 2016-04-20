@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include <map>
+#include <memory>
 #include <vector>
 
 #include "base/compiler_specific.h"
@@ -111,7 +112,7 @@ class GpuVideoDecodeAccelerator
   gpu::GpuCommandBufferStub* const stub_;
 
   // The underlying VideoDecodeAccelerator.
-  scoped_ptr<media::VideoDecodeAccelerator> video_decode_accelerator_;
+  std::unique_ptr<media::VideoDecodeAccelerator> video_decode_accelerator_;
 
   // Callback to return current GLContext, if available.
   GetGLContextCallback get_gl_context_cb_;
@@ -156,8 +157,10 @@ class GpuVideoDecodeAccelerator
   // |uncleared_textures_| is only accessed from the child thread.
   base::Lock debug_uncleared_textures_lock_;
 
-  // A map from picture buffer ID to TextureRef that have not been cleared.
-  std::map<int32_t, scoped_refptr<gpu::gles2::TextureRef>> uncleared_textures_;
+  // A map from picture buffer ID to set of TextureRefs that have not been
+  // cleared.
+  std::map<int32_t, std::vector<scoped_refptr<gpu::gles2::TextureRef>>>
+      uncleared_textures_;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(GpuVideoDecodeAccelerator);
 };

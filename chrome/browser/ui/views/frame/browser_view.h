@@ -323,10 +323,8 @@ class BrowserView : public BrowserWindow,
                            translate::TranslateErrors::Type error_type,
                            bool is_user_gesture) override;
 #if BUILDFLAG(ENABLE_ONE_CLICK_SIGNIN)
-  void ShowOneClickSigninBubble(
-      OneClickSigninBubbleType type,
+  void ShowOneClickSigninConfirmation(
       const base::string16& email,
-      const base::string16& error_message,
       const StartSyncCallback& start_sync_callback) override;
 #endif
   // TODO(beng): Not an override, move somewhere else.
@@ -683,9 +681,6 @@ class BrowserView : public BrowserWindow,
   base::RepeatingTimer loading_animation_timer_;
 
   views::UnhandledKeyboardEventHandler unhandled_keyboard_event_handler_;
-
-  // Used to measure the loading spinner animation rate.
-  base::TimeTicks last_animation_time_;
 
   // If this flag is set then SetFocusToLocationBar() will set focus to the
   // location bar even if the browser window is not active.

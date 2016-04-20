@@ -41,7 +41,7 @@
 #include "wtf/Assertions.h"
 #include "wtf/ContainerAnnotations.h"
 #include "wtf/Forward.h"
-#include "wtf/PageAllocator.h"
+#include "wtf/allocator/PageAllocator.h"
 #include <stdint.h>
 
 namespace blink {
@@ -85,7 +85,7 @@ const uint8_t reuseAllowedZapValue = 0x2a;
 const uint8_t reuseForbiddenZapValue = 0x2c;
 
 // In non-production builds, memory is zapped when it's freed. The zapped
-// memory is zeroed out when the memory is reused in Heap::allocateObject().
+// memory is zeroed out when the memory is reused in ThreadHeap::allocateObject().
 // In production builds, memory is not zapped (for performance). The memory
 // is just zeroed out when it is added to the free list.
 #if defined(MEMORY_SANITIZER)
@@ -142,7 +142,7 @@ class WebMemoryAllocatorDump;
 // - 1 bit used to mark DOM trees for V8.
 // - 14 bit is enough for gcInfoIndex because there are less than 2^14 types
 //   in Blink.
-const size_t headerDOMMarkBitMask = 1u << 17;
+const size_t headerWrapperMarkBitMask = 1u << 17;
 const size_t headerGCInfoIndexShift = 18;
 const size_t headerGCInfoIndexMask = (static_cast<size_t>((1 << 14) - 1)) << headerGCInfoIndexShift;
 const size_t headerSizeMask = (static_cast<size_t>((1 << 14) - 1)) << 3;
@@ -205,6 +205,9 @@ public:
         ASSERT(size < nonLargeObjectPageSizeMax);
         m_encoded = static_cast<uint32_t>(size) | (m_encoded & ~headerSizeMask);
     }
+    bool isWrapperHeaderMarked() const;
+    void markWrapperHeader();
+    void unmarkWrapperHeader();
     bool isMarked() const;
     void mark();
     void unmark();
@@ -832,6 +835,29 @@ inline HeapObjectHeader* HeapObjectHeader::fromPayload(const void* payload)
     HeapObjectHeader* header = reinterpret_cast<HeapObjectHeader*>(addr - sizeof(HeapObjectHeader));
     ASSERT(header->checkHeader());
     return header;
+}
+
+NO_SANITIZE_ADDRESS inline
+bool HeapObjectHeader::isWrapperHeaderMarked() const
+{
+    ASSERT(checkHeader());
+    return m_encoded & headerWrapperMarkBitMask;
+}
+
+NO_SANITIZE_ADDRESS inline
+void HeapObjectHeader::markWrapperHeader()
+{
+    ASSERT(checkHeader());
+    ASSERT(!isWrapperHeaderMarked());
+    m_encoded |= headerWrapperMarkBitMask;
+}
+
+NO_SANITIZE_ADDRESS inline
+void HeapObjectHeader::unmarkWrapperHeader()
+{
+    ASSERT(checkHeader());
+    ASSERT(isWrapperHeaderMarked());
+    m_encoded &= ~headerWrapperMarkBitMask;
 }
 
 NO_SANITIZE_ADDRESS inline

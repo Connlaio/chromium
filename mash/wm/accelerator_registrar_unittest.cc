@@ -13,7 +13,7 @@
 #include "components/mus/public/cpp/window.h"
 #include "components/mus/public/interfaces/accelerator_registrar.mojom.h"
 #include "mojo/public/cpp/bindings/binding.h"
-#include "mojo/shell/public/cpp/shell_test.h"
+#include "services/shell/public/cpp/shell_test.h"
 
 using mus::mojom::AcceleratorHandler;
 using mus::mojom::AcceleratorHandlerPtr;
@@ -67,9 +67,9 @@ class TestAcceleratorHandler : public AcceleratorHandler {
   DISALLOW_COPY_AND_ASSIGN(TestAcceleratorHandler);
 };
 
-class AcceleratorRegistrarTest : public mojo::test::ShellTest {
+class AcceleratorRegistrarTest : public shell::test::ShellTest {
  public:
-  AcceleratorRegistrarTest() : mojo::test::ShellTest("exe:mash_unittests") {}
+  AcceleratorRegistrarTest() : shell::test::ShellTest("exe:mash_unittests") {}
   ~AcceleratorRegistrarTest() override {}
 
  protected:

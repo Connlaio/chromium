@@ -10,6 +10,7 @@
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/mac/bundle_locations.h"
+#import "base/mac/foundation_util.h"
 #include "base/mac/mac_util.h"
 #include "base/mac/scoped_nsobject.h"
 #include "base/path_service.h"
@@ -192,14 +193,19 @@ void ChromeBrowserMainPartsMac::PostProfileInit() {
       FROM_HERE, base::ThreadTaskRunnerHandle::Get(),
       base::Bind(&EnsureMetadataNeverIndexFile, user_data_dir()));
 
-  // Activation of KeyStone is not automatic but done in response to the
-  // counting and reporting of profiles.  Make sure, assuming KeyStone
-  // is active, that it happened.
-  CHECK(![KeystoneGlue defaultKeystoneGlue] ||
-        [[KeystoneGlue defaultKeystoneGlue] isRegisteredAndActive]);
+  // Activation of Keystone is not automatic but done in response to the
+  // counting and reporting of profiles.
+  KeystoneGlue* glue = [KeystoneGlue defaultKeystoneGlue];
+  if (glue && ![glue isRegisteredAndActive]) {
+    // If profile loading has failed, we still need to handle other tasks
+    // like marking of the product as active.
+    [glue updateProfileCountsWithNumProfiles:0
+                         numSignedInProfiles:0];
+  }
 }
 
 void ChromeBrowserMainPartsMac::DidEndMainMessageLoop() {
-  AppController* appController = [NSApp delegate];
+  AppController* appController =
+      base::mac::ObjCCastStrict<AppController>([NSApp delegate]);
   [appController didEndMainMessageLoop];
 }

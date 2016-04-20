@@ -11,6 +11,7 @@
 #include "base/lazy_instance.h"
 #include "base/strings/string_util.h"
 #include "build/build_config.h"
+#include "components/scheduler/test/renderer_scheduler_test_support.h"
 #include "components/test_runner/test_common.h"
 #include "components/test_runner/web_frame_test_proxy.h"
 #include "components/test_runner/web_test_proxy.h"
@@ -121,11 +122,10 @@ void EnableWebTestProxyCreation(
   RenderFrameImpl::InstallCreateHook(CreateWebFrameTestProxy);
 }
 
-void FetchManifestDoneCallback(
-    scoped_ptr<ManifestFetcher> fetcher,
-    const FetchManifestCallback& callback,
-    const blink::WebURLResponse& response,
-    const std::string& data) {
+void FetchManifestDoneCallback(std::unique_ptr<ManifestFetcher> fetcher,
+                               const FetchManifestCallback& callback,
+                               const blink::WebURLResponse& response,
+                               const std::string& data) {
   // |fetcher| will be autodeleted here as it is going out of scope.
   callback.Run(response, data);
 }
@@ -133,7 +133,7 @@ void FetchManifestDoneCallback(
 void FetchManifest(blink::WebView* view, const GURL& url,
                    const FetchManifestCallback& callback) {
   ManifestFetcher* fetcher = new ManifestFetcher(url);
-  scoped_ptr<ManifestFetcher> autodeleter(fetcher);
+  std::unique_ptr<ManifestFetcher> autodeleter(fetcher);
 
   // Start is called on fetcher which is also bound to the callback.
   // A raw pointer is used instead of a scoped_ptr as base::Passes passes
@@ -146,7 +146,7 @@ void FetchManifest(blink::WebView* view, const GURL& url,
                             callback));
 }
 
-void SetMockGamepadProvider(scoped_ptr<RendererGamepadProvider> provider) {
+void SetMockGamepadProvider(std::unique_ptr<RendererGamepadProvider> provider) {
   RenderThreadImpl::current()
       ->blink_platform_impl()
       ->SetPlatformEventObserverForTesting(blink::WebPlatformEventTypeGamepad,
@@ -443,7 +443,7 @@ std::string DumpBackForwardList(std::vector<PageState>& page_state,
   std::string result;
   result.append("\n============== Back Forward List ==============\n");
   for (size_t index = 0; index < page_state.size(); ++index) {
-    scoped_ptr<HistoryEntry> entry(
+    std::unique_ptr<HistoryEntry> entry(
         PageStateToHistoryEntry(page_state[index]));
     result.append(
         DumpHistoryItem(entry->root_history_node(),
@@ -452,6 +452,12 @@ std::string DumpBackForwardList(std::vector<PageState>& page_state,
   }
   result.append("===============================================\n");
   return result;
+}
+
+void SchedulerRunIdleTasks(const base::Closure& callback) {
+    scheduler::RendererScheduler* scheduler =
+        content::RenderThreadImpl::current()->GetRendererScheduler();
+    scheduler::RunIdleTasksForTesting(scheduler, callback);
 }
 
 }  // namespace content

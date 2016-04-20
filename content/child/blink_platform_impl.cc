@@ -6,13 +6,14 @@
 
 #include <math.h>
 
+#include <memory>
 #include <vector>
 
 #include "base/bind.h"
 #include "base/files/file_path.h"
 #include "base/location.h"
 #include "base/macros.h"
-#include "base/memory/scoped_ptr.h"
+#include "base/memory/ptr_util.h"
 #include "base/memory/singleton.h"
 #include "base/metrics/user_metrics_action.h"
 #include "base/rand_util.h"
@@ -57,7 +58,6 @@
 #include "net/base/data_url.h"
 #include "net/base/ip_address.h"
 #include "net/base/net_errors.h"
-#include "net/base/port_util.h"
 #include "third_party/WebKit/public/platform/WebData.h"
 #include "third_party/WebKit/public/platform/WebFloatPoint.h"
 #include "third_party/WebKit/public/platform/WebMemoryDumpProvider.h"
@@ -420,7 +420,7 @@ WebURLLoader* BlinkPlatformImpl::createURLLoader() {
   // data URLs to bypass the ResourceDispatcher.
   return new WebURLLoaderImpl(
       child_thread ? child_thread->resource_dispatcher() : NULL,
-      make_scoped_ptr(currentThread()->getWebTaskRunner()->clone()));
+      base::WrapUnique(currentThread()->getWebTaskRunner()->clone()));
 }
 
 blink::WebSocketHandle* BlinkPlatformImpl::createWebSocketHandle() {
@@ -457,15 +457,6 @@ bool BlinkPlatformImpl::isReservedIPAddress(
   return address.IsReserved();
 }
 
-bool BlinkPlatformImpl::portAllowed(const blink::WebURL& url) const {
-  GURL gurl = GURL(url);
-  // Return true for URLs without a port specified.  This is needed to let
-  // through non-network schemes that don't go over the network.
-  if (!gurl.has_port())
-    return true;
-  return net::IsPortAllowedForScheme(gurl.EffectiveIntPort(), gurl.scheme());
-}
-
 bool BlinkPlatformImpl::parseMultipartHeadersFromBody(
     const char* bytes,
     size_t size,
@@ -476,7 +467,7 @@ bool BlinkPlatformImpl::parseMultipartHeadersFromBody(
 }
 
 blink::WebThread* BlinkPlatformImpl::createThread(const char* name) {
-  scoped_ptr<WebThreadImplForWorkerScheduler> thread(
+  std::unique_ptr<WebThreadImplForWorkerScheduler> thread(
       new WebThreadImplForWorkerScheduler(name));
   thread->Init();
   WaitUntilWebThreadTLSUpdate(thread.get());
@@ -509,14 +500,14 @@ void BlinkPlatformImpl::addTraceLogEnabledStateObserver(
     TraceLogEnabledStateObserver* observer) {
   TraceLogObserverAdapter* adapter = new TraceLogObserverAdapter(observer);
   bool did_insert =
-      trace_log_observers_.add(observer, make_scoped_ptr(adapter)).second;
+      trace_log_observers_.add(observer, base::WrapUnique(adapter)).second;
   DCHECK(did_insert);
   base::trace_event::TraceLog::GetInstance()->AddEnabledStateObserver(adapter);
 }
 
 void BlinkPlatformImpl::removeTraceLogEnabledStateObserver(
     TraceLogEnabledStateObserver* observer) {
-  scoped_ptr<TraceLogObserverAdapter> adapter =
+  std::unique_ptr<TraceLogObserverAdapter> adapter =
       trace_log_observers_.take_and_erase(observer);
   DCHECK(adapter);
   DCHECK(base::trace_event::TraceLog::GetInstance()->HasEnabledStateObserver(
@@ -742,6 +733,9 @@ const DataResource kDataResources[] = {
     {"viewportAndroid.css",
      IDR_UASTYLE_VIEWPORT_ANDROID_CSS,
      ui::SCALE_FACTOR_NONE},
+    {"viewportTelevision.css",
+     IDR_UASTYLE_VIEWPORT_TELEVISION_CSS,
+     ui::SCALE_FACTOR_NONE},
     {"InspectorOverlayPage.html",
      IDR_INSPECTOR_OVERLAY_PAGE_HTML,
      ui::SCALE_FACTOR_NONE},
@@ -881,7 +875,6 @@ BlinkPlatformImpl::notificationManager() {
 
   return NotificationManager::ThreadSpecificInstance(
       thread_safe_sender_.get(),
-      main_thread_task_runner_.get(),
       notification_dispatcher_.get());
 }
 

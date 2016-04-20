@@ -108,7 +108,6 @@ source_set("ui") {
     "//components/upload_list",
     "//components/user_prefs",
     "//components/version_ui",
-    "//components/web_modal",
     "//components/web_resource",
     "//content/public/common",
     "//crypto",
@@ -120,6 +119,7 @@ source_set("ui") {
     "//ui/accessibility",
     "//ui/base",
     "//ui/content_accelerators",
+    "//ui/display",
     "//ui/events",
     "//ui/events:gesture_detection",
     "//ui/gfx",
@@ -260,6 +260,7 @@ source_set("ui") {
       "//ash:ash_with_content",
       "//ash/strings",
       "//components/user_manager",
+      "//ui/app_list/presenter",
       "//ui/keyboard:mojom",
     ]
     if (!is_chromeos) {

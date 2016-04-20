@@ -6,15 +6,14 @@
 #define CC_ANIMATION_LAYER_ANIMATION_CONTROLLER_H_
 
 #include <bitset>
+#include <memory>
 #include <vector>
 
 #include "base/macros.h"
 #include "base/memory/ref_counted.h"
-#include "base/memory/scoped_ptr.h"
-#include "base/observer_list.h"
 #include "base/time/time.h"
 #include "cc/animation/animation.h"
-#include "cc/animation/layer_animation_event_observer.h"
+#include "cc/animation/animation_events.h"
 #include "cc/animation/target_property.h"
 #include "cc/base/cc_export.h"
 #include "ui/gfx/geometry/scroll_offset.h"
@@ -29,7 +28,7 @@ namespace cc {
 
 class AnimationDelegate;
 class AnimationEvents;
-class AnimationRegistrar;
+class AnimationHost;
 class FilterOperations;
 class KeyframeValueList;
 class LayerAnimationValueObserver;
@@ -44,7 +43,7 @@ class CC_EXPORT LayerAnimationController
 
   int id() const { return id_; }
 
-  void AddAnimation(scoped_ptr<Animation> animation);
+  void AddAnimation(std::unique_ptr<Animation> animation);
   void PauseAnimation(int animation_id, base::TimeDelta time_offset);
   void RemoveAnimation(int animation_id);
   void AbortAnimation(int animation_id);
@@ -92,8 +91,8 @@ class CC_EXPORT LayerAnimationController
   bool IsCurrentlyAnimatingProperty(TargetProperty::Type target_property,
                                     ObserverType observer_type) const;
 
-  void SetAnimationRegistrar(AnimationRegistrar* registrar);
-  AnimationRegistrar* animation_registrar() { return registrar_; }
+  void SetAnimationHost(AnimationHost* host);
+  AnimationHost* animation_host() { return host_; }
 
   void NotifyAnimationStarted(const AnimationEvent& event);
   void NotifyAnimationFinished(const AnimationEvent& event);
@@ -101,11 +100,25 @@ class CC_EXPORT LayerAnimationController
   void NotifyAnimationPropertyUpdate(const AnimationEvent& event);
   void NotifyAnimationTakeover(const AnimationEvent& event);
 
-  void AddValueObserver(LayerAnimationValueObserver* observer);
-  void RemoveValueObserver(LayerAnimationValueObserver* observer);
+  void set_value_observer(LayerAnimationValueObserver* observer) {
+    value_observer_ = observer;
+  }
 
-  void AddEventObserver(LayerAnimationEventObserver* observer);
-  void RemoveEventObserver(LayerAnimationEventObserver* observer);
+  bool needs_active_value_observations() const {
+    return needs_active_value_observations_;
+  }
+  bool needs_pending_value_observations() const {
+    return needs_pending_value_observations_;
+  }
+
+  void set_needs_active_value_observations(
+      bool needs_active_value_observations) {
+    needs_active_value_observations_ = needs_active_value_observations;
+  }
+  void set_needs_pending_value_observations(
+      bool needs_pending_value_observations) {
+    needs_pending_value_observations_ = needs_pending_value_observations;
+  }
 
   void set_value_provider(LayerAnimationValueProvider* provider) {
     value_provider_ = provider;
@@ -152,8 +165,7 @@ class CC_EXPORT LayerAnimationController
   // Sets |max_scale| to the maximum scale along any dimension at any
   // destination in active animations. Returns false if the maximum scale cannot
   // be computed.
-  bool MaximumTargetScale(ObserverType event_observers_,
-                          float* max_scale) const;
+  bool MaximumTargetScale(ObserverType observer_type, float* max_scale) const;
 
   // When a scroll animation is removed on the main thread, its compositor
   // thread counterpart continues producing scroll deltas until activation.
@@ -226,21 +238,21 @@ class CC_EXPORT LayerAnimationController
   bool HasValueObserver();
   bool HasActiveValueObserver();
 
-  AnimationRegistrar* registrar_;
+  AnimationHost* host_;
   int id_;
-  std::vector<scoped_ptr<Animation>> animations_;
+  std::vector<std::unique_ptr<Animation>> animations_;
 
-  // This is used to ensure that we don't spam the registrar.
+  // This is used to ensure that we don't spam the animation host.
   bool is_active_;
 
   base::TimeTicks last_tick_time_;
 
-  base::ObserverList<LayerAnimationValueObserver> value_observers_;
-  base::ObserverList<LayerAnimationEventObserver> event_observers_;
-
+  LayerAnimationValueObserver* value_observer_;
   LayerAnimationValueProvider* value_provider_;
-
   AnimationDelegate* layer_animation_delegate_;
+
+  bool needs_active_value_observations_;
+  bool needs_pending_value_observations_;
 
   // Only try to start animations when new animations are added or when the
   // previous attempt at starting animations failed to start all animations.

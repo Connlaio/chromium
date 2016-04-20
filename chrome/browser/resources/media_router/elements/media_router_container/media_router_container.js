@@ -57,18 +57,6 @@ Polymer({
     },
 
     /**
-     * The text for when there are no devices.
-     * @private {string}
-     */
-    deviceMissingText_: {
-      type: String,
-      readOnly: true,
-      value: function() {
-        return loadTimeData.getString('deviceMissing');
-      },
-    },
-
-    /**
      * The URL to open when the device missing link is clicked.
      * @type {string}
      */
@@ -96,29 +84,6 @@ Polymer({
     },
 
     /**
-     * The text for the first run flow button.
-     * @private {string}
-     */
-    firstRunFlowButtonText_: {
-      type: String,
-      readOnly: true,
-      value: function() {
-        return loadTimeData.getString('firstRunFlowButton');
-      },
-    },
-
-    /**
-     * The text for the learn more link about cloud services in the first run
-     * flow.
-     * @private {string}
-     */
-    firstRunFlowLearnMore_: {
-      type: String,
-      readOnly: true,
-      value: loadTimeData.getString('learnMoreText'),
-    },
-
-    /**
      * The URL to open when the cloud services pref learn more link is clicked.
      * @type {string}
      */
@@ -128,48 +93,12 @@ Polymer({
     },
 
     /**
-     * The text for the cloud services preference description in the first run
-     * flow.
-     * @private {string}
-     */
-    firstRunFlowCloudPrefText_: {
-      type: String,
-      readOnly: true,
-      value: loadTimeData.valueExists('firstRunFlowCloudPrefText') ?
-          loadTimeData.getString('firstRunFlowCloudPrefText') : '',
-    },
-
-    /**
      * The URL to open when the first run flow learn more link is clicked.
      * @type {string}
      */
     firstRunFlowLearnMoreUrl: {
       type: String,
       value: '',
-    },
-
-    /**
-     * The text description for the first run flow.
-     * @private {string}
-     */
-    firstRunFlowText_: {
-      type: String,
-      readOnly: true,
-      value: function() {
-        return loadTimeData.getString('firstRunFlowText');
-      },
-    },
-
-    /**
-     * The header of the first run flow.
-     * @private {string}
-     */
-    firstRunFlowTitle_: {
-      type: String,
-      readOnly: true,
-      value: function() {
-        return loadTimeData.getString('firstRunFlowTitle');
-      },
     },
 
     /**
@@ -192,35 +121,21 @@ Polymer({
     },
 
     /**
-     * Whether the search input is currently focused. This is used to prevent
-     * window focus/blur events from interfering with input-focus-dependent
-     * operations.
-     * @private {boolean}
+     * Whether the browser is currently incognito.
+     * @type {boolean}
      */
-    isSearchFocused_: {
+    isOffTheRecord: {
       type: Boolean,
       value: false,
     },
 
     /**
-     * Records the value of |isSearchFocused_| when a window blur event is
-     * received. This used to handle search focus edge cases. See
+     * Records whether the search input is focused when a window blur event is
+     * received. This is used to handle search focus edge cases. See
      * |setSearchFocusHandlers_| for details.
      * @private {boolean}
      */
     isSearchFocusedOnWindowBlur_: {
-      type: Boolean,
-      value: false,
-    },
-
-    /**
-     * Temporarily set when the window focus event handler needs to reset
-     * |isSearchFocused_| to the correct value but needs to know whether the
-     * search input focus handler will run. See |setSearchFocusHandlers_| for
-     * details.
-     * @private {boolean}
-     */
-    isSearchFocusedShouldBeSet_: {
       type: Boolean,
       value: false,
     },
@@ -243,18 +158,6 @@ Polymer({
       type: Object,
       value: null,
       observer: 'maybeShowIssueView_',
-    },
-
-    /**
-     * The header text.
-     * @private {string}
-     */
-    issueHeaderText_: {
-      type: String,
-      readOnly: true,
-      value: function() {
-        return loadTimeData.getString('issueHeader');
-      },
     },
 
     /**
@@ -328,30 +231,6 @@ Polymer({
     },
 
     /**
-     * Title text for the search button.
-     * @private {string}
-     */
-    searchButtonTitle_: {
-      type: String,
-      readOnly: true,
-      value: function() {
-        return loadTimeData.getString('searchButtonTitle');
-      },
-    },
-
-    /**
-     * Label text for the user search input.
-     * @private {string}
-     */
-    searchInputLabel_: {
-      type: String,
-      readOnly: true,
-      value: function() {
-        return loadTimeData.getString('searchInputLabel');
-      },
-    },
-
-    /**
      * Search text entered by the user into the sink search input.
      * @private {string}
      */
@@ -362,48 +241,13 @@ Polymer({
     },
 
     /**
-     * Text to display when a user search returns no matches.
-     * @private {string}
-     */
-    searchNoMatchesText_: {
-      type: String,
-      readOnly: true,
-      value: function() {
-        return loadTimeData.getString('searchNoMatches');
-      },
-    },
-
-    /**
      * Sinks to display that match |searchInputText_|.
-     * @private {!Array<!media_router.Sink>}
+     * @private {!Array<!{sinkItem: !media_router.Sink,
+     *                    substrings: Array<!Array<number>>}>}
      */
     searchResultsToShow_: {
       type: Array,
       value: [],
-    },
-
-    /**
-     * The header text when the cast mode list is shown.
-     * @private {string}
-     */
-    selectCastModeHeaderText_: {
-      type: String,
-      readOnly: true,
-      value: function() {
-        return loadTimeData.getString('selectCastModeHeader');
-      },
-    },
-
-    /**
-     * The subheading text for the non-cast-enabled app cast mode list.
-     * @private {string}
-     */
-    shareYourScreenSubheadingText_: {
-      type: String,
-      readOnly: true,
-      value: function() {
-        return loadTimeData.getString('shareYourScreenSubheading');
-      },
     },
 
     /**
@@ -499,6 +343,10 @@ Polymer({
     },
   },
 
+  behaviors: [
+    I18nBehavior,
+  ],
+
   listeners: {
     'focus': 'onFocus_',
     'header-height-changed': 'updateElementPositioning_',
@@ -520,7 +368,7 @@ Polymer({
     if (!cr.isMac)
       this.$$('#focus-placeholder').remove();
 
-    document.addEventListener('keydown', this.onKeydown_.bind(this));
+    document.addEventListener('keydown', this.onKeydown_.bind(this), true);
     this.setSearchFocusHandlers_();
     this.showSinkList_();
   },
@@ -694,20 +542,17 @@ Polymer({
   /**
    * @param {!media_router.CastMode} castMode The cast mode to determine an
    *     icon for.
-   * @return {string} The Polymer <iron-icon> icon to use. The format is
-   *     <iconset>:<icon>, where <iconset> is the set ID and <icon> is the name
-   *     of the icon. <iconset>: may be omitted if <icon> is from the default
-   *     set.
+   * @return {string} The icon to use.
    * @private
    */
   computeCastModeIcon_: function(castMode) {
     switch (castMode.type) {
       case media_router.CastModeType.DEFAULT:
-        return 'av:web';
+        return 'media-router:web';
       case media_router.CastModeType.TAB_MIRROR:
-        return 'tab';
+        return 'media-router:tab';
       case media_router.CastModeType.DESKTOP_MIRROR:
-        return 'hardware:laptop';
+        return 'media-router:laptop';
       default:
         return '';
     }
@@ -755,9 +600,9 @@ Polymer({
   computeHeaderText_: function(view, headerText) {
     switch (view) {
       case media_router.MediaRouterView.CAST_MODE_LIST:
-        return this.selectCastModeHeaderText_;
+        return this.i18n('selectCastModeHeaderText');
       case media_router.MediaRouterView.ISSUE:
-        return this.issueHeaderText_;
+        return this.i18n('issueHeaderText');
       case media_router.MediaRouterView.ROUTE_DETAILS:
         return this.currentRoute_ ?
             this.sinkMap_[this.currentRoute_.sinkId].name : '';
@@ -810,8 +655,9 @@ Polymer({
   },
 
   /**
-   * @param {!Array<!media_router.Sink>} searchResultsToShow The sinks currently
-   *     matching the search text.
+   * @param {!Array<!{sinkItem: !media_router.Sink,
+   *                  substrings: Array<!Array<number>>}>} searchResultsToShow
+   *     The sinks currently matching the search text.
    * @param {boolean} isUserSearching Whether the user is searching for sinks.
    * @return {boolean} Whether or not the 'no matches' message is hidden.
    * @private
@@ -884,7 +730,9 @@ Polymer({
   /**
    * Computes whether the search results list should be hidden.
    * @param {boolean} isUserSearching Whether the user is searching for sinks.
-   * @param {!Array<!media_router.Sink>} searchResultsToShow The sinks currently
+   * @param {!Array<!{sinkItem: !media_router.Sink,
+   *                  substrings: Array<!Array<number>>}>} searchResultsToShow
+   *     The sinks currently matching the search text.
    * @return {boolean} Whether the search results list should be hidden.
    * @private
    */
@@ -915,10 +763,7 @@ Polymer({
 
   /**
    * @param {!media_router.Sink} sink The sink to determine an icon for.
-   * @return {string} The Polymer <iron-icon> icon to use. The format is
-   *     <iconset>:<icon>, where <iconset> is the set ID and <icon> is the name
-   *     of the icon. <iconset>: may be ommitted if <icon> is from the default
-   *     set.
+   * @return {string} The icon to use.
    * @private
    */
   computeSinkIcon_: function(sink) {
@@ -926,15 +771,15 @@ Polymer({
       case media_router.SinkIconType.CAST:
         return 'media-router:chromecast';
       case media_router.SinkIconType.CAST_AUDIO:
-        return 'hardware:speaker';
+        return 'media-router:speaker';
       case media_router.SinkIconType.CAST_AUDIO_GROUP:
-        return 'hardware:speaker-group';
+        return 'media-router:speaker-group';
       case media_router.SinkIconType.GENERIC:
-        return 'hardware:tv';
+        return 'media-router:tv';
       case media_router.SinkIconType.HANGOUT:
         return 'media-router:hangout';
       default:
-        return 'hardware:tv';
+        return 'media-router:tv';
     }
   },
 
@@ -1042,12 +887,15 @@ Polymer({
    * first or last item in the list, as indicated by |currentView|.
    * @param {?media_router.MediaRouterView} currentView The current view of the
    *     dialog.
+   * @param {!Array<!media_router.Sink>} sinksToShow The sinks available to
+   *     display for the current cast mode.
    * @return {string} The CSS that correctly sets the padding of #sink-search
    *     for the current view.
    * @private
    */
-  computeSinkSearchClass_: function(currentView) {
-    return (currentView == media_router.MediaRouterView.FILTER) ? '' : 'bottom';
+  computeSinkSearchClass_: function(currentView, sinksToShow) {
+    return (currentView == media_router.MediaRouterView.FILTER &&
+            sinksToShow.length > 0) ? '' : 'bottom';
   },
 
   /**
@@ -1153,6 +1001,17 @@ Polymer({
   },
 
   /**
+   * Retrieves the first run flow cloud preferences text, if it exists. On
+   * non-officially branded builds, the string is not defined.
+   *
+   * @return {string} Cloud preferences text.
+   */
+  getFirstRunFlowCloudPrefText_: function() {
+    return loadTimeData.valueExists('firstRunFlowCloudPrefText') ?
+        this.i18n('firstRunFlowCloudPrefText') : '';
+  },
+
+  /**
    * Returns whether given string is undefined, null, empty, or whitespace only.
    * @param {?string} str String to be tested.
    * @return {boolean} |true| if the string is undefined, null, empty, or
@@ -1215,23 +1074,63 @@ Polymer({
   },
 
   /**
-   * Updates |currentView_| if there is a new blocking issue. Clears any
-   * pending route creation properties if the issue corresponds with
-   * |pendingCreatedRouteId_|.
+   * Updates |currentView_| if there is a new blocking issue or a blocking
+   * issue is resolved. Clears any pending route creation properties if the
+   * issue corresponds with |pendingCreatedRouteId_|.
    *
-   * @param {?media_router.Issue} issue The new issue.
+   * @param {?media_router.Issue} issue The new issue, or null if the
+   *                              blocking issue was resolved.
    * @private
    */
   maybeShowIssueView_: function(issue) {
-    if (!!issue && issue.isBlocking)
-      this.currentView_ = media_router.MediaRouterView.ISSUE;
-    else
-      this.updateElementPositioning_();
+    if (!!issue) {
+      if (issue.isBlocking) {
+        this.currentView_ = media_router.MediaRouterView.ISSUE;
+      } else if (this.currentView_ == media_router.MediaRouterView.SINK_LIST) {
+        // Make space for the non-blocking issue in the sink list.
+        this.updateElementPositioning_();
+      }
+    } else {
+      // Switch back to the sink list if the issue was cleared. If the previous
+      // issue was non-blocking, this would be a no-op. It is expected that
+      // the only way to clear an issue is by user action; the IssueManager
+      // (C++ side) does not clear issues in the UI.
+      this.currentView_ = media_router.MediaRouterView.SINK_LIST;
+    }
 
     if (!!this.pendingCreatedRouteId_ && !!issue &&
         issue.routeId == this.pendingCreatedRouteId_) {
       this.resetRouteCreationProperties_(false);
     }
+  },
+
+  /**
+   * If an element in the search results list has keyboard focus when we are
+   * transitioning from the filter view to the sink list view, give focus to the
+   * same sink in the sink list. Otherwise we leave the keyboard focus where it
+   * is.
+   * @private
+   */
+  maybeUpdateFocusOnFilterViewExit_: function() {
+    var searchSinks = this.$$('#search-results').querySelectorAll('paper-item');
+    var focusedElem = Array.prototype.find.call(searchSinks, function(sink) {
+      return sink.focused;
+    });
+    if (!focusedElem) {
+      return;
+    }
+    var focusedSink =
+        this.$$('#searchResults').itemForElement(focusedElem).sinkItem;
+    setTimeout(function() {
+      var sinkList = this.$$('#sinkList');
+      var sinks = this.$['sink-list-view'].querySelectorAll('paper-item');
+      Array.prototype.some.call(sinks, function(sink) {
+        if (sinkList.itemForElement(sink).id == focusedSink.id) {
+          sink.focus();
+          return true;
+        }
+      });
+    }.bind(this));
   },
 
   /**
@@ -1388,10 +1287,15 @@ Polymer({
     // handled on the C++ side instead of the JS side on non-mac platforms,
     // which uses toolkit-views. Handle the expected behavior on all platforms
     // here.
-    if (e.keyCode == media_router.KEYCODE_ESC && !e.shiftKey &&
+    if (e.key == media_router.KEY_ESC && !e.shiftKey &&
         !e.ctrlKey && !e.altKey && !e.metaKey) {
       // When searching, allow ESC as a mechanism to leave the filter view.
       if (this.isUserSearching_) {
+        // If the user tabbed to an item in the search results, or otherwise has
+        // an item in the list focused, focus will seem to vanish when we
+        // transition back to the sink list. Instead we should move focus to the
+        // appropriate item in the sink list.
+        this.maybeUpdateFocusOnFilterViewExit_();
         this.showSinkList_();
         e.preventDefault();
       } else {
@@ -1429,7 +1333,7 @@ Polymer({
   onSinkClick_: function(event) {
     var clickedSink = (this.isUserSearching_) ?
         this.$$('#searchResults').itemForElement(event.target).sinkItem :
-        this.$.sinkList.itemForElement(event.target);
+        this.$$('#sinkList').itemForElement(event.target);
     this.showOrCreateRoute_(clickedSink);
     this.fire('sink-click', {index: event['model'].index});
   },
@@ -1551,66 +1455,36 @@ Polymer({
     // clicks the search button, a focus event will not fire and so its event
     // handler from ready() will not run.
     this.isUserSearching_ = true;
-    this.$$('#sink-search-input').focus();
+    this.$['sink-search-input'].focus();
   },
 
   /**
-   * Sets various focus and blur event handlers to handle |isSearchFocused_| and
-   * showing search results when the input is focused.
+   * Sets various focus and blur event handlers to handle showing search results
+   * when the search input is focused.
    * @private
    */
   setSearchFocusHandlers_: function() {
     var search = this.$['sink-search-input'];
+    var that = this;
 
     // The window can see a blur event for two important cases: the window is
     // actually losing focus or keyboard focus is wrapping from the end of the
-    // document to the beginning. To handle both cases, we save the state of
-    // |isSearchFocused_| during the window blur event.
+    // document to the beginning. To handle both cases, we save whether the
+    // search input was focused during the window blur event.
     //
-    // The corresponding window focus event can do nothing if |isSearchFocused_|
-    // was false during the blur event. If the search input is gaining focus now
-    // it will work correctly. There are two cases when the input had focus
-    // during the window blur event: the input still has focus and the input
-    // lost focus. These cases are handled by the logic around
-    // |isSearchFocusedShouldBeSet_| and |isSearchFocused_|.
-    //
-    // Because the window focus event will always happen first, it doesn't know
-    // whether the input focus handler will later run or not. If it is not going
-    // to run, then |isSearchFocused_| should be set to |false|, otherwise it
-    // should be |true|. So the window focus handler just sets
-    // |isSearchFocused_| to |false| and makes a note in
-    // |isSearchFocusedShouldBeSet_| that |isSearchFocused_| should actually be
-    // set to true if the search focus handler runs. The |setTimeout| in the
-    // window focus handler clears this note as soon as all focus event handlers
-    // have run.
+    // When the search input receives focus it could be as part of window focus
+    // and if the search input was also focused on window blur, it shouldn't
+    // change the value of |isUserSearching_|. Otherwise, focusing the search
+    // input should activate the FILTER view by setting |isUserSearching_|.
     window.addEventListener('blur', function() {
-      this.isSearchFocusedOnWindowBlur_ = this.isSearchFocused_;
-    }.bind(this));
-    window.addEventListener('focus', function() {
-      if (this.isSearchFocusedOnWindowBlur_) {
-        this.isSearchFocusedOnWindowBlur_ = false;
-        this.isSearchFocusedShouldBeSet_ = true;
-        this.isSearchFocused_ = false;
-        setTimeout(function() {
-          this.isSearchFocusedShouldBeSet_ = false;
-        }.bind(this));
-      }
-    }.bind(this));
-    search.addEventListener('blur', function() {
-      // This lets normal blur cases work as expected, but doesn't get in the
-      // way of the window blur handler capturing the "current" state. This is
-      // the case because this will be run after all the blur handlers are done.
-      setTimeout(function() { this.isSearchFocused_ = false; }.bind(this));
-    }.bind(this));
+      that.isSearchFocusedOnWindowBlur_ =
+          that.shadowRoot.activeElement == search;
+    });
     search.addEventListener('focus', function() {
-      if (this.isSearchFocusedShouldBeSet_) {
-        this.isSearchFocused_ = true;
+      if (!that.isSearchFocusedOnWindowBlur_) {
+        that.isUserSearching_ = true;
       }
-      if (!this.isSearchFocused_) {
-        this.isSearchFocused_ = true;
-        this.isUserSearching_ = true;
-      }
-    }.bind(this));
+    });
   },
 
   /**
@@ -1761,12 +1635,15 @@ Polymer({
       this.$['container-header'].style.marginTop = firstRunFlowHeight + 'px';
       this.$['content'].style.marginTop =
           firstRunFlowHeight + headerHeight + 'px';
-      this.$['sink-list'].style.maxHeight =
-          this.dialogHeight_ - headerHeight - firstRunFlowHeight -
-              issueHeight - searchHeight + 'px';
-      var searchResults = this.$$('#search-results');
-      if (searchResults) {
-        searchResults.style.maxHeight = this.$['sink-list'].style.maxHeight;
+
+      var sinkList = this.$$('#sink-list');
+      if (sinkList) {
+        sinkList.style.maxHeight =
+            this.dialogHeight_ - headerHeight - firstRunFlowHeight -
+                issueHeight - searchHeight + 'px';
+        var searchResults = this.$$('#search-results');
+        if (searchResults)
+          searchResults.style.maxHeight = sinkList.style.maxHeight;
       }
     });
   },

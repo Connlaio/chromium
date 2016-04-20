@@ -71,7 +71,6 @@ public:
     PauseOnExceptionsState getPauseOnExceptionsState();
     void setPauseOnExceptionsState(PauseOnExceptionsState);
     void setPauseOnNextStatement(bool);
-    bool pausingOnNextStatement();
     bool canBreakProgram();
     void breakProgram();
     void continueProgram();
@@ -118,6 +117,7 @@ public:
     void discardInspectedContext(int contextGroupId, int contextId);
     const ContextByIdMap* contextGroup(int contextGroupId);
     void disconnect(V8InspectorSessionImpl*);
+    V8InspectorSessionImpl* sessionForContextGroup(int contextGroupId);
 
 private:
     void enable();

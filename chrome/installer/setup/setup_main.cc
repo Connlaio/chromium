@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 
 #include "base/at_exit.h"
@@ -20,7 +21,6 @@
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/macros.h"
-#include "base/memory/scoped_ptr.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/path_service.h"
 #include "base/process/launch.h"
@@ -107,7 +107,9 @@ LONG OverwriteDisplayVersion(const base::string16& path,
   if ((result = key.Open(HKEY_LOCAL_MACHINE, path.c_str(),
                          KEY_QUERY_VALUE | KEY_SET_VALUE | wowkey))
       != ERROR_SUCCESS) {
-    LOG(ERROR) << "Failed to set DisplayVersion: " << path << " not found";
+    VLOG(1) << "Skipping DisplayVersion update because registry key " << path
+            << " does not exist in "
+            << (wowkey == KEY_WOW64_64KEY ? "64" : "32") << "bit hive";
     return result;
   }
   if ((result = key.ReadValue(kDisplayVersion, &existing)) != ERROR_SUCCESS) {
@@ -141,11 +143,12 @@ LONG OverwriteDisplayVersions(const base::string16& product,
   reg_path = base::StringPrintf(
       L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{%ls}",
       product.c_str());
+  // Consider the operation a success if either of these succeeds.
   LONG result2 = OverwriteDisplayVersion(reg_path, value, KEY_WOW64_64KEY);
-  if (result2 != ERROR_SUCCESS)
-    result2 = OverwriteDisplayVersion(reg_path, value, KEY_WOW64_32KEY);
+  LONG result3 = OverwriteDisplayVersion(reg_path, value, KEY_WOW64_32KEY);
 
-  return result1 != ERROR_SUCCESS ? result1 : result2;
+  return result1 != ERROR_SUCCESS ? result1 :
+      (result2 != ERROR_SUCCESS ? result3 : ERROR_SUCCESS);
 }
 
 void DelayedOverwriteDisplayVersions(const base::FilePath& setup_exe,
@@ -173,7 +176,7 @@ void DelayedOverwriteDisplayVersions(const base::FilePath& setup_exe,
 
 // Returns NULL if no compressed archive is available for processing, otherwise
 // returns a patch helper configured to uncompress and patch.
-scoped_ptr<installer::ArchivePatchHelper> CreateChromeArchiveHelper(
+std::unique_ptr<installer::ArchivePatchHelper> CreateChromeArchiveHelper(
     const base::FilePath& setup_exe,
     const base::CommandLine& command_line,
     const installer::InstallerState& installer_state,
@@ -195,7 +198,7 @@ scoped_ptr<installer::ArchivePatchHelper> CreateChromeArchiveHelper(
       LOG(ERROR) << installer::switches::kInstallArchive << "="
                  << compressed_archive.value() << " not found.";
     }
-    return scoped_ptr<installer::ArchivePatchHelper>();
+    return std::unique_ptr<installer::ArchivePatchHelper>();
   }
 
   // chrome.7z is either extracted directly from the compressed archive into the
@@ -206,11 +209,9 @@ scoped_ptr<installer::ArchivePatchHelper> CreateChromeArchiveHelper(
   // Specify an empty path for the patch source since it isn't yet known that
   // one is needed. It will be supplied in UncompressAndPatchChromeArchive if it
   // is.
-  return scoped_ptr<installer::ArchivePatchHelper>(
-      new installer::ArchivePatchHelper(working_directory,
-                                        compressed_archive,
-                                        base::FilePath(),
-                                        target));
+  return std::unique_ptr<installer::ArchivePatchHelper>(
+      new installer::ArchivePatchHelper(working_directory, compressed_archive,
+                                        base::FilePath(), target));
 }
 
 // Returns the MSI product ID from the ClientState key that is populated for MSI
@@ -392,7 +393,7 @@ installer::InstallStatus RenameChromeExecutables(
                        .Append(installer::kInstallTempDir).value();
     return installer::RENAME_FAILED;
   }
-  scoped_ptr<WorkItemList> install_list(WorkItem::CreateWorkItemList());
+  std::unique_ptr<WorkItemList> install_list(WorkItem::CreateWorkItemList());
   // Move chrome.exe to old_chrome.exe, then move new_chrome.exe to chrome.exe.
   install_list->AddMoveTreeWorkItem(chrome_exe.value(),
                                     chrome_old_exe.value(),
@@ -486,8 +487,8 @@ bool CheckMultiInstallConditions(const InstallationState& original_state,
       // A product other than Chrome is being installed in multi-install mode,
       // and Chrome is already present. Add Chrome to the set of products
       // (making it multi-install in the process) so that it is updated, too.
-      scoped_ptr<Product> multi_chrome(new Product(
-          BrowserDistribution::GetSpecificDistribution(
+      std::unique_ptr<Product> multi_chrome(
+          new Product(BrowserDistribution::GetSpecificDistribution(
               BrowserDistribution::CHROME_BROWSER)));
       multi_chrome->SetOption(installer::kOptionMultiInstall, true);
       chrome = installer_state->AddProduct(&multi_chrome);
@@ -1235,7 +1236,7 @@ bool HandleNonInstallCmdLineOptions(const InstallationState& original_state,
         installer_state->FindProduct(BrowserDistribution::CHROME_BROWSER);
     installer::InstallStatus status = installer::INVALID_STATE_FOR_OPTION;
     if (chrome_install) {
-      scoped_ptr<FileVersionInfo> version_info(
+      std::unique_ptr<FileVersionInfo> version_info(
           FileVersionInfo::CreateFileVersionInfo(setup_exe));
       const base::Version installed_version(
           base::UTF16ToUTF8(version_info->product_version()));
@@ -1431,7 +1432,7 @@ InstallStatus InstallProductsHelper(const InstallationState& original_state,
           installer::switches::kPreviousVersion));
     }
 
-    scoped_ptr<ArchivePatchHelper> archive_helper(
+    std::unique_ptr<ArchivePatchHelper> archive_helper(
         CreateChromeArchiveHelper(setup_exe, cmd_line, installer_state,
                                   unpack_path));
     if (archive_helper) {
@@ -1492,8 +1493,8 @@ InstallStatus InstallProductsHelper(const InstallationState& original_state,
   VLOG(1) << "unpacked to " << unpack_path.value();
   base::FilePath src_path(
       unpack_path.Append(kInstallSourceChromeDir));
-  scoped_ptr<Version>
-      installer_version(GetMaxVersionFromArchiveDir(src_path));
+  std::unique_ptr<Version> installer_version(
+      GetMaxVersionFromArchiveDir(src_path));
   if (!installer_version.get()) {
     LOG(ERROR) << "Did not find any valid version in installer.";
     install_status = INVALID_ARCHIVE;
@@ -1733,10 +1734,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prev_instance,
 
   const bool is_uninstall = cmd_line.HasSwitch(installer::switches::kUninstall);
 
-  // Check to make sure current system is WinXP or later. If not, log
+  // Check to make sure current system is Win7 or later. If not, log
   // error message and get out.
   if (!InstallUtil::IsOSSupported()) {
-    LOG(ERROR) << "Chrome only supports Windows XP or later.";
+    LOG(ERROR) << "Chrome only supports Windows 7 or later.";
     installer_state.WriteInstallerResult(
         installer::OS_NOT_SUPPORTED, IDS_INSTALL_OS_NOT_SUPPORTED_BASE, NULL);
     return installer::OS_NOT_SUPPORTED;

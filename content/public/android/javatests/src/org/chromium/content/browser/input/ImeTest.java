@@ -22,6 +22,7 @@ import android.view.inputmethod.InputConnection;
 
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.test.util.Feature;
+import org.chromium.base.test.util.FlakyTest;
 import org.chromium.base.test.util.UrlUtils;
 import org.chromium.content.browser.ContentViewCore;
 import org.chromium.content.browser.test.util.Criteria;
@@ -117,6 +118,7 @@ public class ImeTest extends ContentShellTestBase {
 
     @MediumTest
     @Feature({"TextInput", "Main"})
+    @FlakyTest
     public void testDoesNotHang_getTextAfterKeyboardHides() throws Throwable {
         setComposingText("hello", 1);
         waitAndVerifyUpdateSelection(0, 5, 5, 0, 5);
@@ -130,6 +132,23 @@ public class ImeTest extends ContentShellTestBase {
         }
 
         assertWaitForKeyboardStatus(false);
+    }
+
+    @SmallTest
+    @Feature({"TextInput", "Main"})
+    public void testDeleteSurroundingTextWithZeroValue() throws Throwable {
+        commitText("hello", 1);
+        waitAndVerifyUpdateSelection(0, 5, 5, -1, -1);
+        deleteSurroundingText(0, 0);
+
+        setSelection(0, 0);
+        waitAndVerifyUpdateSelection(1, 0, 0, -1, -1);
+        deleteSurroundingText(0, 0);
+
+        setSelection(2, 2);
+        waitAndVerifyUpdateSelection(2, 2, 2, -1, -1);
+        deleteSurroundingText(0, 0);
+        assertTextsAroundCursor("he", "", "llo");
     }
 
     @SmallTest
@@ -560,6 +579,7 @@ public class ImeTest extends ContentShellTestBase {
 
     @SmallTest
     @Feature({"TextInput"})
+    @FlakyTest(message = "crbug.com/598482")
     public void testImeSelectAndUnSelectAll() throws Exception {
         commitText("hello", 1);
         waitAndVerifyUpdateSelection(0, 5, 5, -1, -1);
@@ -659,6 +679,7 @@ public class ImeTest extends ContentShellTestBase {
 
     @SmallTest
     @Feature({"TextInput", "Main"})
+    @FlakyTest
     public void testSwipingText() throws Throwable {
         focusElement("textarea");
 
@@ -970,6 +991,7 @@ public class ImeTest extends ContentShellTestBase {
 
     @SmallTest
     @Feature({"TextInput"})
+    @FlakyTest(message = "crbug.com/598482")
     public void testPastePopupShowAndHide() throws Throwable {
         commitText("hello", 1);
         waitAndVerifyUpdateSelection(0, 5, 5, -1, -1);

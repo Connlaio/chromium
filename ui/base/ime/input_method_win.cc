@@ -6,6 +6,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <cwctype>
 
 #include "base/auto_reset.h"
 #include "base/command_line.h"
@@ -14,11 +15,11 @@
 #include "ui/base/ime/text_input_client.h"
 #include "ui/base/ime/win/tsf_input_scope.h"
 #include "ui/base/ui_base_switches.h"
+#include "ui/display/win/screen_win.h"
 #include "ui/events/event.h"
 #include "ui/events/event_constants.h"
 #include "ui/events/event_utils.h"
 #include "ui/events/keycodes/keyboard_codes.h"
-#include "ui/gfx/win/dpi.h"
 #include "ui/gfx/win/hwnd_util.h"
 
 namespace {
@@ -166,7 +167,8 @@ void InputMethodWin::DispatchKeyEvent(ui::KeyEvent* event) {
   }
 
   // If only 1 WM_CHAR per the key event, set it as the character of it.
-  if (char_msgs.size() == 1)
+  if (char_msgs.size() == 1 &&
+      !std::iswcntrl(static_cast<wint_t>(char_msgs[0].wParam)))
     event->set_character(static_cast<base::char16>(char_msgs[0].wParam));
 
   // Dispatches the key events to the Chrome IME extension which is listening to
@@ -232,7 +234,9 @@ void InputMethodWin::OnCaretBoundsChanged(const TextInputClient* client) {
   // Tentatively assume that the returned value is DIP (Density Independent
   // Pixel). See the comment in text_input_client.h and http://crbug.com/360334.
   const gfx::Rect dip_screen_bounds(GetTextInputClient()->GetCaretBounds());
-  const gfx::Rect screen_bounds = gfx::win::DIPToScreenRect(dip_screen_bounds);
+  const gfx::Rect screen_bounds =
+      display::win::ScreenWin::DIPToScreenRect(toplevel_window_handle_,
+                                               dip_screen_bounds);
 
   HWND attached_window = toplevel_window_handle_;
   // TODO(ime): see comment in TextInputClient::GetCaretBounds(), this
@@ -613,7 +617,9 @@ LRESULT InputMethodWin::OnQueryCharPosition(IMECHARPOSITION* char_positon) {
       return 0;
     dip_rect = client->GetCaretBounds();
   }
-  const gfx::Rect rect = gfx::win::DIPToScreenRect(dip_rect);
+  const gfx::Rect rect =
+      display::win::ScreenWin::DIPToScreenRect(toplevel_window_handle_,
+                                               dip_rect);
 
   char_positon->pt.x = rect.x();
   char_positon->pt.y = rect.y();

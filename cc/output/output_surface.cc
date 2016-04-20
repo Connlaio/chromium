@@ -124,7 +124,7 @@ OutputSurface::OutputSurface(
 #if defined(ENABLE_VULKAN)
     scoped_refptr<VulkanContextProvider> vulkan_context_provider,
 #endif
-    scoped_ptr<SoftwareOutputDevice> software_device)
+    std::unique_ptr<SoftwareOutputDevice> software_device)
     : client_(NULL),
       context_provider_(std::move(context_provider)),
       worker_context_provider_(std::move(worker_context_provider)),
@@ -168,7 +168,8 @@ OutputSurface::OutputSurface(
                     nullptr) {}
 #endif
 
-OutputSurface::OutputSurface(scoped_ptr<SoftwareOutputDevice> software_device)
+OutputSurface::OutputSurface(
+    std::unique_ptr<SoftwareOutputDevice> software_device)
     : OutputSurface(nullptr,
                     nullptr,
 #if defined(ENABLE_VULKAN)
@@ -177,25 +178,15 @@ OutputSurface::OutputSurface(scoped_ptr<SoftwareOutputDevice> software_device)
                     std::move(software_device)) {
 }
 
-OutputSurface::OutputSurface(scoped_refptr<ContextProvider> context_provider,
-                             scoped_ptr<SoftwareOutputDevice> software_device)
+OutputSurface::OutputSurface(
+    scoped_refptr<ContextProvider> context_provider,
+    std::unique_ptr<SoftwareOutputDevice> software_device)
     : OutputSurface(std::move(context_provider),
                     nullptr,
 #if defined(ENABLE_VULKAN)
                     nullptr,
 #endif
                     std::move(software_device)) {
-}
-
-void OutputSurface::CommitVSyncParameters(base::TimeTicks timebase,
-                                          base::TimeDelta interval) {
-  TRACE_EVENT2("cc",
-               "OutputSurface::CommitVSyncParameters",
-               "timebase",
-               (timebase - base::TimeTicks()).InSecondsF(),
-               "interval",
-               interval.InSecondsF());
-  client_->CommitVSyncParameters(timebase, interval);
 }
 
 // Forwarded to OutputSurfaceClient

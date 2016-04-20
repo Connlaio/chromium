@@ -103,7 +103,6 @@
 #include "ui/base/win/hidden_window.h"
 #include "ui/display/win/screen_win.h"
 #include "ui/gfx/gdi_util.h"
-#include "ui/gfx/win/dpi.h"
 #endif
 
 #if defined(OS_LINUX) && !defined(OS_CHROMEOS)
@@ -367,22 +366,25 @@ RenderWidgetHostViewAura::RenderWidgetHostViewAura(RenderWidgetHost* host,
       in_shutdown_(false),
       in_bounds_changed_(false),
       is_fullscreen_(false),
-      popup_parent_host_view_(NULL),
-      popup_child_host_view_(NULL),
+      popup_parent_host_view_(nullptr),
+      popup_child_host_view_(nullptr),
       is_loading_(false),
+      text_input_type_(ui::TEXT_INPUT_TYPE_NONE),
+      text_input_mode_(ui::TEXT_INPUT_MODE_DEFAULT),
+      text_input_flags_(0),
+      can_compose_inline_(true),
       has_composition_text_(false),
       accept_return_character_(false),
-      last_swapped_software_frame_scale_factor_(1.f),
-      paint_canvas_(NULL),
+      begin_frame_source_(nullptr),
+      needs_begin_frames_(false),
       synthetic_move_sent_(false),
       cursor_visibility_state_in_renderer_(UNKNOWN),
 #if defined(OS_WIN)
-      legacy_render_widget_host_HWND_(NULL),
+      legacy_render_widget_host_HWND_(nullptr),
       legacy_window_destroyed_(false),
 #endif
       has_snapped_to_boundary_(false),
       is_guest_view_hack_(is_guest_view_hack),
-      begin_frame_observer_proxy_(this),
       set_focus_on_mouse_down_or_key_event_(false),
       device_scale_factor_(0.0f),
       disable_input_event_router_for_testing_(false),
@@ -655,12 +657,29 @@ ui::TextInputClient* RenderWidgetHostViewAura::GetTextInputClient() {
 }
 
 void RenderWidgetHostViewAura::OnSetNeedsBeginFrames(bool needs_begin_frames) {
-  begin_frame_observer_proxy_.SetNeedsBeginFrames(needs_begin_frames);
+  if (needs_begin_frames_ == needs_begin_frames)
+    return;
+
+  needs_begin_frames_ = needs_begin_frames;
+  if (begin_frame_source_) {
+    if (needs_begin_frames_)
+      begin_frame_source_->AddObserver(this);
+    else
+      begin_frame_source_->RemoveObserver(this);
+  }
 }
 
-void RenderWidgetHostViewAura::SendBeginFrame(const cc::BeginFrameArgs& args) {
+bool RenderWidgetHostViewAura::OnBeginFrameDerivedImpl(
+    const cc::BeginFrameArgs& args) {
   delegated_frame_host_->SetVSyncParameters(args.frame_time, args.interval);
   host_->Send(new ViewMsg_BeginFrame(host_->GetRoutingID(), args));
+  return true;
+}
+
+void RenderWidgetHostViewAura::OnBeginFrameSourcePausedChanged(bool paused) {
+  // Ignored for now.  If the begin frame source is paused, the renderer
+  // doesn't need to be informed about it and will just not receive more
+  // begin frames.
 }
 
 void RenderWidgetHostViewAura::SetKeyboardFocus() {
@@ -856,18 +875,23 @@ void RenderWidgetHostViewAura::SetIsLoading(bool is_loading) {
   UpdateCursorIfOverSelf();
 }
 
-void RenderWidgetHostViewAura::UpdateInputMethodIfNecessary(
-    bool text_input_state_changed) {
-  if (!GetInputMethod())
-    return;
-
-  if (text_input_state_changed)
-    GetInputMethod()->OnTextInputTypeChanged(this);
-
-  const TextInputState* state = host_->delegate()->GetTextInputState();
-
-  if (state->show_ime_if_needed && state->type != ui::TEXT_INPUT_TYPE_NONE)
-    GetInputMethod()->ShowImeIfNeeded();
+void RenderWidgetHostViewAura::TextInputStateChanged(
+    const ViewHostMsg_TextInputState_Params& params) {
+  if (text_input_type_ != params.type ||
+      text_input_mode_ != params.mode ||
+      can_compose_inline_ != params.can_compose_inline ||
+      text_input_flags_ != params.flags) {
+    text_input_type_ = params.type;
+    text_input_mode_ = params.mode;
+    can_compose_inline_ = params.can_compose_inline;
+    text_input_flags_ = params.flags;
+    if (GetInputMethod())
+      GetInputMethod()->OnTextInputTypeChanged(this);
+  }
+  if (params.show_ime_if_needed && params.type != ui::TEXT_INPUT_TYPE_NONE) {
+    if (GetInputMethod())
+      GetInputMethod()->ShowImeIfNeeded();
+  }
 }
 
 void RenderWidgetHostViewAura::ImeCancelComposition() {
@@ -1003,7 +1027,7 @@ bool RenderWidgetHostViewAura::CanCopyToVideoFrame() const {
 }
 
 void RenderWidgetHostViewAura::BeginFrameSubscription(
-    scoped_ptr<RenderWidgetHostViewFrameSubscriber> subscriber) {
+    std::unique_ptr<RenderWidgetHostViewFrameSubscriber> subscriber) {
   delegated_frame_host_->BeginFrameSubscription(std::move(subscriber));
 }
 
@@ -1018,7 +1042,8 @@ bool RenderWidgetHostViewAura::UsesNativeWindowFrame() const {
 
 void RenderWidgetHostViewAura::UpdateMouseLockRegion() {
   RECT window_rect =
-      gfx::win::DIPToScreenRect(window_->GetBoundsInScreen()).ToRECT();
+      gfx::Screen::GetScreen()->DIPToScreenRectInWindow(
+          window_, window_->GetBoundsInScreen()).ToRECT();
   ::ClipCursor(&window_rect);
 }
 
@@ -1030,7 +1055,7 @@ void RenderWidgetHostViewAura::OnLegacyWindowDestroyed() {
 
 void RenderWidgetHostViewAura::OnSwapCompositorFrame(
     uint32_t output_surface_id,
-    scoped_ptr<cc::CompositorFrame> frame) {
+    std::unique_ptr<cc::CompositorFrame> frame) {
   TRACE_EVENT0("content", "RenderWidgetHostViewAura::OnSwapCompositorFrame");
 
   last_scroll_offset_ = frame->metadata.root_scroll_offset;
@@ -1112,7 +1137,7 @@ gfx::Rect RenderWidgetHostViewAura::GetBoundsInRootWindow() {
     }
   }
 
-  bounds = gfx::win::ScreenToDIPRect(bounds);
+  bounds = gfx::Screen::GetScreen()->ScreenToDIPRectInWindow(top_level, bounds);
 #endif
 
   return bounds;
@@ -1144,6 +1169,10 @@ void RenderWidgetHostViewAura::ProcessAckedTouchEvent(
   // |host| is NULL during tests.
   if (!host)
     return;
+
+  // The TouchScrollStarted event is generated & consumed downstream from the
+  // TouchEventQueue. So we don't expect an ACK up here.
+  DCHECK(touch.event.type != blink::WebInputEvent::TouchScrollStarted);
 
   ui::EventResult result = (ack_result == INPUT_EVENT_ACK_STATE_CONSUMED)
                                ? ui::ER_HANDLED
@@ -1181,9 +1210,9 @@ void RenderWidgetHostViewAura::ProcessAckedTouchEvent(
   }
 }
 
-scoped_ptr<SyntheticGestureTarget>
+std::unique_ptr<SyntheticGestureTarget>
 RenderWidgetHostViewAura::CreateSyntheticGestureTarget() {
-  return scoped_ptr<SyntheticGestureTarget>(
+  return std::unique_ptr<SyntheticGestureTarget>(
       new SyntheticGestureTargetAura(host_));
 }
 
@@ -1464,10 +1493,7 @@ void RenderWidgetHostViewAura::ClearCompositionText() {
 }
 
 void RenderWidgetHostViewAura::InsertText(const base::string16& text) {
-  DCHECK(RenderWidgetHostImpl::From(GetRenderWidgetHost())
-             ->delegate()
-             ->GetTextInputState()
-             ->type != ui::TEXT_INPUT_TYPE_NONE);
+  DCHECK(text_input_type_ != ui::TEXT_INPUT_TYPE_NONE);
   // TODO(wjmaclean): can host_ ever be null?
   if (host_)
     host_->ImeConfirmComposition(text, gfx::Range::InvalidRange(), false);
@@ -1490,27 +1516,19 @@ void RenderWidgetHostViewAura::InsertChar(const ui::KeyEvent& event) {
 }
 
 ui::TextInputType RenderWidgetHostViewAura::GetTextInputType() const {
-  if (host_->delegate())
-    return host_->delegate()->GetTextInputState()->type;
-  return text_input_state()->type;
+  return text_input_type_;
 }
 
 ui::TextInputMode RenderWidgetHostViewAura::GetTextInputMode() const {
-  if (host_->delegate())
-    return host_->delegate()->GetTextInputState()->mode;
-  return text_input_state()->mode;
+  return text_input_mode_;
 }
 
 int RenderWidgetHostViewAura::GetTextInputFlags() const {
-  if (host_->delegate())
-    return host_->delegate()->GetTextInputState()->flags;
-  return text_input_state()->flags;
+  return text_input_flags_;
 }
 
 bool RenderWidgetHostViewAura::CanComposeInline() const {
-  if (host_->delegate())
-    return host_->delegate()->GetTextInputState()->can_compose_inline;
-  return text_input_state()->can_compose_inline;
+  return can_compose_inline_;
 }
 
 gfx::Rect RenderWidgetHostViewAura::ConvertRectToScreen(
@@ -2330,10 +2348,6 @@ void RenderWidgetHostViewAura::OnHostMoved(const aura::WindowTreeHost* host,
 // RenderWidgetHostViewAura, private:
 
 RenderWidgetHostViewAura::~RenderWidgetHostViewAura() {
-  // The WebContentsImpl should be notified about us so that it will not hold
-  // an invalid text input state which was due to active text on this view.
-  NotifyHostDelegateAboutShutdown();
-
   // Ask the RWH to drop reference to us.
   if (!is_guest_view_hack_)
     host_->ViewDestroyed();
@@ -2566,7 +2580,7 @@ bool RenderWidgetHostViewAura::OnShowContextMenu(
 }
 
 void RenderWidgetHostViewAura::SetSelectionControllerClientForTest(
-    scoped_ptr<TouchSelectionControllerClientAura> client) {
+    std::unique_ptr<TouchSelectionControllerClientAura> client) {
   selection_controller_client_.swap(client);
   CreateSelectionController();
   disable_input_event_router_for_testing_ = true;
@@ -2656,8 +2670,6 @@ void RenderWidgetHostViewAura::AddedToRootWindow() {
 #endif
 
   delegated_frame_host_->SetCompositor(window_->GetHost()->compositor());
-  if (window_->GetHost()->compositor())
-    begin_frame_observer_proxy_.SetCompositor(window_->GetHost()->compositor());
 }
 
 void RenderWidgetHostViewAura::RemovingFromRootWindow() {
@@ -2670,7 +2682,6 @@ void RenderWidgetHostViewAura::RemovingFromRootWindow() {
 
   window_->GetHost()->RemoveObserver(this);
   delegated_frame_host_->ResetCompositor();
-  begin_frame_observer_proxy_.ResetCompositor();
 
 #if defined(OS_WIN)
   // Update the legacy window's parent temporarily to the desktop window. It
@@ -2774,7 +2785,7 @@ void RenderWidgetHostViewAura::HandleGestureForTouchSelection(
       if (!last_context_menu_params_)
         break;
 
-      scoped_ptr<ContextMenuParams> context_menu_params =
+      std::unique_ptr<ContextMenuParams> context_menu_params =
           std::move(last_context_menu_params_);
 
       // On Windows we want to display the context menu when the long press
@@ -2821,7 +2832,7 @@ void RenderWidgetHostViewAura::ForwardMouseEventToParent(
 
   // Take a copy of |event|, to avoid ConvertLocationToTarget mutating the
   // event.
-  scoped_ptr<ui::Event> event_copy = ui::Event::Clone(*event);
+  std::unique_ptr<ui::Event> event_copy = ui::Event::Clone(*event);
   ui::MouseEvent* mouse_event = static_cast<ui::MouseEvent*>(event_copy.get());
   mouse_event->ConvertLocationToTarget(window_, window_->parent());
   window_->parent()->delegate()->OnMouseEvent(mouse_event);
@@ -2874,14 +2885,12 @@ bool RenderWidgetHostViewAura::DelegatedFrameCanCreateResizeLock() const {
 #endif
 }
 
-scoped_ptr<ResizeLock>
+std::unique_ptr<ResizeLock>
 RenderWidgetHostViewAura::DelegatedFrameHostCreateResizeLock(
     bool defer_compositor_lock) {
   gfx::Size desired_size = window_->bounds().size();
-  return scoped_ptr<ResizeLock>(new CompositorResizeLock(
-      window_->GetHost(),
-      desired_size,
-      defer_compositor_lock,
+  return std::unique_ptr<ResizeLock>(new CompositorResizeLock(
+      window_->GetHost(), desired_size, defer_compositor_lock,
       base::TimeDelta::FromMilliseconds(kResizeLockTimeoutMs)));
 }
 
@@ -2911,6 +2920,15 @@ void RenderWidgetHostViewAura::DelegatedFrameHostUpdateVSyncParameters(
     const base::TimeTicks& timebase,
     const base::TimeDelta& interval) {
   host_->UpdateVSyncParameters(timebase, interval);
+}
+
+void RenderWidgetHostViewAura::SetBeginFrameSource(
+    cc::BeginFrameSource* source) {
+  if (begin_frame_source_ && needs_begin_frames_)
+    begin_frame_source_->RemoveObserver(this);
+  begin_frame_source_ = source;
+  if (begin_frame_source_ && needs_begin_frames_)
+    begin_frame_source_->AddObserver(this);
 }
 
 void RenderWidgetHostViewAura::OnDidNavigateMainFrameToNewPage() {

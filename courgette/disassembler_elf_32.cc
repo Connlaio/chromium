@@ -12,10 +12,29 @@
 
 namespace courgette {
 
+namespace {
+
+// Sorts |section_headers| by file offset and stores the resulting permutation
+// of section ids in |order|.
+std::vector<Elf32_Half> GetSectionHeaderFileOffsetOrder(
+    const std::vector<Elf32_Shdr>& section_headers) {
+  size_t size = section_headers.size();
+  std::vector<Elf32_Half> order(size);
+  for (size_t i = 0; i < size; ++i)
+    order[i] = static_cast<Elf32_Half>(i);
+
+  auto comp = [&](int idx1, int idx2) {
+    return section_headers[idx1].sh_offset < section_headers[idx2].sh_offset;
+  };
+  std::stable_sort(order.begin(), order.end(), comp);
+  return order;
+}
+
+}  // namespace
+
 DisassemblerElf32::DisassemblerElf32(const void* start, size_t length)
     : Disassembler(start, length),
       header_(nullptr),
-      section_header_table_(nullptr),
       section_header_table_size_(0),
       program_header_table_(nullptr),
       program_header_table_size_(0),
@@ -27,8 +46,8 @@ RVA DisassemblerElf32::FileOffsetToRVA(FileOffset offset) const {
   // executables and so only need to support 32-bit file sizes.
   uint32_t offset32 = static_cast<uint32_t>(offset);
 
-  for (Elf32_Half section_id = 0; section_id < SectionHeaderCount();
-       ++section_id) {
+  // Visit section headers ordered by file offset.
+  for (Elf32_Half section_id : section_header_file_offset_order_) {
     const Elf32_Shdr* section_header = SectionHeader(section_id);
     // These can appear to have a size in the file, but don't.
     if (section_header->sh_type == SHT_NOBITS)
@@ -95,9 +114,16 @@ bool DisassemblerElf32::ParseHeader() {
   if (!IsArrayInBounds(header_->e_shoff, header_->e_shnum, sizeof(Elf32_Shdr)))
     return Bad("Out of bounds section header table");
 
-  section_header_table_ = reinterpret_cast<const Elf32_Shdr*>(
-      FileOffsetToPointer(header_->e_shoff));
+  // Extract |section_header_table_|, ordered by section id.
+  const Elf32_Shdr* section_header_table_raw =
+      reinterpret_cast<const Elf32_Shdr*>(
+          FileOffsetToPointer(header_->e_shoff));
   section_header_table_size_ = header_->e_shnum;
+  section_header_table_.assign(section_header_table_raw,
+      section_header_table_raw + section_header_table_size_);
+
+  section_header_file_offset_order_ =
+      GetSectionHeaderFileOffsetOrder(section_header_table_);
 
   if (!IsArrayInBounds(header_->e_phoff, header_->e_phnum, sizeof(Elf32_Phdr)))
     return Bad("Out of bounds program header table");
@@ -244,8 +270,8 @@ CheckBool DisassemblerElf32::ParseFile(AssemblyProgram* program) {
   std::vector<FileOffset>::iterator end_abs_offset = abs_offsets.end();
   ScopedVector<TypedRVA>::iterator end_rel = rel32_locations_.end();
 
-  for (Elf32_Half section_id = 0; section_id < SectionHeaderCount();
-       ++section_id) {
+  // Visit section headers ordered by file offset.
+  for (Elf32_Half section_id : section_header_file_offset_order_) {
     const Elf32_Shdr* section_header = SectionHeader(section_id);
 
     if (section_header->sh_type == SHT_NOBITS)

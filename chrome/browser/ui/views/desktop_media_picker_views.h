@@ -119,7 +119,9 @@ class DesktopMediaPickerDialogView : public views::DialogDelegateView {
                                DesktopMediaPickerViews* parent,
                                const base::string16& app_name,
                                const base::string16& target_name,
-                               std::unique_ptr<DesktopMediaList> media_list,
+                               std::unique_ptr<DesktopMediaList> screen_list,
+                               std::unique_ptr<DesktopMediaList> window_list,
+                               std::unique_ptr<DesktopMediaList> tab_list,
                                bool request_audio);
   ~DesktopMediaPickerDialogView() override;
 
@@ -152,7 +154,12 @@ class DesktopMediaPickerDialogView : public views::DialogDelegateView {
   base::string16 app_name_;
 
   views::Label* description_label_;
+
+  // |audio_share_checked_| records whether the user permits audio, when
+  // |audio_share_checkbox_| is disabled.
   views::Checkbox* audio_share_checkbox_;
+  bool audio_share_checked_;
+
   views::ScrollView* sources_scroll_view_;
   DesktopMediaListView* sources_list_view_;
 
@@ -173,7 +180,9 @@ class DesktopMediaPickerViews : public DesktopMediaPicker {
             gfx::NativeWindow parent,
             const base::string16& app_name,
             const base::string16& target_name,
-            std::unique_ptr<DesktopMediaList> media_list,
+            std::unique_ptr<DesktopMediaList> screen_list,
+            std::unique_ptr<DesktopMediaList> window_list,
+            std::unique_ptr<DesktopMediaList> tab_list,
             bool request_audio,
             const DoneCallback& done_callback) override;
 

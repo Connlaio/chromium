@@ -10,13 +10,13 @@
 
 #include <list>
 #include <map>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "base/callback.h"
 #include "base/macros.h"
-#include "base/memory/scoped_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/observer_list.h"
 #include "base/process/kill.h"
@@ -48,7 +48,7 @@
 
 struct FrameHostMsg_HittestData_Params;
 struct ViewHostMsg_SelectionBounds_Params;
-struct TextInputState;
+struct ViewHostMsg_TextInputState_Params;
 struct ViewHostMsg_UpdateRect_Params;
 
 namespace base {
@@ -110,7 +110,7 @@ class CONTENT_EXPORT RenderWidgetHostImpl : public RenderWidgetHost,
   // Returns all RenderWidgetHosts including swapped out ones for
   // internal use. The public interface
   // RenderWidgetHost::GetRenderWidgetHosts only returns active ones.
-  static scoped_ptr<RenderWidgetHostIterator> GetAllRenderWidgetHosts();
+  static std::unique_ptr<RenderWidgetHostIterator> GetAllRenderWidgetHosts();
 
   // Use RenderWidgetHostImpl::From(rwh) to downcast a RenderWidgetHost to a
   // RenderWidgetHostImpl.
@@ -320,7 +320,7 @@ class CONTENT_EXPORT RenderWidgetHostImpl : public RenderWidgetHost,
   // Queues a synthetic gesture for testing purposes.  Invokes the on_complete
   // callback when the gesture is finished running.
   void QueueSyntheticGesture(
-      scoped_ptr<SyntheticGesture> synthetic_gesture,
+      std::unique_ptr<SyntheticGesture> synthetic_gesture,
       const base::Callback<void(SyntheticGesture::Result)>& on_complete);
 
   void CancelUpdateTextDirection();
@@ -571,7 +571,8 @@ class CONTENT_EXPORT RenderWidgetHostImpl : public RenderWidgetHost,
   void OnUpdateRect(const ViewHostMsg_UpdateRect_Params& params);
   void OnQueueSyntheticGesture(const SyntheticGesturePacket& gesture_packet);
   void OnSetCursor(const WebCursor& cursor);
-  void OnTextInputStateChanged(const TextInputState& params);
+  void OnTextInputStateChanged(
+      const ViewHostMsg_TextInputState_Params& params);
 
   void OnImeCompositionRangeChanged(
       const gfx::Range& range,
@@ -685,7 +686,7 @@ class CONTENT_EXPORT RenderWidgetHostImpl : public RenderWidgetHost,
   gfx::Size current_size_;
 
   // Resize information that was previously sent to the renderer.
-  scoped_ptr<ResizeParams> old_resize_params_;
+  std::unique_ptr<ResizeParams> old_resize_params_;
 
   // The next auto resize to send.
   gfx::Size new_auto_size_;
@@ -771,16 +772,16 @@ class CONTENT_EXPORT RenderWidgetHostImpl : public RenderWidgetHost,
   bool is_in_touchpad_gesture_scroll_;
   bool is_in_touchscreen_gesture_scroll_;
 
-  scoped_ptr<SyntheticGestureController> synthetic_gesture_controller_;
+  std::unique_ptr<SyntheticGestureController> synthetic_gesture_controller_;
 
-  scoped_ptr<TouchEmulator> touch_emulator_;
+  std::unique_ptr<TouchEmulator> touch_emulator_;
 
   // Receives and handles all input events.
-  scoped_ptr<InputRouter> input_router_;
+  std::unique_ptr<InputRouter> input_router_;
 
-  scoped_ptr<TimeoutMonitor> hang_monitor_timeout_;
+  std::unique_ptr<TimeoutMonitor> hang_monitor_timeout_;
 
-  scoped_ptr<TimeoutMonitor> new_content_rendering_timeout_;
+  std::unique_ptr<TimeoutMonitor> new_content_rendering_timeout_;
 
   // This boolean is true if RenderWidgetHostImpl receives a compositor frame
   // from a newly loaded page before StartNewContentRenderingTimeout() is

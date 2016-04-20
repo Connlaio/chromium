@@ -9,8 +9,8 @@
 #include "base/bind.h"
 #include "base/message_loop/message_loop.h"
 #include "components/mus/public/cpp/event_matcher.h"
-#include "mojo/shell/public/cpp/connection.h"
-#include "mojo/shell/public/cpp/connector.h"
+#include "services/shell/public/cpp/connection.h"
+#include "services/shell/public/cpp/connector.h"
 
 namespace mash {
 namespace browser_driver {
@@ -55,15 +55,15 @@ BrowserDriverApplicationDelegate::BrowserDriverApplicationDelegate()
 BrowserDriverApplicationDelegate::~BrowserDriverApplicationDelegate() {}
 
 void BrowserDriverApplicationDelegate::Initialize(
-    mojo::Connector* connector,
-    const mojo::Identity& identity,
+    shell::Connector* connector,
+    const shell::Identity& identity,
     uint32_t id) {
   connector_ = connector;
   AddAccelerators();
 }
 
 bool BrowserDriverApplicationDelegate::AcceptConnection(
-    mojo::Connection* connection) {
+    shell::Connection* connection) {
   return true;
 }
 

@@ -189,8 +189,8 @@ class QuicSimpleServerSessionTest
   QuicConfig config_;
   QuicCryptoServerConfig crypto_config_;
   QuicCompressedCertsCache compressed_certs_cache_;
-  scoped_ptr<QuicSimpleServerSession> session_;
-  scoped_ptr<CryptoHandshakeMessage> handshake_message_;
+  std::unique_ptr<QuicSimpleServerSession> session_;
+  std::unique_ptr<CryptoHandshakeMessage> handshake_message_;
   QuicConnectionVisitorInterface* visitor_;
   MockQuicHeadersStream* headers_stream_;
 };
@@ -396,6 +396,10 @@ class QuicSimpleServerSessionServerPushTest
     // control blocks it.
     QuicConfigPeer::SetReceivedInitialSessionFlowControlWindow(
         &config_, kInitialSessionFlowControlWindowForTest);
+    // Enable server push.
+    QuicTagVector copt;
+    copt.push_back(kSPSH);
+    QuicConfigPeer::SetReceivedConnectionOptions(&config_, copt);
 
     connection_ = new StrictMock<MockConnectionWithSendStreamData>(
         &helper_, Perspective::IS_SERVER, SupportedVersions(GetParam()));
@@ -403,7 +407,7 @@ class QuicSimpleServerSessionServerPushTest
                                                &crypto_config_,
                                                &compressed_certs_cache_));
     session_->Initialize();
-    // Needed to make new session flow control window work.
+    // Needed to make new session flow control window and server push work.
     session_->OnConfigNegotiated();
 
     visitor_ = QuicConnectionPeer::GetVisitor(connection_);

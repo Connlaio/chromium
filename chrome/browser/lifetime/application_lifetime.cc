@@ -4,9 +4,10 @@
 
 #include "chrome/browser/lifetime/application_lifetime.h"
 
+#include <memory>
+
 #include "base/bind.h"
 #include "base/logging.h"
-#include "base/memory/scoped_ptr.h"
 #include "base/message_loop/message_loop.h"
 #include "base/process/process.h"
 #include "base/process/process_handle.h"
@@ -79,11 +80,13 @@ bool g_send_stop_request_to_session_manager = false;
 
 }  // namespace
 
+#if !defined(OS_ANDROID)
 void MarkAsCleanShutdown() {
   // TODO(beng): Can this use ProfileManager::GetLoadedProfiles() instead?
   for (auto* browser : *BrowserList::GetInstance())
     browser->profile()->SetExitType(Profile::EXIT_NORMAL);
 }
+#endif
 
 void AttemptExitInternal(bool try_to_quit_application) {
   // On Mac, the platform-specific part handles setting this.
@@ -172,11 +175,13 @@ void AttemptUserExit() {
 #else
   // Reset the restart bit that might have been set in cancelled restart
   // request.
+#if !defined(OS_ANDROID)
   UserManager::Hide();
+#endif
   PrefService* pref_service = g_browser_process->local_state();
   pref_service->SetBoolean(prefs::kRestartLastSessionOnShutdown, false);
   AttemptExitInternal(false);
-#endif
+#endif  // defined(OS_CHROMEOS)
 }
 
 // The Android implementation is in application_lifetime_android.cc

@@ -144,6 +144,7 @@ FYI_WATERFALL = {
     'GPU Mac Builder (dbg)',
     'GPU Linux Builder',
     'GPU Linux Builder (dbg)',
+    'Linux ChromiumOS Builder',
    ],
 
   'testers': {
@@ -567,6 +568,7 @@ COMMON_GTESTS = {
   'angle_end2end_tests': {
     'tester_configs': [
       {
+        'allow_on_mac_nvidia': True,
         'fyi_only': True,
         'run_on_optional': True,
       },
@@ -669,7 +671,14 @@ TELEMETRY_TESTS = {
   'gpu_process_launch_tests': {'target_name': 'gpu_process'},
   'gpu_rasterization': {},
   'hardware_accelerated_feature': {},
-  'maps_pixel_test': {'target_name': 'maps'},
+  'maps_pixel_test': {
+    'target_name': 'maps',
+    'tester_configs': [
+      {
+        'allow_on_mac_nvidia': True,
+      },
+    ],
+  },
   'memory_test': {},
   'pixel_test': {
     'target_name': 'pixel',
@@ -688,11 +697,22 @@ TELEMETRY_TESTS = {
     ],
     'precommit_args': [
       '--download-refimg-from-cloud-storage',
-    ]
+    ],
+    'tester_configs': [
+      {
+        'allow_on_mac_nvidia': True,
+      },
+    ],
   },
   'screenshot_sync': {},
   'trace_test': {},
-  'webgl_conformance': {},
+  'webgl_conformance': {
+    'tester_configs': [
+      {
+        'allow_on_mac_nvidia': True,
+      },
+    ],
+  },
   'webgl_conformance_d3d9_tests': {
     'tester_configs': [
       {
@@ -754,6 +774,7 @@ TELEMETRY_TESTS = {
   'webgl2_conformance_tests': {
     'tester_configs': [
       {
+        'allow_on_mac_nvidia': True,
         'fyi_only': True,
         'run_on_optional': True,
       },
@@ -764,6 +785,10 @@ TELEMETRY_TESTS = {
           # http://crbug.com/599451: this test is currently too slow
           # to run on x64 in Debug mode. Need to shard the tests.
           'Win7 x64 Debug (NVIDIA)',
+          # http://crbug.com/540543: Linux Intel driver is GL 3.0 and
+          # doesn't support features needed for ES3
+          'Linux Release (New Intel)',
+          'Linux Debug (New Intel)',
         ],
       },
     ],
@@ -791,6 +816,12 @@ def matches_swarming_dimensions(tester_config, dimension_sets):
       return True
   return False
 
+def is_mac_nvidia_retina(tester_config):
+  dims = tester_config['swarming_dimensions']
+  return (dims['gpu'] == '10de:0fe9' and
+          dims['hidpi'] == '1' and
+          dims['os'] == 'Mac')
+
 def tester_config_matches_tester(tester_name, tester_config, tc, is_fyi,
                                  check_waterfall):
   if check_waterfall:
@@ -815,26 +846,48 @@ def tester_config_matches_tester(tester_name, tester_config, tc, is_fyi,
     if not matches_swarming_dimensions(tester_config,
                                        tc['swarming_dimension_sets']):
       return False
+  # The NVIDIA based MacBook Pro Retinas are oversubscribed and this
+  # is causing severe problems with Chromium's commit queue
+  # (http://crbug.com/572793). As a short-term strategy, run only
+  # critical tests on this configuration; this means removing
+  # everything except the ANGLE end-to-end tests and WebGL 1.0 and 2.0
+  # conformance tests. This also disables all tests on the Debug
+  # NVIDIA bots, because they will effectively lock up some 3 Swarming
+  # bots permanently due to repeatedly launching WebGL 1.0 conformance
+  # tests on the chromium.gpu waterfall, and WebGL 1.0 and 2.0
+  # conformance tests on the chromium.gpu.fyi waterfall.
+  if is_mac_nvidia_retina(tester_config):
+    # Disable all tests on the Debug NVIDIA Retina bots for now. Even
+    # though these aren't part of the highest-volume
+    # mac_chromium_rel_ng tryserver configuration, these tests are
+    # slow, and will lock up a certain number of crucial Swarming
+    # machines essentially permanently.
+    if tester_config['build_config'] == 'Debug':
+      return False
+    if not tc.get('allow_on_mac_nvidia', False):
+      return False
   return True
 
 def should_run_on_tester(tester_name, tester_config, test_config, is_fyi):
-  if not 'tester_configs' in test_config:
-    # Filter out tests from the "optional" bots.
-    if tester_name.startswith('Optional'):
-      return False
-    # Otherwise, if unspecified, run on all testers.
-    return True
   # Check if this config is disabled on this tester
   if 'disabled_tester_configs' in test_config:
     for dtc in test_config['disabled_tester_configs']:
       if tester_config_matches_tester(tester_name, tester_config, dtc, is_fyi,
                                       False):
         return False
-  for tc in test_config['tester_configs']:
-    if tester_config_matches_tester(tester_name, tester_config, tc, is_fyi,
-                                    True):
-      return True
-  return False
+  if 'tester_configs' in test_config:
+    for tc in test_config['tester_configs']:
+      if tester_config_matches_tester(tester_name, tester_config, tc, is_fyi,
+                                      True):
+        return True
+    return False
+  else:
+    # If tester_configs is unspecified, run nearly all tests by default,
+    # but let tester_config_matches_tester filter out any undesired
+    # tests, such as ones that should only run on the Optional bots, or
+    # not run on the NVIDIA Retina MacBook Pros.
+    return tester_config_matches_tester(tester_name, tester_config, {},
+                                        is_fyi, True)
 
 def generate_gtest(tester_name, tester_config, test, test_config, is_fyi):
   if not should_run_on_tester(tester_name, tester_config, test_config, is_fyi):

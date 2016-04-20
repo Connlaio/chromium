@@ -5,6 +5,8 @@
 #ifndef CONTENT_COMMON_GPU_MEDIA_MEDIA_CHANNEL_H_
 #define CONTENT_COMMON_GPU_MEDIA_MEDIA_CHANNEL_H_
 
+#include <memory>
+
 #include "content/common/gpu/media/gpu_jpeg_decode_accelerator.h"
 #include "ipc/ipc_listener.h"
 #include "ipc/ipc_sender.h"
@@ -48,7 +50,7 @@ class MediaChannel : public IPC::Listener, public IPC::Sender {
                             IPC::Message* reply_message);
 
   gpu::GpuChannel* const channel_;
-  scoped_ptr<GpuJpegDecodeAccelerator> jpeg_decoder_;
+  std::unique_ptr<GpuJpegDecodeAccelerator> jpeg_decoder_;
   DISALLOW_COPY_AND_ASSIGN(MediaChannel);
 };
 

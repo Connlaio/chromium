@@ -57,9 +57,9 @@ public:
     }
 
     // Exposed for testing
-    static ImageResource* create(const ResourceRequest& request, blink::Image* image)
+    static ImageResource* create(const ResourceRequest& request)
     {
-        return new ImageResource(request, image, ResourceLoaderOptions());
+        return new ImageResource(request, ResourceLoaderOptions());
     }
 
     ~ImageResource() override;
@@ -110,7 +110,7 @@ public:
     bool isImage() const override { return true; }
 
     // ImageObserver
-    void decodedSizeChanged(const blink::Image*, int delta) override;
+    void decodedSizeChangedTo(const blink::Image*, size_t newSize) override;
     void didDraw(const blink::Image*) override;
 
     bool shouldPauseAnimation(const blink::Image*) override;
@@ -130,7 +130,6 @@ protected:
 
 private:
     explicit ImageResource(blink::Image*, const ResourceLoaderOptions&);
-    ImageResource(const ResourceRequest&, blink::Image*, const ResourceLoaderOptions&);
 
     enum class MultipartParsingState : uint8_t {
         WaitingForFirstPart,

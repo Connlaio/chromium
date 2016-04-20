@@ -39,7 +39,7 @@ class TestProofVerifierCallback : public ProofVerifierCallback {
 
   void Run(bool ok,
            const string& error_details,
-           scoped_ptr<ProofVerifyDetails>* details) override {
+           std::unique_ptr<ProofVerifyDetails>* details) override {
     *ok_ = ok;
     *error_details_ = error_details;
 
@@ -63,11 +63,11 @@ void RunVerification(ProofVerifier* verifier,
                      const vector<string>& certs,
                      const string& proof,
                      bool expected_ok) {
-  scoped_ptr<ProofVerifyDetails> details;
+  std::unique_ptr<ProofVerifyDetails> details;
   TestCompletionCallback comp_callback;
   bool ok;
   string error_details;
-  scoped_ptr<ProofVerifyContext> verify_context(
+  std::unique_ptr<ProofVerifyContext> verify_context(
       CryptoTestUtils::ProofVerifyContextForTesting());
   TestProofVerifierCallback* callback =
       new TestProofVerifierCallback(&comp_callback, &ok, &error_details);
@@ -117,8 +117,8 @@ INSTANTIATE_TEST_CASE_P(QuicVersion,
 
 // TODO(rtenneti): Enable testing of ProofVerifier. See http://crbug.com/514468.
 TEST_P(ProofTest, DISABLED_Verify) {
-  scoped_ptr<ProofSource> source(CryptoTestUtils::ProofSourceForTesting());
-  scoped_ptr<ProofVerifier> verifier(
+  std::unique_ptr<ProofSource> source(CryptoTestUtils::ProofSourceForTesting());
+  std::unique_ptr<ProofVerifier> verifier(
       CryptoTestUtils::ProofVerifierForTesting());
 
   const string server_config = "server config bytes";
@@ -279,7 +279,7 @@ TEST_P(ProofTest, VerifyRSAKnownAnswerTest) {
       0xad, 0x42, 0xe5, 0x55,
   };
 
-  scoped_ptr<ProofVerifier> verifier(
+  std::unique_ptr<ProofVerifier> verifier(
       CryptoTestUtils::RealProofVerifierForTesting());
 
   const string server_config = "server config bytes";
@@ -370,7 +370,7 @@ TEST_P(ProofTest, VerifyECDSAKnownAnswerTest) {
       0x1f, 0xce, 0x92, 0x05, 0xca, 0x29, 0xfe, 0xd2, 0x8f, 0xd9, 0x31,
   };
 
-  scoped_ptr<ProofVerifier> verifier(
+  std::unique_ptr<ProofVerifier> verifier(
       CryptoTestUtils::RealProofVerifierForTesting());
 
   const string server_config = "server config bytes";
@@ -394,16 +394,12 @@ TEST_P(ProofTest, VerifyECDSAKnownAnswerTest) {
                        sizeof(signature_data_2));
 
   for (size_t i = 0; i < signatures.size(); i++) {
-    LOG(ERROR) << "====================" << i << "======================";
     const string& signature = signatures[i];
 
-    LOG(ERROR) << "=================== expect ok =====================";
     RunVerification(verifier.get(), hostname, port, server_config, quic_version,
                     chlo_hash, certs, signature, true);
-    LOG(ERROR) << "=================== hose_name = foo.com =============";
     RunVerification(verifier.get(), "foo.com", port, server_config,
                     quic_version, chlo_hash, certs, signature, false);
-    LOG(ERROR) << "================== server_config ====================";
     RunVerification(verifier.get(), hostname, port,
                     server_config.substr(1, string::npos), quic_version,
                     chlo_hash, certs, signature, false);
@@ -412,13 +408,11 @@ TEST_P(ProofTest, VerifyECDSAKnownAnswerTest) {
     // signature can still be DER-decoded correctly.
     string corrupt_signature = signature;
     corrupt_signature[corrupt_signature.size() - 1] += 1;
-    LOG(ERROR) << "================= corrupt signature =======================";
     RunVerification(verifier.get(), hostname, port, server_config, quic_version,
                     chlo_hash, certs, corrupt_signature, false);
 
     // Prepending a "1" makes the DER invalid.
     const string bad_der_signature1 = "1" + signature;
-    LOG(ERROR) << "=========================bad der signature ===============";
     RunVerification(verifier.get(), hostname, port, server_config, quic_version,
                     chlo_hash, certs, bad_der_signature1, false);
 
@@ -426,7 +420,6 @@ TEST_P(ProofTest, VerifyECDSAKnownAnswerTest) {
     for (size_t i = 1; i < certs.size(); i++) {
       wrong_certs.push_back(certs[i]);
     }
-    LOG(ERROR) << "==================== wrong certs =========================";
     RunVerification(verifier.get(), hostname, port, server_config, quic_version,
                     chlo_hash, wrong_certs, signature, false);
   }

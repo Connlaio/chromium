@@ -499,6 +499,10 @@ const char kEnableQuic[]                    = "enable-quic";
 // This only has an effect if QUIC protocol is enabled.
 const char kEnableQuicPortSelection[]       = "enable-quic-port-selection";
 
+// If the WebRTC logging private API is active, enables WebRTC event logging.
+const char kEnableWebRtcEventLoggingFromExtension[] =
+    "enable-webrtc-event-logging-from-extension";
+
 // Enables support for HTTP alternative services.
 const char kEnableAlternativeServices[] = "enable-alternative-services";
 
@@ -653,16 +657,6 @@ const char kInstantProcess[]                = "instant-process";
 
 // The URL for the interests API.
 const char kInterestsURL[]                  = "interests-url";
-
-// Disable latest shipping ECMAScript 6 features.
-const char kDisableJavaScriptHarmonyShipping[] =
-    "disable-javascript-harmony-shipping";
-
-// Enables experimental Harmony (ECMAScript 6) features.
-const char kJavaScriptHarmony[]             = "javascript-harmony";
-
-// Enables experimental WebAssembly.
-const char kEnableWasm[]                    = "enable-wasm";
 
 // Dumps IPC messages sent from renderer processes to the browser process to
 // the given directory. Used primarily to gather samples for IPC fuzzing.
@@ -1169,6 +1163,9 @@ const char kEnableAppInfoDialogMac[] = "enable-app-info-dialog-mac";
 // Enables custom Cmd+` window cycling for platform apps and hosted apps.
 const char kEnableAppWindowCycling[] = "enable-app-window-cycling";
 
+// Enables tab detaching in fullscreen mode on Mac.
+const char kEnableFullscreenTabDetaching[] = "enable-fullscreen-tab-detaching";
+
 // Allows hosted apps to be opened in windows on Mac.
 const char kEnableHostedAppsInWindows[] = "enable-hosted-apps-in-windows";
 
@@ -1267,13 +1264,6 @@ const char kEnableWaylandServer[] = "enable-wayland-server";
 #endif
 
 #if defined(OS_ANDROID)
-// Sets the threshold for when to disable auto-hiding the toolbar. If the
-// device's width and height are above the threshold, the toolbar will never
-// be hidden due to scrolling. It will still be hidden if page contents go
-// fullscreen.
-const char kDisableAutoHidingToolbarThreshold[] =
-    "disable-auto-hiding-toolbar-threshold";
-
 // Forces the update menu item to show.
 const char kForceShowUpdateMenuItem[] = "force-show-update-menu-item";
 

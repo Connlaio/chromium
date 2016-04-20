@@ -128,6 +128,7 @@ SourceBuffer::SourceBuffer(PassOwnPtr<WebSourceBuffer> webSourceBuffer, MediaSou
     ASSERT(m_webSourceBuffer);
     ASSERT(m_source);
     ASSERT(m_source->mediaElement());
+    ThreadState::current()->registerPreFinalizer(this);
     m_audioTracks = AudioTrackList::create(*m_source->mediaElement());
     m_videoTracks = VideoTrackList::create(*m_source->mediaElement());
     m_webSourceBuffer->setClient(this);
@@ -135,18 +136,14 @@ SourceBuffer::SourceBuffer(PassOwnPtr<WebSourceBuffer> webSourceBuffer, MediaSou
 
 SourceBuffer::~SourceBuffer()
 {
-    // Oilpan: a SourceBuffer might be finalized without having been
-    // explicitly removed first, hence the asserts below will not
-    // hold.
-#if !ENABLE(OILPAN)
-    m_audioTracks->shutdown();
-    m_videoTracks->shutdown();
-    ASSERT(isRemoved());
-    ASSERT(!m_loader);
-    ASSERT(!m_stream);
-    ASSERT(!m_webSourceBuffer);
-#endif
     WTF_LOG(Media, "SourceBuffer(%p)::~SourceBuffer", this);
+}
+
+void SourceBuffer::dispose()
+{
+    // Promptly clears a raw reference from content/ to an on-heap object
+    // so that content/ doesn't access it in a lazy sweeping phase.
+    m_webSourceBuffer.clear();
 }
 
 const AtomicString& SourceBuffer::segmentsKeyword()
@@ -313,7 +310,7 @@ void SourceBuffer::setAppendWindowEnd(double end, ExceptionState& exceptionState
     m_appendWindowEnd = end;
 }
 
-void SourceBuffer::appendBuffer(PassRefPtr<DOMArrayBuffer> data, ExceptionState& exceptionState)
+void SourceBuffer::appendBuffer(DOMArrayBuffer* data, ExceptionState& exceptionState)
 {
     WTF_LOG(Media, "SourceBuffer(%p)::appendBuffer size=%u", this, data->byteLength());
     // Section 3.2 appendBuffer()
@@ -321,7 +318,7 @@ void SourceBuffer::appendBuffer(PassRefPtr<DOMArrayBuffer> data, ExceptionState&
     appendBufferInternal(static_cast<const unsigned char*>(data->data()), data->byteLength(), exceptionState);
 }
 
-void SourceBuffer::appendBuffer(PassRefPtr<DOMArrayBufferView> data, ExceptionState& exceptionState)
+void SourceBuffer::appendBuffer(DOMArrayBufferView* data, ExceptionState& exceptionState)
 {
     WTF_LOG(Media, "SourceBuffer(%p)::appendBuffer size=%u", this, data->byteLength());
     // Section 3.2 appendBuffer()
@@ -505,7 +502,7 @@ T* findExistingTrackById(const TrackListBase<T>& trackList, const String& id)
     return trackList.getTrackById(id);
 }
 
-std::vector<WebMediaPlayer::TrackId> SourceBuffer::initializationSegmentReceived(const std::vector<MediaTrackInfo>& newTracks)
+WebVector<WebMediaPlayer::TrackId> SourceBuffer::initializationSegmentReceived(const WebVector<MediaTrackInfo>& newTracks)
 {
     WTF_LOG(Media, "SourceBuffer::initializationSegmentReceived %p tracks=%zu", this, newTracks.size());
     ASSERT(m_source);
@@ -514,54 +511,49 @@ std::vector<WebMediaPlayer::TrackId> SourceBuffer::initializationSegmentReceived
 
     // TODO(servolk): Implement proper 'initialization segment received' algorithm according to MSE spec:
     // https://w3c.github.io/media-source/#sourcebuffer-init-segment-received
-    std::vector<WebMediaPlayer::TrackId> result;
+    WebVector<WebMediaPlayer::TrackId> result(newTracks.size());
+    unsigned resultIdx = 0;
     for (const auto& trackInfo : newTracks) {
-        const auto& trackType = std::get<0>(trackInfo);
-        const auto& id = std::get<1>(trackInfo);
-        const auto& kind = std::get<2>(trackInfo);
-        const auto& label = std::get<3>(trackInfo);
-        const auto& language = std::get<4>(trackInfo);
-
         if (!RuntimeEnabledFeatures::audioVideoTracksEnabled()) {
             static WebMediaPlayer::TrackId nextTrackId = 0;
-            result.push_back(++nextTrackId);
+            result[resultIdx++] = ++nextTrackId;
             continue;
         }
 
         const TrackBase* trackBase = nullptr;
-        if (trackType == WebMediaPlayer::AudioTrack) {
+        if (trackInfo.trackType == WebMediaPlayer::AudioTrack) {
             AudioTrack* audioTrack = nullptr;
             if (!m_firstInitializationSegmentReceived) {
-                audioTrack = AudioTrack::create(id, kind, label, language, false);
+                audioTrack = AudioTrack::create(trackInfo.byteStreamTrackId, trackInfo.kind, trackInfo.label, trackInfo.language, false);
                 SourceBufferTrackBaseSupplement::setSourceBuffer(*audioTrack, this);
                 audioTracks().add(audioTrack);
                 m_source->mediaElement()->audioTracks().add(audioTrack);
             } else {
-                audioTrack = findExistingTrackById(audioTracks(), id);
+                audioTrack = findExistingTrackById(audioTracks(), trackInfo.byteStreamTrackId);
                 ASSERT(audioTrack);
             }
             trackBase = audioTrack;
-            result.push_back(audioTrack->trackId());
-        } else if (trackType == WebMediaPlayer::VideoTrack) {
+            result[resultIdx++] = audioTrack->trackId();
+        } else if (trackInfo.trackType == WebMediaPlayer::VideoTrack) {
             VideoTrack* videoTrack = nullptr;
             if (!m_firstInitializationSegmentReceived) {
-                videoTrack = VideoTrack::create(id, kind, label, language, false);
+                videoTrack = VideoTrack::create(trackInfo.byteStreamTrackId, trackInfo.kind, trackInfo.label, trackInfo.language, false);
                 SourceBufferTrackBaseSupplement::setSourceBuffer(*videoTrack, this);
                 videoTracks().add(videoTrack);
                 m_source->mediaElement()->videoTracks().add(videoTrack);
             } else {
-                videoTrack = findExistingTrackById(videoTracks(), id);
+                videoTrack = findExistingTrackById(videoTracks(), trackInfo.byteStreamTrackId);
                 ASSERT(videoTrack);
             }
             trackBase = videoTrack;
-            result.push_back(videoTrack->trackId());
+            result[resultIdx++] = videoTrack->trackId();
         } else {
             NOTREACHED();
         }
         (void)trackBase;
 #if !LOG_DISABLED
         const char* logActionStr = m_firstInitializationSegmentReceived ? "using existing" : "added";
-        const char* logTrackTypeStr = (trackType == WebMediaPlayer::AudioTrack) ? "audio" : "video";
+        const char* logTrackTypeStr = (trackInfo.trackType == WebMediaPlayer::AudioTrack) ? "audio" : "video";
         WTF_LOG(Media, "Tracks (sb=%p): %s %sTrack %p trackId=%d id=%s label=%s lang=%s", this, logActionStr, logTrackTypeStr, trackBase, trackBase->trackId(), trackBase->id().utf8().data(), trackBase->label().utf8().data(), trackBase->language().utf8().data());
 #endif
     }
@@ -960,7 +952,7 @@ DEFINE_TRACE(SourceBuffer)
     visitor->trace(m_stream);
     visitor->trace(m_audioTracks);
     visitor->trace(m_videoTracks);
-    RefCountedGarbageCollectedEventTargetWithInlineData<SourceBuffer>::trace(visitor);
+    EventTargetWithInlineData::trace(visitor);
     ActiveDOMObject::trace(visitor);
 }
 

@@ -41,10 +41,6 @@
 #include "public/platform/WebMediaPlayerClient.h"
 #include "public/platform/WebMimeRegistry.h"
 
-#if !ENABLE(OILPAN)
-#include "wtf/WeakPtr.h"
-#endif
-
 namespace blink {
 
 class AudioSourceProviderClient;
@@ -58,6 +54,7 @@ class HTMLTrackElement;
 class KURL;
 class MediaControls;
 class MediaError;
+class MediaStreamDescriptor;
 class HTMLMediaSource;
 class ScriptState;
 class TextTrackContainer;
@@ -114,6 +111,8 @@ public:
     // network state
     void setSrc(const AtomicString&);
     const KURL& currentSrc() const { return m_currentSrc; }
+    void setSrcObject(MediaStreamDescriptor*);
+    MediaStreamDescriptor* getSrcObject() const { return m_srcObject.get(); }
 
     enum NetworkState { NETWORK_EMPTY, NETWORK_IDLE, NETWORK_LOADING, NETWORK_NO_SOURCE };
     NetworkState getNetworkState() const;
@@ -252,7 +251,7 @@ public:
     // specified origin.
     bool isMediaDataCORSSameOrigin(SecurityOrigin*) const;
 
-    void scheduleEvent(RawPtr<Event>);
+    void scheduleEvent(Event*);
     void scheduleTimeupdateEvent(bool periodicEvent);
 
     // Returns the "effective media volume" value as specified in the HTML5 spec.
@@ -269,16 +268,10 @@ public:
     WebRemotePlaybackClient* remotePlaybackClient() { return m_remotePlaybackClient; }
     void setRemotePlaybackClient(WebRemotePlaybackClient*);
 
-#if !ENABLE(OILPAN)
-    WeakPtr<HTMLMediaElement> createWeakPtr();
-#endif
-
 protected:
     HTMLMediaElement(const QualifiedName&, Document&);
     ~HTMLMediaElement() override;
-#if ENABLE(OILPAN)
     void dispose();
-#endif
 
     void parseAttribute(const QualifiedName&, const AtomicString&, const AtomicString&) override;
     void finishParsingChildren() final;
@@ -366,11 +359,13 @@ private:
     void invokeResourceSelectionAlgorithm();
     void loadInternal();
     void selectMediaResource();
-    void loadResource(const KURL&, ContentType&);
+    void loadResource(const WebMediaPlayerSource&, ContentType&);
     void startPlayerLoad();
     void setPlayerPreload();
     WebMediaPlayer::LoadType loadType() const;
     void scheduleNextSourceChild();
+    void loadSourceFromObject();
+    void loadSourceFromAttribute();
     void loadNextSourceChild();
     void clearMediaPlayer();
     void clearMediaPlayerAndAudioSourceProviderClientWithoutLocking();
@@ -424,7 +419,7 @@ private:
 
     TextTrackContainer& ensureTextTrackContainer();
 
-    void* preDispatchEventHandler(Event*) final;
+    EventDispatchHandlingState* preDispatchEventHandler(Event*) final;
 
     void changeNetworkStateFromLoadingToIdle();
 
@@ -487,6 +482,7 @@ private:
     ReadyState m_readyState;
     ReadyState m_readyStateMaximum;
     KURL m_currentSrc;
+    Member<MediaStreamDescriptor> m_srcObject;
 
     Member<MediaError> m_error;
 
@@ -508,7 +504,7 @@ private:
     double m_defaultPlaybackStartPosition;
 
     // Loading state.
-    enum LoadState { WaitingForSource, LoadingFromSrcAttr, LoadingFromSourceElement };
+    enum LoadState { WaitingForSource, LoadingFromSrcObject, LoadingFromSrcAttr, LoadingFromSourceElement };
     LoadState m_loadState;
     Member<HTMLSourceElement> m_currentSourceNode;
     Member<Node> m_nextChildNodeToConsider;
@@ -568,7 +564,6 @@ private:
     bool m_processingPreferenceChange : 1;
     bool m_remoteRoutesAvailable : 1;
     bool m_playingRemotely : 1;
-    bool m_isFinalizing : 1;
     // Whether this element is in overlay fullscreen mode.
     bool m_inOverlayFullscreenVideo : 1;
 
@@ -585,7 +580,7 @@ private:
     ExceptionCode m_playPromiseErrorCode;
 
     // This is a weak reference, since m_audioSourceNode holds a reference to us.
-    // FIXME: Oilpan: Consider making this a strongly traced pointer with oilpan where strong cycles are not a problem.
+    // TODO(Oilpan): Consider making this a strongly traced pointer with oilpan where strong cycles are not a problem.
     GC_PLUGIN_IGNORE("http://crbug.com/404577")
     WeakMember<AudioSourceProviderClient> m_audioSourceNode;
 
@@ -649,10 +644,6 @@ private:
     Member<AutoplayExperimentHelper> m_autoplayHelper;
 
     WebRemotePlaybackClient* m_remotePlaybackClient;
-
-#if !ENABLE(OILPAN)
-    WeakPtrFactory<HTMLMediaElement> m_weakPtrFactory;
-#endif
 
     static URLRegistry* s_mediaStreamRegistry;
 };

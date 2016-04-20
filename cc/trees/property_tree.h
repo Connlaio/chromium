@@ -30,6 +30,7 @@ class TreeNode;
 }
 
 class LayerTreeImpl;
+class RenderSurfaceImpl;
 class ScrollState;
 struct ScrollAndScaleSet;
 
@@ -107,6 +108,8 @@ struct CC_EXPORT TransformNodeData {
 
   // TODO(vollick): will be moved when accelerated effects are implemented.
   bool needs_local_transform_update : 1;
+
+  bool node_and_ancestors_are_animated_or_invertible : 1;
 
   bool is_invertible : 1;
   bool ancestors_are_invertible : 1;
@@ -261,10 +264,9 @@ struct CC_EXPORT EffectNodeData {
   float screen_space_opacity;
 
   bool has_render_surface;
+  RenderSurfaceImpl* render_surface;
   bool has_copy_request;
   bool has_background_filters;
-  bool node_or_ancestor_has_background_filters;
-  bool to_screen_opacity_is_animated;
   bool hidden_by_backface_visibility;
   bool double_sided;
   bool is_drawn;
@@ -275,7 +277,7 @@ struct CC_EXPORT EffectNodeData {
   int num_copy_requests_in_subtree;
   int transform_id;
   int clip_id;
-  // For a node that creates a render surface, target_id is its own id.
+  // Effect node id of which this effect contributes to.
   int target_id;
 
   bool operator==(const EffectNodeData& other) const;
@@ -304,6 +306,8 @@ struct CC_EXPORT ScrollNodeData {
   bool user_scrollable_vertical;
   int element_id;
   int transform_id;
+  // Number of drawn layers pointing to this node or any of its descendants.
+  int num_drawn_descendants;
 
   bool operator==(const ScrollNodeData& other) const;
 
@@ -421,6 +425,9 @@ class CC_EXPORT TransformTree final : public PropertyTree<TransformNode> {
   void UpdateTransformChanged(TransformNode* node,
                               TransformNode* parent_node,
                               TransformNode* source_node);
+  void UpdateNodeAndAncestorsAreAnimatedOrInvertible(
+      TransformNode* node,
+      TransformNode* parent_node);
 
   // A TransformNode's source_to_parent value is used to account for the fact
   // that fixed-position layers are positioned by Blink wrt to their layer tree

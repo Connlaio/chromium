@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "base/macros.h"
+#include "base/memory/ptr_util.h"
 #include "base/values.h"
 #include "cc/base/synced_property.h"
 #include "cc/input/event_listener_properties.h"
@@ -64,12 +65,12 @@ class CC_EXPORT LayerTreeImpl {
   // This is the number of times a fixed point has to be hit contiuously by a
   // layer to consider it as jittering.
   const int kFixedPointHitsThreshold = 3;
-  static scoped_ptr<LayerTreeImpl> create(
+  static std::unique_ptr<LayerTreeImpl> create(
       LayerTreeHostImpl* layer_tree_host_impl,
       scoped_refptr<SyncedProperty<ScaleGroup>> page_scale_factor,
       scoped_refptr<SyncedTopControls> top_controls_shown_ratio,
       scoped_refptr<SyncedElasticOverscroll> elastic_overscroll) {
-    return make_scoped_ptr(
+    return base::WrapUnique(
         new LayerTreeImpl(layer_tree_host_impl, page_scale_factor,
                           top_controls_shown_ratio, elastic_overscroll));
   }
@@ -105,8 +106,8 @@ class CC_EXPORT LayerTreeImpl {
   gfx::Rect DeviceViewport() const;
   gfx::Size DrawViewportSize() const;
   const gfx::Rect ViewportRectForTilePriority() const;
-  scoped_ptr<ScrollbarAnimationController> CreateScrollbarAnimationController(
-      int scroll_layer_id);
+  std::unique_ptr<ScrollbarAnimationController>
+  CreateScrollbarAnimationController(int scroll_layer_id);
   void DidAnimateScrollOffset();
   bool use_gpu_rasterization() const;
   GpuRasterizationStatus GetGpuRasterizationStatus() const;
@@ -131,9 +132,9 @@ class CC_EXPORT LayerTreeImpl {
   // Other public methods
   // ---------------------------------------------------------------------------
   LayerImpl* root_layer() const { return root_layer_; }
-  void SetRootLayer(scoped_ptr<LayerImpl>);
+  void SetRootLayer(std::unique_ptr<LayerImpl>);
   bool IsRootLayer(const LayerImpl* layer) const;
-  scoped_ptr<OwnedLayerImplList> DetachLayers();
+  std::unique_ptr<OwnedLayerImplList> DetachLayers();
   void ClearLayers();
 
   void SetPropertyTrees(const PropertyTrees property_trees) {
@@ -141,6 +142,11 @@ class CC_EXPORT LayerTreeImpl {
     property_trees_.is_main_thread = false;
     property_trees_.is_active = IsActiveTree();
     property_trees_.transform_tree.set_source_to_parent_updates_allowed(false);
+    // The value of some effect node properties (like is_drawn) depends on
+    // whether we are on the active tree or not. So, we need to update the
+    // effect tree.
+    if (IsActiveTree())
+      property_trees_.effect_tree.set_needs_update(true);
   }
   PropertyTrees* property_trees() { return &property_trees_; }
 
@@ -148,10 +154,10 @@ class CC_EXPORT LayerTreeImpl {
 
   void PushPropertiesTo(LayerTreeImpl* tree_impl);
 
-  LayerListIterator begin();
-  LayerListIterator end();
-  LayerListReverseIterator rbegin();
-  LayerListReverseIterator rend();
+  LayerListIterator<LayerImpl> begin();
+  LayerListIterator<LayerImpl> end();
+  LayerListReverseIterator<LayerImpl> rbegin();
+  LayerListReverseIterator<LayerImpl> rend();
 
   // TODO(thakis): Consider marking this CC_EXPORT once we understand
   // http://crbug.com/575700 better.
@@ -310,8 +316,8 @@ class CC_EXPORT LayerTreeImpl {
   void UnregisterLayer(LayerImpl* layer);
 
   // These manage ownership of the LayerImpl.
-  void AddLayer(scoped_ptr<LayerImpl> layer);
-  scoped_ptr<LayerImpl> RemoveLayer(int id);
+  void AddLayer(std::unique_ptr<LayerImpl> layer);
+  std::unique_ptr<LayerImpl> RemoveLayer(int id);
 
   size_t NumLayers();
 
@@ -343,7 +349,7 @@ class CC_EXPORT LayerTreeImpl {
   // active tree along with the layer information. Similarly, when a
   // new activation overwrites layer information on the active tree,
   // queued swap promises are broken.
-  void QueueSwapPromise(scoped_ptr<SwapPromise> swap_promise);
+  void QueueSwapPromise(std::unique_ptr<SwapPromise> swap_promise);
 
   // Queue a swap promise, pinned to this tree. Pinned swap promises
   // may only be queued on the active tree.
@@ -354,10 +360,11 @@ class CC_EXPORT LayerTreeImpl {
   //
   // Pinned active tree swap promises will not be broken prematurely
   // on the active tree if a new tree is activated.
-  void QueuePinnedSwapPromise(scoped_ptr<SwapPromise> swap_promise);
+  void QueuePinnedSwapPromise(std::unique_ptr<SwapPromise> swap_promise);
 
   // Take the |new_swap_promise| and append it to |swap_promise_list_|.
-  void PassSwapPromises(std::vector<scoped_ptr<SwapPromise>>* new_swap_promise);
+  void PassSwapPromises(
+      std::vector<std::unique_ptr<SwapPromise>>* new_swap_promise);
   void FinishSwapPromises(CompositorFrameMetadata* metadata);
   void BreakSwapPromises(SwapPromise::DidNotSwapReason reason);
 
@@ -397,7 +404,7 @@ class CC_EXPORT LayerTreeImpl {
     return render_surface_layer_list_id_;
   }
 
-  LayerImpl* FindFirstScrollingLayerThatIsHitByPoint(
+  LayerImpl* FindFirstScrollingLayerOrScrollbarLayerThatIsHitByPoint(
       const gfx::PointF& screen_space_point);
 
   LayerImpl* FindLayerThatIsHitByPoint(const gfx::PointF& screen_space_point);
@@ -424,10 +431,8 @@ class CC_EXPORT LayerTreeImpl {
   void PushTopControlsFromMainThread(float top_controls_shown_ratio);
 
   void SetPendingPageScaleAnimation(
-      scoped_ptr<PendingPageScaleAnimation> pending_animation);
-  scoped_ptr<PendingPageScaleAnimation> TakePendingPageScaleAnimation();
-
-  void GatherFrameTimingRequestIds(std::vector<int64_t>* request_ids);
+      std::unique_ptr<PendingPageScaleAnimation> pending_animation);
+  std::unique_ptr<PendingPageScaleAnimation> TakePendingPageScaleAnimation();
 
   void DidUpdateScrollOffset(int layer_id, int transform_id);
   void DidUpdateScrollState(int layer_id);
@@ -527,7 +532,7 @@ class CC_EXPORT LayerTreeImpl {
 
   scoped_refptr<SyncedElasticOverscroll> elastic_overscroll_;
 
-  scoped_ptr<OwnedLayerImplList> layers_;
+  std::unique_ptr<OwnedLayerImplList> layers_;
   LayerImplMap layer_id_map_;
   // Set of layers that need to push properties.
   std::unordered_set<LayerImpl*> layers_that_should_push_properties_;
@@ -566,8 +571,8 @@ class CC_EXPORT LayerTreeImpl {
 
   bool has_ever_been_drawn_;
 
-  std::vector<scoped_ptr<SwapPromise>> swap_promise_list_;
-  std::vector<scoped_ptr<SwapPromise>> pinned_swap_promise_list_;
+  std::vector<std::unique_ptr<SwapPromise>> swap_promise_list_;
+  std::vector<std::unique_ptr<SwapPromise>> pinned_swap_promise_list_;
 
   UIResourceRequestQueue ui_resource_request_queue_;
 
@@ -586,7 +591,7 @@ class CC_EXPORT LayerTreeImpl {
   // shown).
   scoped_refptr<SyncedTopControls> top_controls_shown_ratio_;
 
-  scoped_ptr<PendingPageScaleAnimation> pending_page_scale_animation_;
+  std::unique_ptr<PendingPageScaleAnimation> pending_page_scale_animation_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(LayerTreeImpl);

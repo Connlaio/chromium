@@ -71,7 +71,7 @@ class DictionaryValue;
 
 class CORE_EXPORT InspectorResourceAgent final : public InspectorBaseAgent<InspectorResourceAgent, protocol::Frontend::Network>, public protocol::Backend::Network {
 public:
-    static RawPtr<InspectorResourceAgent> create(InspectedFrames* inspectedFrames)
+    static InspectorResourceAgent* create(InspectedFrames* inspectedFrames)
     {
         return new InspectorResourceAgent(inspectedFrames);
     }
@@ -144,6 +144,7 @@ public:
     void canClearBrowserCookies(ErrorString*, bool* result) override;
     void emulateNetworkConditions(ErrorString*, bool offline, double latency, double downloadThroughput, double uploadThroughput) override;
     void setCacheDisabled(ErrorString*, bool cacheDisabled) override;
+    void setBypassServiceWorker(ErrorString*, bool bypass) override;
     void setDataSizeLimitsForTest(ErrorString*, int maxTotalSize, int maxResourceSize) override;
 
     // Called from other agents.

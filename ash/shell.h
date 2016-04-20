@@ -46,6 +46,10 @@ namespace base {
 class SequencedWorkerPool;
 }
 
+namespace chromeos {
+class AudioA11yController;
+}
+
 namespace gfx {
 class ImageSkia;
 class Point;
@@ -162,6 +166,10 @@ namespace test {
 class ShellTestApi;
 }
 
+namespace wm {
+class WmGlobalsAura;
+}
+
 // Shell is a singleton object that presents the Shell API and implements the
 // RootWindow's delegate interface.
 //
@@ -247,12 +255,6 @@ class ASH_EXPORT Shell : public SystemModalContainerEventFilterDelegate,
 
   // Returns app list target visibility.
   bool GetAppListTargetVisibility() const;
-
-  // Returns app list window or NULL if it is not visible.
-  aura::Window* GetAppListWindow();
-
-  // Returns app list view if one exists, or NULL otherwise.
-  app_list::AppListView* GetAppListView();
 
   // Returns true if a system-modal dialog window is currently open.
   bool IsSystemModalWindowOpen() const;
@@ -548,6 +550,10 @@ class ASH_EXPORT Shell : public SystemModalContainerEventFilterDelegate,
   VirtualKeyboardController* virtual_keyboard_controller() {
     return virtual_keyboard_controller_.get();
   }
+
+  chromeos::AudioA11yController* audio_a11y_controller() {
+    return audio_a11y_controller_.get();
+  }
 #endif  // defined(OS_CHROMEOS)
 
   ShelfModel* shelf_model() {
@@ -640,6 +646,8 @@ class ASH_EXPORT Shell : public SystemModalContainerEventFilterDelegate,
   // when the screen is initially created.
   static bool initially_hide_cursor_;
 
+  std::unique_ptr<wm::WmGlobalsAura> wm_globals_;
+
   // When no explicit target display/RootWindow is given, new windows are
   // created on |scoped_target_root_window_| , unless NULL in
   // which case they are created on |target_root_window_|.
@@ -669,8 +677,6 @@ class ASH_EXPORT Shell : public SystemModalContainerEventFilterDelegate,
   std::unique_ptr<ShelfModel> shelf_model_;
   std::unique_ptr<WindowPositioner> window_positioner_;
 
-  std::unique_ptr<AppListController> app_list_controller_;
-
   std::unique_ptr<DragDropController> drag_drop_controller_;
   std::unique_ptr<ResizeShadowController> resize_shadow_controller_;
   std::unique_ptr<::wm::ShadowController> shadow_controller_;
@@ -693,7 +699,9 @@ class ASH_EXPORT Shell : public SystemModalContainerEventFilterDelegate,
       partial_magnification_controller_;
   std::unique_ptr<AutoclickController> autoclick_controller_;
   std::unique_ptr<aura::client::FocusClient> focus_client_;
+
   aura::client::ActivationClient* activation_client_;
+
   std::unique_ptr<PartialScreenshotController> partial_screenshot_controller_;
 
   std::unique_ptr<MouseCursorEventFilter> mouse_cursor_filter_;
@@ -737,6 +745,7 @@ class ASH_EXPORT Shell : public SystemModalContainerEventFilterDelegate,
   std::unique_ptr<LastWindowClosedLogoutReminder>
       last_window_closed_logout_reminder_;
   std::unique_ptr<VirtualKeyboardController> virtual_keyboard_controller_;
+  std::unique_ptr<chromeos::AudioA11yController> audio_a11y_controller_;
   // Controls video output device state.
   std::unique_ptr<ui::DisplayConfigurator> display_configurator_;
   std::unique_ptr<DisplayColorManager> display_color_manager_;

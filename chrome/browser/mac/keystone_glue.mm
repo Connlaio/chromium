@@ -508,7 +508,7 @@ NSString* const kVersionKey = @"KSVersion";
 
   registrationActive_ = YES;
 
-  // Should never have zero profiles. Do not report this value.
+  // During startup, numProfiles_ defaults to 0.
   if (!numProfiles_) {
     [registration_ setActive];
     return;
@@ -760,11 +760,11 @@ NSString* const kVersionKey = @"KSVersion";
   NSMutableDictionary* dictionary =
       [NSMutableDictionary dictionaryWithObject:statusNumber
                                          forKey:kAutoupdateStatusStatus];
-  if (version) {
+  if ([version length]) {
     [dictionary setObject:version forKey:kAutoupdateStatusVersion];
   }
-  if (error) {
-    [dictionary setObject:version forKey:kAutoupdateStatusErrorMessages];
+  if ([error length]) {
+    [dictionary setObject:error forKey:kAutoupdateStatusErrorMessages];
   }
 
   NSNotification* notification =
@@ -1151,14 +1151,9 @@ NSString* const kVersionKey = @"KSVersion";
 
 - (void)updateProfileCountsWithNumProfiles:(uint32_t)profiles
                        numSignedInProfiles:(uint32_t)signedInProfiles {
-  BOOL activate = numProfiles_ == 0;
   numProfiles_ = profiles;
   numSignedInProfiles_ = signedInProfiles;
-  if (activate) {
-    // During startup, numProfiles_ defaults to 0 so this is called when the
-    // very first update to profile-counts is made.  http://crbug/487807
-    [self setRegistrationActive];
-  }
+  [self setRegistrationActive];
 }
 
 @end  // @implementation KeystoneGlue

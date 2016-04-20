@@ -240,6 +240,9 @@ public:
         String region;
     };
 
+    // TODO(bokan): This seems like it no longer belongs here.
+    void handleOverscroll(const ScrollResult&, const FloatPoint& positionInRootFrame = FloatPoint(), const FloatSize& velocity = FloatSize());
+
 private:
     static DragState& dragState();
 
@@ -284,6 +287,8 @@ private:
     // delta - The delta to scroll by, in the units of the granularity param
     //         (e.g. pixels, lines, pages, etc.). These are in a physical
     //         direction. i.e. Positive is down and right.
+    // position - Where the scroll originated from (e.g. touch location).
+    // velocity - The velocity of the scroll in the case of fling gestures.
     // startNode - The node to start the scroll chaining from.
     // stopNode - On input, if non-null, the node at which we should stop
     //            chaining. On output, if provided and a node was scrolled,
@@ -292,7 +297,14 @@ private:
     //            ScrollResult.didScroll since we might not have scrolled but
     //            have reached the stopNode and thus don't want to continue
     //            chaining the scroll.
-    ScrollResult physicalScroll(ScrollGranularity, const FloatSize& delta, Node* startNode, Node** stopNode, bool* consumed);
+    ScrollResult physicalScroll(
+        ScrollGranularity,
+        const FloatSize& delta,
+        const FloatPoint& position,
+        const FloatSize& velocity,
+        Node* startNode,
+        Node** stopNode,
+        bool* consumed);
 
     // Performs a chaining logical scroll, within a *single* frame, starting
     // from either a provided starting node or a default based on the focused or
@@ -307,8 +319,16 @@ private:
     bool logicalScroll(ScrollDirection, ScrollGranularity, Node* startNode = nullptr);
 
     void resetOverscroll(bool didScrollX, bool didScrollY);
-    void handleOverscroll(const ScrollResult&, const FloatPoint& position = FloatPoint(), const FloatSize& velocity = FloatSize());
 
+    ScrollResult scrollBox(
+        LayoutBox*,
+        ScrollGranularity,
+        const FloatSize& delta,
+        const FloatPoint& position,
+        const FloatSize& velocity,
+        bool* wasRootScroller);
+
+    bool isRootScroller(const Node&) const;
     void customizedScroll(const Node& startNode, ScrollState&);
 
     HitTestResult hitTestResultInFrame(LocalFrame*, const LayoutPoint&, HitTestRequest::HitTestRequestType hitType = HitTestRequest::ReadOnly | HitTestRequest::Active);
@@ -379,9 +399,8 @@ private:
     bool slideFocusOnShadowHostIfNecessary(const Element&);
 
     void dispatchPointerEvents(const PlatformTouchEvent&, HeapVector<TouchInfo>&);
-    void sendPointerCancels(HeapVector<TouchInfo>&);
 
-    WebInputEventResult dispatchTouchEvents(const PlatformTouchEvent&, HeapVector<TouchInfo>&, bool, bool);
+    WebInputEventResult dispatchTouchEvents(const PlatformTouchEvent&, HeapVector<TouchInfo>&, bool);
 
     // NOTE: If adding a new field to this class please ensure that it is
     // cleared in |EventHandler::clear()|.
@@ -457,11 +476,6 @@ private:
     bool m_touchPressed;
 
     PointerEventManager m_pointerEventManager;
-
-    // This is set upon sending a pointercancel for touch, prevents PE dispatches for touches until
-    // all touch-points become inactive.
-    // TODO(mustaq): Consider a state per pointerType, as in PointerIdManager? Exclude mouse?
-    bool m_inPointerCanceledState;
 
     Member<Node> m_scrollGestureHandlingNode;
     bool m_lastGestureScrollOverWidget;

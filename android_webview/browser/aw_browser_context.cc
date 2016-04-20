@@ -259,9 +259,11 @@ void AwBrowserContext::PreMainMessageLoopRun() {
   const FilePath guid_file_path =
       GetPath().Append(FILE_PATH_LITERAL("metrics_guid"));
 
-  AwMetricsServiceClient::GetInstance()->Initialize(user_pref_service_.get(),
-                                                    GetRequestContext(),
-                                                    guid_file_path);
+  AwMetricsServiceClient::GetInstance()->Initialize(
+      user_pref_service_.get(),
+      content::BrowserContext::GetDefaultStoragePartition(this)->
+          GetURLRequestContext(),
+      guid_file_path);
 }
 
 void AwBrowserContext::AddVisitedURLs(const std::vector<GURL>& urls) {
@@ -348,28 +350,6 @@ bool AwBrowserContext::IsOffTheRecord() const {
   return false;
 }
 
-net::URLRequestContextGetter* AwBrowserContext::GetRequestContext() {
-  return GetDefaultStoragePartition(this)->GetURLRequestContext();
-}
-
-net::URLRequestContextGetter* AwBrowserContext::GetMediaRequestContext() {
-  return GetRequestContext();
-}
-
-net::URLRequestContextGetter*
-AwBrowserContext::GetMediaRequestContextForRenderProcess(
-    int renderer_child_id) {
-  return GetRequestContext();
-}
-
-net::URLRequestContextGetter*
-AwBrowserContext::GetMediaRequestContextForStoragePartition(
-    const base::FilePath& partition_path,
-    bool in_memory) {
-  NOTREACHED();
-  return NULL;
-}
-
 content::ResourceContext* AwBrowserContext::GetResourceContext() {
   if (!resource_context_) {
     resource_context_.reset(
@@ -435,6 +415,18 @@ AwBrowserContext::CreateRequestContextForStoragePartition(
     bool in_memory,
     content::ProtocolHandlerMap* protocol_handlers,
     content::URLRequestInterceptorScopedVector request_interceptors) {
+  NOTREACHED();
+  return NULL;
+}
+
+net::URLRequestContextGetter* AwBrowserContext::CreateMediaRequestContext() {
+  return url_request_context_getter_.get();
+}
+
+net::URLRequestContextGetter*
+AwBrowserContext::CreateMediaRequestContextForStoragePartition(
+    const base::FilePath& partition_path,
+    bool in_memory) {
   NOTREACHED();
   return NULL;
 }

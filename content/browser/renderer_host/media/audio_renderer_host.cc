@@ -81,11 +81,6 @@ bool IsValidDeviceId(const std::string& device_id) {
   return true;
 }
 
-bool IsDefaultDeviceId(const std::string& device_id) {
-  return device_id.empty() ||
-         device_id == media::AudioManagerBase::kDefaultDeviceId;
-}
-
 AudioOutputDeviceInfo GetDefaultDeviceInfoOnDeviceThread(
     media::AudioManager* audio_manager) {
   DCHECK(audio_manager->GetTaskRunner()->BelongsToCurrentThread());
@@ -130,8 +125,8 @@ class AudioRendererHost::AudioEntry
              int render_frame_id,
              const media::AudioParameters& params,
              const std::string& output_device_id,
-             scoped_ptr<base::SharedMemory> shared_memory,
-             scoped_ptr<media::AudioOutputController::SyncReader> reader);
+             std::unique_ptr<base::SharedMemory> shared_memory,
+             std::unique_ptr<media::AudioOutputController::SyncReader> reader);
   ~AudioEntry() override;
 
   int stream_id() const {
@@ -167,10 +162,10 @@ class AudioRendererHost::AudioEntry
   const int render_frame_id_;
 
   // Shared memory for transmission of the audio data.  Used by |reader_|.
-  const scoped_ptr<base::SharedMemory> shared_memory_;
+  const std::unique_ptr<base::SharedMemory> shared_memory_;
 
   // The synchronous reader to be used by |controller_|.
-  const scoped_ptr<media::AudioOutputController::SyncReader> reader_;
+  const std::unique_ptr<media::AudioOutputController::SyncReader> reader_;
 
   // The AudioOutputController that manages the audio stream.
   const scoped_refptr<media::AudioOutputController> controller_;
@@ -184,8 +179,8 @@ AudioRendererHost::AudioEntry::AudioEntry(
     int render_frame_id,
     const media::AudioParameters& params,
     const std::string& output_device_id,
-    scoped_ptr<base::SharedMemory> shared_memory,
-    scoped_ptr<media::AudioOutputController::SyncReader> reader)
+    std::unique_ptr<base::SharedMemory> shared_memory,
+    std::unique_ptr<media::AudioOutputController::SyncReader> reader)
     : host_(host),
       stream_id_(stream_id),
       render_frame_id_(render_frame_id),
@@ -421,17 +416,14 @@ void AudioRendererHost::OnRequestDeviceAuthorization(
   if (!IsValidDeviceId(device_id)) {
     Send(new AudioMsg_NotifyDeviceAuthorized(
         stream_id, media::OUTPUT_DEVICE_STATUS_ERROR_NOT_FOUND,
-        media::AudioParameters::UnavailableDeviceParams()));
+        media::AudioParameters::UnavailableDeviceParams(), std::string()));
     return;
   }
 
-  // If |device_id| is not empty, ignore |session_id| and select the device
-  // indicated by |device_id|.
-  // If |device_id| is empty and |session_id| is nonzero, try to use the
-  // output device associated with the opened input device designated by
-  // |session_id| and, if such output device is found, reuse the input device
-  // permissions.
-  if (session_id != 0 && device_id.empty()) {
+  // If |session_id should be used for output device selection and such output
+  // device is found, reuse the input device permissions.
+  if (media::AudioManagerBase::UseSessionIdToSelectDevice(session_id,
+                                                          device_id)) {
     const StreamDeviceInfo* info =
         media_stream_manager_->audio_input_device_manager()
             ->GetOpenedDeviceInfoById(session_id);
@@ -446,8 +438,12 @@ void AudioRendererHost::OnRequestDeviceAuthorization(
       authorizations_.insert(MakeAuthorizationData(
           stream_id, true, info->device.matched_output_device_id));
       MaybeFixAudioParameters(&output_params);
+      // Hash matched device id and pass it to the renderer
+      GURL gurl_security_origin = ConvertToGURL(security_origin);
       Send(new AudioMsg_NotifyDeviceAuthorized(
-          stream_id, media::OUTPUT_DEVICE_STATUS_OK, output_params));
+          stream_id, media::OUTPUT_DEVICE_STATUS_OK, output_params,
+          GetHMACForMediaDeviceID(salt_callback_, gurl_security_origin,
+                                  info->device.matched_output_device_id)));
       return;
     }
   }
@@ -476,7 +472,7 @@ void AudioRendererHost::OnDeviceAuthorized(int stream_id,
     authorizations_.erase(auth_data);
     Send(new AudioMsg_NotifyDeviceAuthorized(
         stream_id, media::OUTPUT_DEVICE_STATUS_ERROR_NOT_AUTHORIZED,
-        media::AudioParameters::UnavailableDeviceParams()));
+        media::AudioParameters::UnavailableDeviceParams(), std::string()));
     return;
   }
 
@@ -484,11 +480,11 @@ void AudioRendererHost::OnDeviceAuthorized(int stream_id,
   // device is requested, since no device ID translation is needed.
   // If enumerator caching is enabled, it is better to use its cache, even
   // for the default device.
-  if (IsDefaultDeviceId(device_id) &&
+  if (media::AudioManagerBase::IsDefaultDeviceId(device_id) &&
       !media_stream_manager_->audio_output_device_enumerator()
            ->IsCacheEnabled()) {
     base::PostTaskAndReplyWithResult(
-        audio_manager_->GetTaskRunner().get(), FROM_HERE,
+        audio_manager_->GetTaskRunner(), FROM_HERE,
         base::Bind(&GetDefaultDeviceInfoOnDeviceThread, audio_manager_),
         base::Bind(&AudioRendererHost::OnDeviceIDTranslated, this, stream_id,
                    true));
@@ -516,7 +512,7 @@ void AudioRendererHost::OnDeviceIDTranslated(
     authorizations_.erase(auth_data);
     Send(new AudioMsg_NotifyDeviceAuthorized(
         stream_id, media::OUTPUT_DEVICE_STATUS_ERROR_NOT_FOUND,
-        media::AudioParameters::UnavailableDeviceParams()));
+        media::AudioParameters::UnavailableDeviceParams(), std::string()));
     return;
   }
 
@@ -526,7 +522,7 @@ void AudioRendererHost::OnDeviceIDTranslated(
   media::AudioParameters output_params = device_info.output_params;
   MaybeFixAudioParameters(&output_params);
   Send(new AudioMsg_NotifyDeviceAuthorized(
-      stream_id, media::OUTPUT_DEVICE_STATUS_OK, output_params));
+      stream_id, media::OUTPUT_DEVICE_STATUS_OK, output_params, std::string()));
 }
 
 void AudioRendererHost::OnCreateStream(int stream_id,
@@ -564,13 +560,13 @@ void AudioRendererHost::DoCreateStream(int stream_id,
   // Create the shared memory and share with the renderer process.
   uint32_t shared_memory_size = sizeof(media::AudioOutputBufferParameters) +
                                 AudioBus::CalculateMemorySize(params);
-  scoped_ptr<base::SharedMemory> shared_memory(new base::SharedMemory());
+  std::unique_ptr<base::SharedMemory> shared_memory(new base::SharedMemory());
   if (!shared_memory->CreateAndMapAnonymous(shared_memory_size)) {
     SendErrorMessage(stream_id);
     return;
   }
 
-  scoped_ptr<AudioSyncReader> reader(
+  std::unique_ptr<AudioSyncReader> reader(
       new AudioSyncReader(shared_memory.get(), params));
   if (!reader->Init()) {
     SendErrorMessage(stream_id);
@@ -582,7 +578,7 @@ void AudioRendererHost::DoCreateStream(int stream_id,
   if (media_observer)
     media_observer->OnCreatingAudioStream(render_process_id_, render_frame_id);
 
-  scoped_ptr<AudioEntry> entry(
+  std::unique_ptr<AudioEntry> entry(
       new AudioEntry(this, stream_id, render_frame_id, params, device_unique_id,
                      std::move(shared_memory), std::move(reader)));
   if (mirroring_manager_) {
@@ -656,7 +652,7 @@ void AudioRendererHost::OnCloseStream(int stream_id) {
   AudioEntryMap::iterator i = audio_entries_.find(stream_id);
   if (i == audio_entries_.end())
     return;
-  scoped_ptr<AudioEntry> entry(i->second);
+  std::unique_ptr<AudioEntry> entry(i->second);
   audio_entries_.erase(i);
   g_audio_streams_tracker.Get().DecreaseStreamCount();
 
@@ -666,7 +662,7 @@ void AudioRendererHost::OnCloseStream(int stream_id) {
   audio_log_->OnClosed(stream_id);
 }
 
-void AudioRendererHost::DeleteEntry(scoped_ptr<AudioEntry> entry) {
+void AudioRendererHost::DeleteEntry(std::unique_ptr<AudioEntry> entry) {
   DCHECK_CURRENTLY_ON(BrowserThread::IO);
 
   // De-register the controller from the AudioMirroringManager now that the
@@ -758,7 +754,7 @@ void AudioRendererHost::CheckOutputDeviceAccess(
 
   // Check security origin if nondefault device is requested.
   // Ignore check for default device, which is always authorized.
-  if (!IsDefaultDeviceId(device_id) &&
+  if (!media::AudioManagerBase::IsDefaultDeviceId(device_id) &&
       !ChildProcessSecurityPolicyImpl::GetInstance()->CanRequestURL(
           render_process_id_, gurl_security_origin)) {
     content::bad_message::ReceivedBadMessage(this,
@@ -771,7 +767,7 @@ void AudioRendererHost::CheckOutputDeviceAccess(
   } else {
     // Check that MediaStream device permissions have been granted,
     // hence the use of a MediaStreamUIProxy.
-    scoped_ptr<MediaStreamUIProxy> ui_proxy = MediaStreamUIProxy::Create();
+    std::unique_ptr<MediaStreamUIProxy> ui_proxy = MediaStreamUIProxy::Create();
 
     // Use MEDIA_DEVICE_AUDIO_CAPTURE instead of MEDIA_DEVICE_AUDIO_OUTPUT
     // because MediaStreamUIProxy::CheckAccess does not currently support
@@ -785,9 +781,10 @@ void AudioRendererHost::CheckOutputDeviceAccess(
   }
 }
 
-void AudioRendererHost::AccessChecked(scoped_ptr<MediaStreamUIProxy> ui_proxy,
-                                      const OutputDeviceAccessCB& callback,
-                                      bool have_access) {
+void AudioRendererHost::AccessChecked(
+    std::unique_ptr<MediaStreamUIProxy> ui_proxy,
+    const OutputDeviceAccessCB& callback,
+    bool have_access) {
   DCHECK_CURRENTLY_ON(BrowserThread::IO);
   callback.Run(have_access);
 }

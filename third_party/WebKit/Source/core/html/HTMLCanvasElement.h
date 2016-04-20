@@ -139,7 +139,7 @@ public:
     bool is3D() const;
     bool isAnimated2D() const;
 
-    bool hasImageBuffer() const { return m_imageBuffer; }
+    bool hasImageBuffer() const { return m_imageBuffer.get(); }
     void discardImageBuffer();
 
     bool shouldAccelerate(const IntSize&) const;
@@ -186,8 +186,10 @@ public:
 
     void notifyListenersCanvasChanged();
 
+    // For Canvas HitRegions
     bool isSupportedInteractiveCanvasFallback(const Element&);
     std::pair<Element*, String> getControlAndIdIfHitRegionExists(const LayoutPoint&);
+    String getIdFromControl(const Element*);
 
 protected:
     void didMoveToNewDocument(Document& oldDocument) override;

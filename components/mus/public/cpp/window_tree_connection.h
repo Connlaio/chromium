@@ -15,7 +15,7 @@
 #include "components/mus/public/interfaces/window_tree.mojom.h"
 #include "mojo/public/cpp/bindings/interface_request.h"
 
-namespace mojo {
+namespace shell {
 class Connector;
 }
 
@@ -43,7 +43,7 @@ class WindowTreeConnection {
   // Creates a WindowTreeConnection with no roots. Use this to establish a
   // connection directly to mus and create top level windows.
   static WindowTreeConnection* Create(WindowTreeDelegate* delegate,
-                                      mojo::Connector* connector);
+                                      shell::Connector* connector);
 
   // Creates a WindowTreeConnection to service the specified request for
   // a WindowTreeClient. Use this to be embedded in another app.
@@ -65,9 +65,6 @@ class WindowTreeConnection {
 
   // Returns the root of this connection.
   virtual const std::set<Window*>& GetRoots() = 0;
-
-  // Returns a Window known to this connection.
-  virtual Window* GetWindowById(Id id) = 0;
 
   // Returns the Window with input capture; null if no window has requested
   // input capture, or if another app has capture.

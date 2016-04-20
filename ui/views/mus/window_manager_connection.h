@@ -7,14 +7,15 @@
 
 #include <stdint.h>
 
+#include <memory>
+
 #include "base/macros.h"
-#include "base/memory/scoped_ptr.h"
 #include "components/mus/public/cpp/window_tree_delegate.h"
 #include "ui/views/mus/mus_export.h"
 #include "ui/views/mus/screen_mus_delegate.h"
 #include "ui/views/widget/widget.h"
 
-namespace mojo {
+namespace shell {
 class Connector;
 }
 
@@ -37,14 +38,14 @@ class VIEWS_MUS_EXPORT WindowManagerConnection
     : public NON_EXPORTED_BASE(mus::WindowTreeDelegate),
       public ScreenMusDelegate {
  public:
-  static void Create(mojo::Connector* connector);
+  static void Create(shell::Connector* connector);
   static WindowManagerConnection* Get();
   static bool Exists();
 
   // Destroys the singleton instance.
   static void Reset();
 
-  mojo::Connector* connector() { return connector_; }
+  shell::Connector* connector() { return connector_; }
 
   mus::Window* NewWindow(const std::map<std::string,
                          std::vector<uint8_t>>& properties);
@@ -55,7 +56,7 @@ class VIEWS_MUS_EXPORT WindowManagerConnection
       internal::NativeWidgetDelegate* delegate);
 
  private:
-  explicit WindowManagerConnection(mojo::Connector* connector);
+  explicit WindowManagerConnection(shell::Connector* connector);
   ~WindowManagerConnection() override;
 
   // mus::WindowTreeDelegate:
@@ -65,9 +66,9 @@ class VIEWS_MUS_EXPORT WindowManagerConnection
   // ScreenMusDelegate:
   void OnWindowManagerFrameValuesChanged() override;
 
-  mojo::Connector* connector_;
-  scoped_ptr<ScreenMus> screen_;
-  scoped_ptr<mus::WindowTreeConnection> window_tree_connection_;
+  shell::Connector* connector_;
+  std::unique_ptr<ScreenMus> screen_;
+  std::unique_ptr<mus::WindowTreeConnection> window_tree_connection_;
 
   DISALLOW_COPY_AND_ASSIGN(WindowManagerConnection);
 };

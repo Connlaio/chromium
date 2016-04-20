@@ -272,8 +272,8 @@ class TestWindowTreeClient : public mus::mojom::WindowTreeClient {
       mojom::ViewportMetricsPtr new_metrics) override;
   void OnWindowHierarchyChanged(
       uint32_t window,
-      uint32_t new_parent,
       uint32_t old_parent,
+      uint32_t new_parent,
       mojo::Array<mojom::WindowDataPtr> windows) override;
   void OnWindowReordered(uint32_t window_id,
                          uint32_t relative_window_id,
@@ -369,6 +369,7 @@ class TestWindowServerDelegate : public WindowServerDelegate {
       mojom::WindowTreeRequest* tree_request,
       mojom::WindowTreeClientPtr* client) override;
   void CreateDefaultDisplays() override;
+  bool IsTestConfig() const override;
 
  private:
   // If CreateDefaultDisplays() this is the number of Displays that are

@@ -71,7 +71,6 @@ Kui logite siiski sisse, liidetakse Chrome'i teave, nagu järjehoidjad, ajalugu 
 <translation id="3080151273017101988">Jätka taustal olevate rakenduste tööd, kui Google Chrome on suletud</translation>
 <translation id="3089968997497233615">Saadaval on uus ja turvalisem Google Chrome'i versioon.</translation>
 <translation id="3149510190863420837">Chrome'i rakendused</translation>
-<translation id="3197823471738295152">Teie seade on ajakohane.</translation>
 <translation id="3282568296779691940">Chrome'i sisselogimine</translation>
 <translation id="3311976847535831054">See arvuti ei saa enam 32-bitise Google Chrome'i värskendusi. Viige Google Chrome üle 64-bitisele versioonile.</translation>
 <translation id="3360895254066713204">Chrome'i abistaja</translation>
@@ -209,13 +208,13 @@ Mõned funktsioonid ei pruugi saadaval olla. Määrake muu profiilikataloog või
 <translation id="7808348361785373670">Chrome'ist eemaldamine ...</translation>
 <translation id="7825851276765848807">Installimine nurjus määramata vea tõttu. Laadige Google Chrome uuesti alla.</translation>
 <translation id="7890208801193284374">Kui jagate oma arvutit, siis saavad sõbrad ja pereliikmed eraldi sirvida ning seadistada Chrome'i just nii, nagu neile meeldib.</translation>
-<translation id="8000275528373650868">Google Chrome vajab operatsioonisüsteemi Windows Vista või Windows XP hoolduspaketiga SP2 või uuem.</translation>
 <translation id="8005540215158006229">Chrome on peaaegu valmis.</translation>
 <translation id="8008534537613507642">Installi Chrome uuesti</translation>
 <translation id="8030318113982266900">Seadet värskendatakse kanalile <ph name="CHANNEL_NAME" /> ...</translation>
 <translation id="8032142183999901390">Pärast konto eemaldamist Chrome'ist tuleb avatud vahekaardid võib-olla uuesti laadida, et need toimiksid.</translation>
 <translation id="8037887340639533879">Ei leitud Google Chrome'i installi, mida värskendada.</translation>
 <translation id="8129812357326543296">Teave &amp;Google Chrome'i kohta</translation>
+<translation id="8183957050892517584">Chrome salvestab turvaliselt teie isiklikud andmed, et te ei peaks neid uuesti sisestama.</translation>
 <translation id="8205111949707227942">Valikuline: aidake muuta Chrome OS paremaks, saates Google'ile automaatselt kasutusstatistikat ja kokkujooksuaruandeid.</translation>
 <translation id="8227755444512189073">Google Chrome peab käivitama välise rakenduse <ph name="SCHEME" /> linkide haldamiseks. Küsitud link on <ph name="PROTOLINK" />.</translation>
 <translation id="8255190535488645436">Google Chrome kasutab kaamerat ja mikrofoni.</translation>
@@ -238,6 +237,7 @@ Mõned funktsioonid ei pruugi saadaval olla. Määrake muu profiilikataloog või
 <translation id="8851136666856101339">pea</translation>
 <translation id="8862326446509486874">Teil ei ole süsteemi tasemel installimiseks sobivaid õigusi. Proovige installijat administraatorina uuesti käivitada.</translation>
 <translation id="9026991721384951619">Chrome OS ei saanud andmeid sünkroonida, sest teie konto sisselogimisandmed on aegunud.</translation>
+<translation id="9067395829937117663">Google Chrome vajab operatsioonisüsteemi Windows 7 või uuemat versiooni.</translation>
 <translation id="9102715433345326100">See fail on pahatahtlik ja Chrome on selle blokeerinud.</translation>
 <translation id="9107728822479888688"><ph name="BEGIN_BOLD" />Hoiatus:<ph name="END_BOLD" /> Google Chrome ei saa takistada rakendusi teie sirvimisajalugu talletamast. Kui soovite laienduse inkognitorežiimis keelata, siis tühistage see valik.</translation>
 <translation id="911206726377975832">Kas kustutada ka teie sirvimisandmed?</translation>

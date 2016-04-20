@@ -416,9 +416,14 @@ DEFINE_TRACE(MediaStream)
     visitor->trace(m_videoTracks);
     visitor->trace(m_descriptor);
     visitor->trace(m_scheduledEvents);
-    RefCountedGarbageCollectedEventTargetWithInlineData<MediaStream>::trace(visitor);
+    EventTargetWithInlineData::trace(visitor);
     ContextLifecycleObserver::trace(visitor);
     MediaStreamDescriptorClient::trace(visitor);
+}
+
+MediaStream* toMediaStream(MediaStreamDescriptor* descriptor)
+{
+    return static_cast<MediaStream*>(descriptor->client());
 }
 
 } // namespace blink

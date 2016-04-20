@@ -69,7 +69,7 @@
 #include "chrome/browser/ui/views/download/download_shelf_view.h"
 #include "chrome/browser/ui/views/edit_search_engine_dialog.h"
 #include "chrome/browser/ui/views/exclusive_access_bubble_views.h"
-#include "chrome/browser/ui/views/extensions/bookmark_app_bubble_view.h"
+#include "chrome/browser/ui/views/extensions/bookmark_app_confirmation_view.h"
 #include "chrome/browser/ui/views/extensions/extension_keybinding_registry_views.h"
 #include "chrome/browser/ui/views/find_bar_host.h"
 #include "chrome/browser/ui/views/frame/browser_view_layout.h"
@@ -174,9 +174,8 @@
 #endif
 
 #if BUILDFLAG(ENABLE_ONE_CLICK_SIGNIN)
-#include "chrome/browser/ui/sync/one_click_signin_bubble_delegate.h"
-#include "chrome/browser/ui/sync/one_click_signin_bubble_links_delegate.h"
-#include "chrome/browser/ui/views/sync/one_click_signin_bubble_view.h"
+#include "chrome/browser/ui/sync/one_click_signin_links_delegate_impl.h"
+#include "chrome/browser/ui/views/sync/one_click_signin_dialog_view.h"
 #endif
 
 #if defined(OS_CHROMEOS)
@@ -816,14 +815,12 @@ void BrowserView::UpdateLoadingAnimations(bool should_animate) {
   if (should_animate) {
     if (!loading_animation_timer_.IsRunning()) {
       // Loads are happening, and the timer isn't running, so start it.
-      last_animation_time_ = base::TimeTicks::Now();
       loading_animation_timer_.Start(FROM_HERE,
           TimeDelta::FromMilliseconds(kLoadingAnimationFrameTimeMs), this,
           &BrowserView::LoadingAnimationCallback);
     }
   } else {
     if (loading_animation_timer_.IsRunning()) {
-      last_animation_time_ = base::TimeTicks();
       loading_animation_timer_.Stop();
       // Loads are now complete, update the state if a task was scheduled.
       LoadingAnimationCallback();
@@ -1250,7 +1247,8 @@ void BrowserView::ShowBookmarkBubble(const GURL& url, bool already_bookmarked) {
 void BrowserView::ShowBookmarkAppBubble(
     const WebApplicationInfo& web_app_info,
     const ShowBookmarkAppBubbleCallback& callback) {
-  BookmarkAppBubbleView::ShowBubble(GetToolbarView(), web_app_info, callback);
+  BookmarkAppConfirmationView::CreateAndShow(GetNativeWindow(), web_app_info,
+                                             callback);
 }
 
 autofill::SaveCardBubbleView* BrowserView::ShowSaveCreditCardBubble(
@@ -1296,24 +1294,13 @@ void BrowserView::ShowTranslateBubble(
 }
 
 #if BUILDFLAG(ENABLE_ONE_CLICK_SIGNIN)
-void BrowserView::ShowOneClickSigninBubble(
-    OneClickSigninBubbleType type,
+void BrowserView::ShowOneClickSigninConfirmation(
     const base::string16& email,
-    const base::string16& error_message,
     const StartSyncCallback& start_sync_callback) {
-  std::unique_ptr<OneClickSigninBubbleDelegate> delegate;
-  delegate.reset(new OneClickSigninBubbleLinksDelegate(browser()));
-
-  views::View* anchor_view = nullptr;
-  if (type == BrowserWindow::ONE_CLICK_SIGNIN_BUBBLE_TYPE_BUBBLE)
-    anchor_view = toolbar_->app_menu_button();
-  if (!anchor_view)
-    anchor_view = toolbar_->location_bar();
-  DCHECK(anchor_view);
-
-  OneClickSigninBubbleView::ShowBubble(type, email, error_message,
-                                       std::move(delegate), anchor_view,
-                                       start_sync_callback);
+  std::unique_ptr<OneClickSigninLinksDelegate> delegate(
+      new OneClickSigninLinksDelegateImpl(browser()));
+  OneClickSigninDialogView::ShowDialog(email, std::move(delegate),
+                                       GetNativeWindow(), start_sync_callback);
 }
 #endif
 
@@ -2132,13 +2119,6 @@ void BrowserView::InitViews() {
 }
 
 void BrowserView::LoadingAnimationCallback() {
-  base::TimeTicks now = base::TimeTicks::Now();
-  if (!last_animation_time_.is_null()) {
-    UMA_HISTOGRAM_TIMES(
-        "Tabs.LoadingAnimationTime",
-        now - last_animation_time_);
-  }
-  last_animation_time_ = now;
   if (browser_->is_type_tabbed()) {
     // Loading animations are shown in the tab for tabbed windows.  We check the
     // browser type instead of calling IsTabStripVisible() because the latter
@@ -2519,10 +2499,9 @@ void BrowserView::ShowAvatarBubbleFromAvatarButton(
   if (SigninViewController::ShouldShowModalSigninForMode(bubble_view_mode)) {
     browser_->ShowModalSigninWindow(bubble_view_mode, access_point);
   } else {
-    ProfileChooserView::ShowBubble(
-        bubble_view_mode, tutorial_mode, manage_accounts_params, access_point,
-        frame_->GetNewAvatarMenuButton(), views::BubbleBorder::TOP_RIGHT,
-        views::BubbleBorder::ALIGN_EDGE_TO_ANCHOR_EDGE, browser());
+    ProfileChooserView::ShowBubble(bubble_view_mode, tutorial_mode,
+                                   manage_accounts_params, access_point,
+                                   frame_->GetNewAvatarMenuButton(), browser());
     ProfileMetrics::LogProfileOpenMethod(ProfileMetrics::ICON_AVATAR_BUBBLE);
   }
 #else

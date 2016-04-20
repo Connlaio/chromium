@@ -330,9 +330,7 @@ void LayoutBlockFlow::layoutBlock(bool relayoutChildren)
 
     updateLayerTransformAfterLayout();
 
-    // Update our scroll information if we're overflow:auto/scroll/hidden now that we know if
-    // we overflow or not.
-    updateScrollInfoAfterLayout();
+    updateAfterLayout();
 
     if (m_paintInvalidationLogicalTop != m_paintInvalidationLogicalBottom) {
         bool hasVisibleContent = style()->visibility() == VISIBLE;
@@ -408,7 +406,7 @@ inline bool LayoutBlockFlow::layoutBlockFlow(bool relayoutChildren, LayoutUnit &
     if (!firstChild() && !isAnonymousBlock())
         setChildrenInline(true);
 
-    TextAutosizer::LayoutScope textAutosizerLayoutScope(this);
+    TextAutosizer::LayoutScope textAutosizerLayoutScope(this, &layoutScope);
 
     // Reset the flag here instead of in layoutInlineChildren() in case that
     // all inline children are removed from this block.
@@ -728,6 +726,8 @@ void LayoutBlockFlow::layoutBlockChild(LayoutBox& child, BlockChildrenLayoutInfo
         // Keep track of the break-after value of the child, so that it can be joined with the
         // break-before value of the next in-flow object at the next class A break point.
         layoutInfo.setPreviousBreakAfterValue(child.breakAfter());
+
+        paginatedContentWasLaidOut(child.logicalBottom());
     }
 
     if (child.isLayoutMultiColumnSpannerPlaceholder()) {
@@ -788,8 +788,6 @@ LayoutUnit LayoutBlockFlow::adjustBlockChildForPagination(LayoutUnit logicalTop,
             newLogicalTop += paginationStrut;
         }
     }
-
-    paginatedContentWasLaidOut(newLogicalTop + child.logicalHeight());
 
     // Similar to how we apply clearance. Go ahead and boost height() to be the place where we're going to position the child.
     setLogicalHeight(logicalHeight() + (newLogicalTop - logicalTop));

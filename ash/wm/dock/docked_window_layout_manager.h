@@ -8,7 +8,6 @@
 #include <memory>
 
 #include "ash/ash_export.h"
-#include "ash/shelf/shelf_layout_manager_observer.h"
 #include "ash/shell_observer.h"
 #include "ash/snap_to_pixel_layout_manager.h"
 #include "ash/wm/dock/dock_types.h"
@@ -41,18 +40,7 @@ class DockedBackgroundWidget;
 class DockedWindowLayoutManagerObserver;
 class DockedWindowResizerTest;
 class Shelf;
-class ShelfLayoutManager;
 class WorkspaceController;
-
-struct WindowWithHeight {
-  explicit WindowWithHeight(aura::Window* window) :
-    window_(window),
-    height_(window->bounds().height()) { }
-  aura::Window* window() { return window_; }
-  const aura::Window* window() const { return window_; }
-  aura::Window* window_;
-  int height_;
-};
 
 // DockedWindowLayoutManager is responsible for organizing windows when they are
 // docked to the side of a screen. It is associated with a specific container
@@ -72,7 +60,6 @@ class ASH_EXPORT DockedWindowLayoutManager
       public aura::WindowObserver,
       public aura::client::ActivationChangeObserver,
       public keyboard::KeyboardControllerObserver,
-      public ShelfLayoutManagerObserver,
       public wm::WindowStateObserver {
  public:
   // Maximum width of the docked windows area.
@@ -163,10 +150,6 @@ class ASH_EXPORT DockedWindowLayoutManager
                                 aura::Window* root_window) override;
   void OnShelfAlignmentChanged(aura::Window* root_window) override;
 
-  // ShelfLayoutManagerObserver:
-  void OnBackgroundUpdated(ShelfBackgroundType background_type,
-                           BackgroundAnimatorChangeType change_type) override;
-
   // wm::WindowStateObserver:
   void OnPreWindowStateTypeChange(wm::WindowState* window_state,
                                   wm::WindowStateType old_type) override;
@@ -185,7 +168,11 @@ class ASH_EXPORT DockedWindowLayoutManager
       aura::Window* lost_active) override;
 
  private:
+  struct CompareMinimumHeight;
+  struct CompareWindowPos;
   class ShelfWindowObserver;
+  struct WindowWithHeight;
+
   friend class DockedWindowLayoutManagerTest;
   friend class DockedWindowResizerTest;
 

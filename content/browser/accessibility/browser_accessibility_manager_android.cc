@@ -181,6 +181,16 @@ void BrowserAccessibilityManagerAndroid::SetContentViewCore(
           content_view_core.obj()).obj());
 }
 
+bool BrowserAccessibilityManagerAndroid::ShouldExposePasswordText() {
+  JNIEnv* env = AttachCurrentThread();
+  ScopedJavaLocalRef<jobject> obj = GetJavaRefFromRootManager();
+  if (obj.is_null())
+    return false;
+
+  return Java_BrowserAccessibilityManager_shouldExposePasswordText(
+      env, obj.obj());
+}
+
 void BrowserAccessibilityManagerAndroid::NotifyAccessibilityEvent(
     ui::AXEvent event_type,
     BrowserAccessibility* node) {
@@ -198,7 +208,8 @@ void BrowserAccessibilityManagerAndroid::NotifyAccessibilityEvent(
   if (event_type == ui::AX_EVENT_TREE_CHANGED)
     return;
 
-  // Layout changes are handled in OnLocationChanges.
+  // Layout changes are handled in OnLocationChanges and
+  // SendLocationChangeEvents.
   if (event_type == ui::AX_EVENT_LAYOUT_COMPLETE)
     return;
 
@@ -271,7 +282,7 @@ void BrowserAccessibilityManagerAndroid::NotifyAccessibilityEvent(
   }
 }
 
-void BrowserAccessibilityManagerAndroid::OnLocationChanges(
+void BrowserAccessibilityManagerAndroid::SendLocationChangeEvents(
       const std::vector<AccessibilityHostMsg_LocationChangeParams>& params) {
   // Android is not very efficient at handling notifications, and location
   // changes in particular are frequent and not time-critical. If a lot of
@@ -287,7 +298,7 @@ void BrowserAccessibilityManagerAndroid::OnLocationChanges(
     return;
   }
 
-  BrowserAccessibilityManager::OnLocationChanges(params);
+  BrowserAccessibilityManager::SendLocationChangeEvents(params);
 }
 
 base::android::ScopedJavaLocalRef<jstring>
@@ -403,13 +414,11 @@ jboolean BrowserAccessibilityManagerAndroid::PopulateAccessibilityNodeInfo(
   Java_BrowserAccessibilityManager_setAccessibilityNodeInfoClassName(
       env, obj, info,
       base::android::ConvertUTF8ToJavaString(env, node->GetClassName()).obj());
-  if (!node->IsPassword() ||
-      Java_BrowserAccessibilityManager_shouldExposePasswordText(env, obj)) {
-    Java_BrowserAccessibilityManager_setAccessibilityNodeInfoContentDescription(
-        env, obj, info,
-        base::android::ConvertUTF16ToJavaString(env, node->GetText()).obj(),
-        node->IsLink());
-  }
+  Java_BrowserAccessibilityManager_setAccessibilityNodeInfoText(
+      env, obj, info,
+      base::android::ConvertUTF16ToJavaString(env, node->GetText()).obj(),
+      node->IsLink(),
+      node->IsEditableText());
   base::string16 element_id;
   if (node->GetHtmlAttribute("id", &element_id)) {
     Java_BrowserAccessibilityManager_setAccessibilityNodeInfoViewIdResourceName(
@@ -506,12 +515,8 @@ jboolean BrowserAccessibilityManagerAndroid::PopulateAccessibilityEvent(
 
   switch (event_type) {
     case ANDROID_ACCESSIBILITY_EVENT_TEXT_CHANGED: {
-      base::string16 before_text, text;
-      if (!node->IsPassword() ||
-          Java_BrowserAccessibilityManager_shouldExposePasswordText(env, obj)) {
-        before_text = node->GetTextChangeBeforeText();
-        text = node->GetText();
-      }
+      base::string16 before_text = node->GetTextChangeBeforeText();
+      base::string16 text = node->GetText();
       Java_BrowserAccessibilityManager_setAccessibilityEventTextChangedAttrs(
           env, obj, event,
           node->GetTextChangeFromIndex(),
@@ -523,11 +528,7 @@ jboolean BrowserAccessibilityManagerAndroid::PopulateAccessibilityEvent(
       break;
     }
     case ANDROID_ACCESSIBILITY_EVENT_TEXT_SELECTION_CHANGED: {
-      base::string16 text;
-      if (!node->IsPassword() ||
-          Java_BrowserAccessibilityManager_shouldExposePasswordText(env, obj)) {
-        text = node->GetText();
-      }
+      base::string16 text = node->GetText();
       Java_BrowserAccessibilityManager_setAccessibilityEventSelectionAttrs(
           env, obj, event,
           node->GetSelectionStart(),
@@ -744,11 +745,7 @@ jboolean BrowserAccessibilityManagerAndroid::NextAtGranularity(
   int end_index = -1;
   if (NextAtGranularity(granularity, cursor_index, node,
                         &start_index, &end_index)) {
-    base::string16 text;
-    if (!node->IsPassword() ||
-        Java_BrowserAccessibilityManager_shouldExposePasswordText(env, obj)) {
-      text = node->GetText();
-    }
+    base::string16 text = node->GetText();
     Java_BrowserAccessibilityManager_finishGranularityMove(
         env, obj, base::android::ConvertUTF16ToJavaString(
             env, text).obj(),

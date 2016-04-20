@@ -7,12 +7,12 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <vector>
 
 #include "base/callback_forward.h"
 #include "base/containers/hash_tables.h"
 #include "base/macros.h"
-#include "base/memory/scoped_ptr.h"
 #include "build/build_config.h"
 #include "content/browser/accessibility/ax_tree_id_registry.h"
 #include "content/common/content_export.h"
@@ -240,8 +240,8 @@ class CONTENT_EXPORT BrowserAccessibilityManager : public ui::AXTreeDelegate {
       const std::vector<AXEventNotificationDetails>& details);
 
   // Called when the renderer process updates the location of accessibility
-  // objects.
-  virtual void OnLocationChanges(
+  // objects. Calls SendLocationChangeEvents(), which can be overridden.
+  void OnLocationChanges(
       const std::vector<AccessibilityHostMsg_LocationChangeParams>& params);
 
   // Called when a new find in page result is received. We hold on to this
@@ -366,6 +366,12 @@ class CONTENT_EXPORT BrowserAccessibilityManager : public ui::AXTreeDelegate {
       BrowserAccessibilityDelegate* delegate,
       BrowserAccessibilityFactory* factory);
 
+  // Send platform-specific notifications to each of these objects that
+  // their location has changed. This is called by OnLocationChanges
+  // after it's updated the internal data structure.
+  virtual void SendLocationChangeEvents(
+      const std::vector<AccessibilityHostMsg_LocationChangeParams>& params);
+
  private:
   // The following states keep track of whether or not the
   // on-screen keyboard is allowed to be shown.
@@ -394,10 +400,10 @@ class CONTENT_EXPORT BrowserAccessibilityManager : public ui::AXTreeDelegate {
   BrowserAccessibilityDelegate* delegate_;
 
   // Factory to create BrowserAccessibility objects (for dependency injection).
-  scoped_ptr<BrowserAccessibilityFactory> factory_;
+  std::unique_ptr<BrowserAccessibilityFactory> factory_;
 
   // The underlying tree of accessibility objects.
-  scoped_ptr<ui::AXSerializableTree> tree_;
+  std::unique_ptr<ui::AXSerializableTree> tree_;
 
   // A mapping from a node id to its wrapper of type BrowserAccessibility.
   base::hash_map<int32_t, BrowserAccessibility*> id_wrapper_map_;
@@ -419,6 +425,11 @@ class CONTENT_EXPORT BrowserAccessibilityManager : public ui::AXTreeDelegate {
   // dereferenced, only used for comparison.
   BrowserAccessibility* last_focused_node_;
   BrowserAccessibilityManager* last_focused_manager_;
+
+  // True if the root's parent is in another accessibility tree and that
+  // parent's child is the root. Ensures that the parent node is notified
+  // once when this subtree is first connected.
+  bool connected_to_parent_tree_node_;
 
   // The global ID of this accessibility tree.
   AXTreeIDRegistry::AXTreeID ax_tree_id_;

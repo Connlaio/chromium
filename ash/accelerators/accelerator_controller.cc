@@ -46,14 +46,15 @@
 #include "ash/touch/touch_hud_debug.h"
 #include "ash/utility/partial_screenshot_controller.h"
 #include "ash/volume_control_delegate.h"
+#include "ash/wm/common/wm_event.h"
 #include "ash/wm/maximize_mode/maximize_mode_controller.h"
 #include "ash/wm/mru_window_tracker.h"
 #include "ash/wm/overview/window_selector_controller.h"
 #include "ash/wm/power_button_controller.h"
 #include "ash/wm/window_cycle_controller.h"
 #include "ash/wm/window_state.h"
+#include "ash/wm/window_state_aura.h"
 #include "ash/wm/window_util.h"
-#include "ash/wm/wm_event.h"
 #include "base/bind.h"
 #include "base/command_line.h"
 #include "base/metrics/histogram_macros.h"
@@ -457,6 +458,16 @@ void HandleSwitchIme(ImeControlDelegate* ime_control_delegate,
                      const ui::Accelerator& accelerator) {
   base::RecordAction(UserMetricsAction("Accel_Switch_Ime"));
   ime_control_delegate->HandleSwitchIme(accelerator);
+}
+
+void HandleTakeActiveWindowScreenshot(ScreenshotDelegate* screenshot_delegate) {
+  base::RecordAction(UserMetricsAction("Accel_Take_Window_Screenshot"));
+  aura::Window* active_window = wm::GetActiveWindow();
+  if (!active_window)
+    return;
+  DCHECK(screenshot_delegate);
+  if (screenshot_delegate->CanTakeScreenshot())
+    screenshot_delegate->HandleTakeWindowScreenshot(active_window);
 }
 
 void HandleTakePartialScreenshot(ScreenshotDelegate* screenshot_delegate) {
@@ -1081,6 +1092,7 @@ bool AcceleratorController::CanPerformAction(
     case SHOW_KEYBOARD_OVERLAY:
     case SHOW_SYSTEM_TRAY_BUBBLE:
     case SHOW_TASK_MANAGER:
+    case TAKE_ACTIVE_WINDOW_SCREENSHOT:
     case TAKE_PARTIAL_SCREENSHOT:
     case TAKE_SCREENSHOT:
     case TOGGLE_FULLSCREEN:
@@ -1251,6 +1263,9 @@ void AcceleratorController::PerformAction(AcceleratorAction action,
       break;
     case SWITCH_IME:
       HandleSwitchIme(ime_control_delegate_.get(), accelerator);
+      break;
+    case TAKE_ACTIVE_WINDOW_SCREENSHOT:
+      HandleTakeActiveWindowScreenshot(screenshot_delegate_.get());
       break;
     case TAKE_PARTIAL_SCREENSHOT:
       HandleTakePartialScreenshot(screenshot_delegate_.get());

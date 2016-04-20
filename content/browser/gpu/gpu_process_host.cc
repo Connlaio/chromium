@@ -43,6 +43,7 @@
 #include "content/public/browser/render_widget_host_view_frame_subscriber.h"
 #include "content/public/common/content_client.h"
 #include "content/public/common/content_switches.h"
+#include "content/public/common/mojo_channel_switches.h"
 #include "content/public/common/result_codes.h"
 #include "content/public/common/sandbox_type.h"
 #include "content/public/common/sandboxed_process_launcher_delegate.h"
@@ -73,7 +74,7 @@
 #endif
 
 #if defined(USE_X11) && !defined(OS_CHROMEOS)
-#include "ui/gfx/x/x11_switches.h"
+#include "ui/gfx/x/x11_switches.h"  // nogncheck
 #endif
 
 #if defined(OS_MACOSX)
@@ -244,16 +245,6 @@ class GpuSandboxedProcessLauncherDelegate
 
     // Block this DLL even if it is not loaded by the browser process.
     policy->AddDllToUnload(L"cmsetac.dll");
-
-#ifdef USE_AURA
-    // GPU also needs to add sections to the browser for aura
-    // TODO(jschuh): refactor the GPU channel to remove this. crbug.com/128786
-    result = policy->AddRule(sandbox::TargetPolicy::SUBSYS_HANDLES,
-                             sandbox::TargetPolicy::HANDLES_DUP_BROKER,
-                             L"Section");
-    if (result != sandbox::SBOX_ALL_OK)
-      return false;
-#endif
 
     if (cmd_line_->HasSwitch(switches::kEnableLogging)) {
       base::string16 log_file_path = logging::GetLogFileFullPath();
@@ -547,16 +538,18 @@ bool GpuProcessHost::Init() {
   if (channel_id.empty())
     return false;
 
-  if (!SetupMojo())
-    return false;
+  DCHECK(!mojo_application_host_);
+  mojo_application_host_.reset(new MojoApplicationHost);
 
+  gpu::GpuPreferences gpu_preferences = GetGpuPreferencesFromCommandLine();
   if (in_process_) {
     DCHECK_CURRENTLY_ON(BrowserThread::IO);
     DCHECK(g_gpu_main_thread_factory);
     in_process_gpu_thread_.reset(
         g_gpu_main_thread_factory(InProcessChildThreadParams(
-            channel_id, base::MessageLoop::current()->task_runner()),
-            GetGpuPreferencesFromCommandLine()));
+            channel_id, base::MessageLoop::current()->task_runner(),
+            std::string(), mojo_application_host_->GetToken()),
+            gpu_preferences));
     base::Thread::Options options;
 #if defined(OS_WIN)
     // WGL needs to create its own window and pump messages on it.
@@ -568,20 +561,14 @@ bool GpuProcessHost::Init() {
     in_process_gpu_thread_->StartWithOptions(options);
 
     OnProcessLaunched();  // Fake a callback that the process is ready.
-  } else if (!LaunchGpuProcess(channel_id)) {
+  } else if (!LaunchGpuProcess(channel_id, &gpu_preferences)) {
     return false;
   }
 
-  if (!Send(new GpuMsg_Initialize(GetGpuPreferencesFromCommandLine())))
+  if (!Send(new GpuMsg_Initialize(gpu_preferences)))
     return false;
 
   return true;
-}
-
-bool GpuProcessHost::SetupMojo() {
-  DCHECK(!mojo_application_host_);
-  mojo_application_host_.reset(new MojoApplicationHost);
-  return mojo_application_host_->Init();
 }
 
 void GpuProcessHost::RouteOnUIThread(const IPC::Message& message) {
@@ -907,14 +894,6 @@ void GpuProcessHost::OnAcceleratedSurfaceBuffersSwapped(
 void GpuProcessHost::OnProcessLaunched() {
   UMA_HISTOGRAM_TIMES("GPU.GPUProcessLaunchTime",
                       base::TimeTicks::Now() - init_start_time_);
-
-  base::ProcessHandle handle;
-  if (in_process_)
-    handle = base::GetCurrentProcessHandle();
-  else
-    handle = process_->GetData().handle;
-
-  mojo_application_host_->Activate(this, handle);
 }
 
 void GpuProcessHost::OnProcessLaunchFailed() {
@@ -949,7 +928,8 @@ void GpuProcessHost::StopGpuProcess() {
   Send(new GpuMsg_Finalize());
 }
 
-bool GpuProcessHost::LaunchGpuProcess(const std::string& channel_id) {
+bool GpuProcessHost::LaunchGpuProcess(const std::string& channel_id,
+                                      gpu::GpuPreferences* gpu_preferences) {
   if (!(gpu_enabled_ &&
       GpuDataManagerImpl::GetInstance()->ShouldUseSwiftShader()) &&
       !hardware_gpu_enabled_) {
@@ -985,6 +965,8 @@ bool GpuProcessHost::LaunchGpuProcess(const std::string& channel_id) {
 #endif
   cmd_line->AppendSwitchASCII(switches::kProcessType, switches::kGpuProcess);
   cmd_line->AppendSwitchASCII(switches::kProcessChannelID, channel_id);
+  cmd_line->AppendSwitchASCII(switches::kMojoApplicationChannelToken,
+                              mojo_application_host_->GetToken());
 
 #if defined(OS_WIN)
   if (GetContentClient()->browser()->ShouldUseWindowsPrefetchArgument())
@@ -1007,8 +989,8 @@ bool GpuProcessHost::LaunchGpuProcess(const std::string& channel_id) {
   GetContentClient()->browser()->AppendExtraCommandLineSwitches(
       cmd_line, process_->GetData().id);
 
-  GpuDataManagerImpl::GetInstance()->AppendGpuCommandLine(cmd_line);
-
+  GpuDataManagerImpl::GetInstance()->AppendGpuCommandLine(cmd_line,
+                                                          gpu_preferences);
   if (cmd_line->HasSwitch(switches::kUseGL)) {
     swiftshader_rendering_ =
         (cmd_line->GetSwitchValueASCII(switches::kUseGL) == "swiftshader");

@@ -559,6 +559,7 @@ component("base") {
     "numerics/safe_math_impl.h",
     "observer_list.h",
     "observer_list_threadsafe.h",
+    "optional.h",
     "os_compat_android.cc",
     "os_compat_android.h",
     "os_compat_nacl.cc",
@@ -760,11 +761,16 @@ component("base") {
     "task_runner.cc",
     "task_runner.h",
     "task_runner_util.h",
+    "task_scheduler/delayed_task_manager.cc",
+    "task_scheduler/delayed_task_manager.h",
     "task_scheduler/priority_queue.cc",
     "task_scheduler/priority_queue.h",
     "task_scheduler/scheduler_lock.h",
     "task_scheduler/scheduler_lock_impl.cc",
     "task_scheduler/scheduler_lock_impl.h",
+    "task_scheduler/scheduler_task_executor.h",
+    "task_scheduler/scheduler_thread_pool.cc",
+    "task_scheduler/scheduler_thread_pool.h",
     "task_scheduler/scheduler_worker_thread.cc",
     "task_scheduler/scheduler_worker_thread.h",
     "task_scheduler/sequence.cc",
@@ -777,6 +783,8 @@ component("base") {
     "task_scheduler/task_tracker.h",
     "task_scheduler/task_traits.cc",
     "task_scheduler/task_traits.h",
+    "task_scheduler/utils.cc",
+    "task_scheduler/utils.h",
     "template_util.h",
     "third_party/dmg_fp/dmg_fp.h",
     "third_party/dmg_fp/dtoa_wrapper.cc",
@@ -974,6 +982,8 @@ component("base") {
     "win/shortcut.h",
     "win/startup_information.cc",
     "win/startup_information.h",
+    "win/wait_chain.cc",
+    "win/wait_chain.h",
     "win/win_util.cc",
     "win/win_util.h",
     "win/windows_version.cc",
@@ -1629,7 +1639,27 @@ if (is_win) {
 bundle_data("base_unittests_bundle_data") {
   testonly = true
   sources = [
-    "test/data",
+    "test/data/file_util/binary_file.bin",
+    "test/data/file_util/binary_file_diff.bin",
+    "test/data/file_util/binary_file_same.bin",
+    "test/data/file_util/blank_line.txt",
+    "test/data/file_util/blank_line_crlf.txt",
+    "test/data/file_util/crlf.txt",
+    "test/data/file_util/different.txt",
+    "test/data/file_util/different_first.txt",
+    "test/data/file_util/different_last.txt",
+    "test/data/file_util/empty1.txt",
+    "test/data/file_util/empty2.txt",
+    "test/data/file_util/first1.txt",
+    "test/data/file_util/first2.txt",
+    "test/data/file_util/original.txt",
+    "test/data/file_util/same.txt",
+    "test/data/file_util/same_length.txt",
+    "test/data/file_util/shortened.txt",
+    "test/data/json/bom_feff.json",
+    "test/data/serializer_nested_test.json",
+    "test/data/serializer_test.json",
+    "test/data/serializer_test_nowhitespace.json",
   ]
   outputs = [
     "{{bundle_resources_dir}}/" +
@@ -1765,6 +1795,7 @@ test("base_unittests") {
     "native_library_unittest.cc",
     "numerics/safe_numerics_unittest.cc",
     "observer_list_unittest.cc",
+    "optional_unittest.cc",
     "os_compat_android_unittest.cc",
     "path_service_unittest.cc",
     "pickle_unittest.cc",
@@ -1814,13 +1845,16 @@ test("base_unittests") {
     "system_monitor/system_monitor_unittest.cc",
     "task/cancelable_task_tracker_unittest.cc",
     "task_runner_util_unittest.cc",
+    "task_scheduler/delayed_task_manager_unittest.cc",
     "task_scheduler/priority_queue_unittest.cc",
     "task_scheduler/scheduler_lock_unittest.cc",
+    "task_scheduler/scheduler_thread_pool_unittest.cc",
     "task_scheduler/scheduler_worker_thread_unittest.cc",
     "task_scheduler/sequence_sort_key_unittest.cc",
     "task_scheduler/sequence_unittest.cc",
     "task_scheduler/task_tracker_unittest.cc",
     "task_scheduler/test_utils.h",
+    "task_scheduler/utils_unittest.cc",
     "template_util_unittest.cc",
     "test/histogram_tester_unittest.cc",
     "test/icu_test_util.cc",
@@ -1890,6 +1924,7 @@ test("base_unittests") {
     "win/scoped_variant_unittest.cc",
     "win/shortcut_unittest.cc",
     "win/startup_information_unittest.cc",
+    "win/wait_chain_unittest.cc",
     "win/win_util_unittest.cc",
     "win/windows_version_unittest.cc",
     "win/wrapped_window_proc_unittest.cc",
@@ -2021,7 +2056,8 @@ test("base_unittests") {
     if (is_win) {
       data += [ "$root_out_dir/base_unittests.exe.pdb" ]
     } else if (is_mac) {
-      data += [ "$root_out_dir/base_unittests.dSYM/" ]
+      # TODO(crbug.com/330301): make this conditional on mac_strip_release.
+      # data += [ "$root_out_dir/base_unittests.dSYM/" ]
     }
   }
 }
@@ -2230,6 +2266,7 @@ if (is_android) {
       "test/android/javatests/src/org/chromium/base/test/util/DisabledTest.java",
       "test/android/javatests/src/org/chromium/base/test/util/EnormousTest.java",
       "test/android/javatests/src/org/chromium/base/test/util/Feature.java",
+      "test/android/javatests/src/org/chromium/base/test/util/FlakyTest.java",
       "test/android/javatests/src/org/chromium/base/test/util/InMemorySharedPreferences.java",
       "test/android/javatests/src/org/chromium/base/test/util/InstrumentationUtils.java",
       "test/android/javatests/src/org/chromium/base/test/util/IntegrationTest.java",

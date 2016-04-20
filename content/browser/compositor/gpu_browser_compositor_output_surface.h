@@ -5,6 +5,8 @@
 #ifndef CONTENT_BROWSER_COMPOSITOR_GPU_BROWSER_COMPOSITOR_OUTPUT_SURFACE_H_
 #define CONTENT_BROWSER_COMPOSITOR_GPU_BROWSER_COMPOSITOR_OUTPUT_SURFACE_H_
 
+#include <memory>
+
 #include "base/cancelable_callback.h"
 #include "base/macros.h"
 #include "build/build_config.h"
@@ -33,7 +35,8 @@ class GpuBrowserCompositorOutputSurface
       const scoped_refptr<ContextProviderCommandBuffer>& context,
       const scoped_refptr<ContextProviderCommandBuffer>& worker_context,
       const scoped_refptr<ui::CompositorVSyncManager>& vsync_manager,
-      scoped_ptr<BrowserCompositorOverlayCandidateValidator>
+      base::SingleThreadTaskRunner* task_runner,
+      std::unique_ptr<BrowserCompositorOverlayCandidateValidator>
           overlay_candidate_validator);
 
   ~GpuBrowserCompositorOutputSurface() override;
@@ -76,7 +79,7 @@ class GpuBrowserCompositorOutputSurface
                                 base::TimeDelta interval)>
       update_vsync_parameters_callback_;
 
-  scoped_ptr<ReflectorTexture> reflector_texture_;
+  std::unique_ptr<ReflectorTexture> reflector_texture_;
 
   DISALLOW_COPY_AND_ASSIGN(GpuBrowserCompositorOutputSurface);
 };

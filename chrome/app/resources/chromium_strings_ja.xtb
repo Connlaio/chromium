@@ -66,7 +66,6 @@
 <translation id="3130323860337406239">Chromium がマイクを使用しています。</translation>
 <translation id="313551035350905294">現在、管理対象アカウントでログインし、管理者に Chromium プロフィールの管理を委ねています。アプリ、ブックマーク、履歴、パスワード、その他の設定などの Chromium データは <ph name="USER_NAME" /> に永続的に関連付けられます。このデータは、Google アカウントのダッシュボードで削除できますが、別のアカウントに関連付けることはできません。</translation>
 <translation id="3190315855212034486">エラー: Chromium で問題が発生しました。今すぐ再起動しますか？</translation>
-<translation id="3197823471738295152">お使いの端末は最新の状態です。</translation>
 <translation id="3244477511402911926">Chromium 通知センター</translation>
 <translation id="3256316712990552818">Chromium にコピー済み</translation>
 <translation id="3258596308407688501">Chromium はこのデータ ディレクトリへの読み書きを実行できません:
@@ -112,6 +111,7 @@
 <translation id="4987820182225656817">ゲスト ユーザーは、記録を残さずに Chromium を使用できます。</translation>
 <translation id="4994636714258228724">Chromium に自分を追加</translation>
 <translation id="5032989939245619637">Chromium で詳細を保存する</translation>
+<translation id="5116586539350239523">Chromium でユーザーの情報が安全に保存されるので、再度入力する必要がなくなります。</translation>
 <translation id="5358375970380395591">現在、管理対象アカウントでログインしており、あなたの Chromium プロフィールを管理者が制御できる状態になっています。あなたの Chromium データ（アプリ、ブックマーク、履歴、パスワードなどの設定）は永続的に <ph name="USER_NAME" /> に関連付けられます。このデータは Google アカウントのダッシュボードを介して削除できますが、このデータを別のアカウントに関連付けることはできなくなります。<ph name="LEARN_MORE" /></translation>
 <translation id="5398878173008909840">Chromium の最新バージョンをぜひお試しください。</translation>
 <translation id="5427571867875391349">Chromium をデフォルト ブラウザに設定する</translation>
@@ -119,6 +119,7 @@
 <translation id="549669000822060376">Chromium は最新のシステム アップデートをインストールしています。しばらくお待ちください。</translation>
 <translation id="5563479599352954471">ワンタップで検索</translation>
 <translation id="5620765574781326016">ウェブサイト上のトピックについて、ページを移動せずに調べることができます。</translation>
+<translation id="5634636535844844681">Chromium のご利用には Windows 7 以上が必要です。</translation>
 <translation id="5680901439334282664">Chromium にログイン</translation>
 <translation id="5772805321386874569">（Chromium を<ph name="BEGIN_BUTTON" />再起動<ph name="END_BUTTON" />する必要があります）</translation>
 <translation id="5796460469508169315">もうすぐ Chromium を使用できます。</translation>
@@ -222,7 +223,6 @@
 
 このままログインすると、ブックマーク、履歴、その他の設定などの Chromium データが <ph name="ACCOUNT_EMAIL_NEW" /> と統合されます。</translation>
 <translation id="9013087743919948559">Chromium に追加</translation>
-<translation id="9013262824292842194">Chromium のご利用には Windows Vista または Windows XP SP2 以降が必要です。</translation>
 <translation id="9019929317751753759">Chromium をより安全にご利用いただくために、<ph name="IDS_EXTENSION_WEB_STORE_TITLE" />で提供していない次の拡張機能を無効にしました。これは知らないうちに追加された可能性があります。</translation>
 <translation id="9022552996538154597">Chromium にログイン</translation>
 <translation id="9036189287518468038">Chromium アプリ ランチャー</translation>

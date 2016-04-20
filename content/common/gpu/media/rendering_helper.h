@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include <map>
+#include <memory>
 #include <queue>
 #include <vector>
 
@@ -193,10 +194,10 @@ class RenderingHelper {
 
 #if defined(USE_OZONE)
   class StubOzoneDelegate;
-  scoped_ptr<StubOzoneDelegate> platform_window_delegate_;
+  std::unique_ptr<StubOzoneDelegate> platform_window_delegate_;
 
 #if defined(OS_CHROMEOS)
-  scoped_ptr<ui::DisplayConfigurator> display_configurator_;
+  std::unique_ptr<ui::DisplayConfigurator> display_configurator_;
 #endif
 #endif
 

@@ -5,15 +5,15 @@
 #include "base/macros.h"
 #include "components/resource_provider/test.mojom.h"
 #include "mojo/public/cpp/bindings/string.h"
-#include "mojo/shell/public/cpp/shell_test.h"
+#include "services/shell/public/cpp/shell_test.h"
 
 namespace resource_provider {
 namespace test {
 
-class ResourceProviderTest : public mojo::test::ShellTest {
+class ResourceProviderTest : public shell::test::ShellTest {
  public:
   ResourceProviderTest()
-      : mojo::test::ShellTest("exe:resource_provider_unittests") {}
+      : shell::test::ShellTest("exe:resource_provider_unittests") {}
   ~ResourceProviderTest() override {}
 
  private:

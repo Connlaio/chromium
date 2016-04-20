@@ -68,7 +68,7 @@ private:
         return new LayoutDetailsMarker(this);
     }
 
-    void* preDispatchEventHandler(Event* event) override
+    EventDispatchHandlingState* preDispatchEventHandler(Event* event) override
     {
         // Chromium opens autofill popup in a mousedown event listener
         // associated to the document. We don't want to open it in this case
@@ -114,10 +114,6 @@ TextFieldInputType::TextFieldInputType(HTMLInputElement& element)
 
 TextFieldInputType::~TextFieldInputType()
 {
-#if !ENABLE(OILPAN)
-    if (SpinButtonElement* spinButton = spinButtonElement())
-        spinButton->removeSpinButtonOwner();
-#endif
 }
 
 SpinButtonElement* TextFieldInputType::spinButtonElement() const

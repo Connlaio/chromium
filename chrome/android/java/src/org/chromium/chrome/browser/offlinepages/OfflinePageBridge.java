@@ -55,7 +55,7 @@ public class OfflinePageBridge {
     private static Integer sFeatureMode;
 
     /**
-     * Callback used to saving an offline page.
+     * Callback used when saving an offline page.
      */
     public interface SavePageCallback {
         /**
@@ -71,7 +71,7 @@ public class OfflinePageBridge {
     }
 
     /**
-     * Callback used to deleting an offline page.
+     * Callback used when deleting an offline page.
      */
     public interface DeletePageCallback {
         /**
@@ -90,12 +90,18 @@ public class OfflinePageBridge {
      *
      * The returned List will be empty (but non-null) if no items are found.
      */
-    public interface MultipleOfflinePageItemCallback { void onResult(List<OfflinePageItem> items); }
+    public interface MultipleOfflinePageItemCallback {
+        @CalledByNative("MultipleOfflinePageItemCallback")
+        void onResult(List<OfflinePageItem> items);
+    }
 
     /**
      * Callback used when determining whether we have any offline pages.
      */
-    public interface HasPagesCallback { void onResult(boolean items); }
+    public interface HasPagesCallback {
+        @CalledByNative("HasPagesCallback")
+        void onResult(boolean result);
+    }
 
     /**
      * Base observer class listeners to be notified of changes to the offline page model.
@@ -179,22 +185,12 @@ public class OfflinePageBridge {
     }
 
     /**
-     * @return The mode of the offline pages feature. Uses
-     *     {@see org.chromium.components.offlinepages.FeatureMode} enum.
-     */
-    public static int getFeatureMode() {
-        ThreadUtils.assertOnUiThread();
-        if (sFeatureMode == null) sFeatureMode = nativeGetFeatureMode();
-        return sFeatureMode;
-    }
-
-    /**
      * @return True if the offline pages feature is enabled, regardless whether bookmark or saved
      *     page shown in UI strings.
      */
     public static boolean isEnabled() {
         ThreadUtils.assertOnUiThread();
-        return getFeatureMode() != FeatureMode.DISABLED;
+        return nativeGetFeatureMode() != FeatureMode.DISABLED;
     }
 
     /**
@@ -231,46 +227,38 @@ public class OfflinePageBridge {
 
     /**
      * Gets all available offline pages, returning results via the provided callback.
-     * TODO(http://crbug.com/589526): Rename to just OfflinePageBridge#getAllPages and remove the
-     * synchronous method.
      *
      * @param callback The callback to run when the operation completes.
      */
     @VisibleForTesting
-    public void getAllPagesAsync(final MultipleOfflinePageItemCallback callback) {
-        runWhenLoaded(new Runnable() {
-            @Override
-            public void run() {
-                callback.onResult(getAllPages());
-            }
-        });
-    }
-
-    /** Returns via callback whether we have any offline pages at all. */
-    @VisibleForTesting
-    public void hasPages(final HasPagesCallback callback) {
-        // TODO(dewittj): Make this something faster than a full scan.
-        getAllPagesAsync(new MultipleOfflinePageItemCallback() {
-            @Override
-            public void onResult(List<OfflinePageItem> allPages) {
-                callback.onResult(!allPages.isEmpty());
-            }
-        });
+    public void getAllPages(final MultipleOfflinePageItemCallback callback) {
+        List<OfflinePageItem> result = new ArrayList<>();
+        nativeGetAllPages(mNativeOfflinePageBridge, result, callback);
     }
 
     /**
-     * @return Gets all available offline pages. Requires that the model is already loaded.
-     * This function is deprecated. Use OfflinePageBridge#getAllPagesAsync.
+     * Returns via callback whether we have any offline pages at all.
+     *
+     * TODO(dewittj): Remove @VisibleForTesting when this method is called in mainline Chrome.
      */
-    public List<OfflinePageItem> getAllPages() {
-        assert mIsNativeOfflinePageModelLoaded;
-        List<OfflinePageItem> result = new ArrayList<OfflinePageItem>();
-        nativeGetAllPages(mNativeOfflinePageBridge, result);
-        return result;
+    @VisibleForTesting
+    public void hasPages(final String namespace, final HasPagesCallback callback) {
+        nativeHasPages(mNativeOfflinePageBridge, namespace, callback);
+    }
+
+    /**
+     * Returns whether we have any offline pages at all.
+     *
+     * This function may return false even if there are pages saved on disk, depending on the state
+     * of the OfflinePageModel.
+     *
+     * This function is deprecated.  Use OfflinePageBridge#hasPages instead.
+     */
+    public boolean maybeHasPages(String namespace) {
+        return nativeMaybeHasPages(mNativeOfflinePageBridge, namespace);
     }
 
     /** @return A list of all offline ids that match a particular (namespace, client_id) pair. */
-    @VisibleForTesting
     Set<Long> getOfflineIdsForClientId(ClientId clientId) {
         assert mIsNativeOfflinePageModelLoaded;
         long[] offlineIds = nativeGetOfflineIdsForClientId(
@@ -289,6 +277,7 @@ public class OfflinePageBridge {
      * @return A {@link OfflinePageItem} matching the bookmark Id or <code>null</code> if none
      * exist.
      */
+    @VisibleForTesting
     public void getPagesByClientId(
             final ClientId clientId, final MultipleOfflinePageItemCallback callback) {
         runWhenLoaded(new Runnable() {
@@ -435,21 +424,13 @@ public class OfflinePageBridge {
      * @param callback Interface that contains a callback.
      * @see DeletePageCallback
      */
+    @VisibleForTesting
     public void deletePage(final ClientId clientId, DeletePageCallback callback) {
         assert mIsNativeOfflinePageModelLoaded;
+        ArrayList<ClientId> ids = new ArrayList<ClientId>();
+        ids.add(clientId);
 
-        recordFreeSpaceHistograms("OfflinePages.DeletePage.FreeSpacePercentage",
-                "OfflinePages.DeletePage.FreeSpaceMB");
-
-        DeletePageCallback callbackWrapper = wrapCallbackWithHistogramReporting(callback);
-        Set<Long> ids = getOfflineIdsForClientId(clientId);
-        if (ids.size() == 0) {
-            callback.onDeletePageDone(DeletePageResult.NOT_FOUND);
-            return;
-        }
-        for (Long offlineId : ids) {
-            nativeDeletePage(mNativeOfflinePageBridge, callbackWrapper, offlineId);
-        }
+        deletePagesByClientId(ids, callback);
     }
 
     /**
@@ -660,7 +641,11 @@ public class OfflinePageBridge {
     private static native OfflinePageBridge nativeGetOfflinePageBridgeForProfile(Profile profile);
 
     @VisibleForTesting
-    native void nativeGetAllPages(long nativeOfflinePageBridge, List<OfflinePageItem> offlinePages);
+    native void nativeGetAllPages(long nativeOfflinePageBridge, List<OfflinePageItem> offlinePages,
+            final MultipleOfflinePageItemCallback callback);
+    native void nativeHasPages(
+            long nativeOfflinePageBridge, String nameSpace, final HasPagesCallback callback);
+    native boolean nativeMaybeHasPages(long nativeOfflinePageBridge, String nameSpace);
 
     @VisibleForTesting
     native long[] nativeGetOfflineIdsForClientId(
@@ -675,8 +660,6 @@ public class OfflinePageBridge {
     private native void nativeSavePage(long nativeOfflinePageBridge, SavePageCallback callback,
             WebContents webContents, String clientNamespace, String clientId);
     private native void nativeMarkPageAccessed(long nativeOfflinePageBridge, long offlineId);
-    private native void nativeDeletePage(
-            long nativeOfflinePageBridge, DeletePageCallback callback, long offlineId);
     private native void nativeDeletePages(
             long nativeOfflinePageBridge, DeletePageCallback callback, long[] offlineIds);
     private native void nativeGetPagesToCleanUp(

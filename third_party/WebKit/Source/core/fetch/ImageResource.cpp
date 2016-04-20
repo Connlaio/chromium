@@ -37,7 +37,6 @@
 #include "platform/graphics/BitmapImage.h"
 #include "public/platform/Platform.h"
 #include "public/platform/WebCachePolicy.h"
-#include "wtf/CheckedNumeric.h"
 #include "wtf/CurrentTime.h"
 #include "wtf/StdLibExtras.h"
 
@@ -75,14 +74,6 @@ ImageResource::ImageResource(blink::Image* image, const ResourceLoaderOptions& o
     , m_hasDevicePixelRatioHeaderValue(false)
 {
     WTF_LOG(Timers, "new ImageResource(Image) %p", this);
-    setStatus(Cached);
-}
-
-ImageResource::ImageResource(const ResourceRequest& resourceRequest, blink::Image* image, const ResourceLoaderOptions& options)
-    : Resource(resourceRequest, Image, options)
-    , m_image(image)
-{
-    WTF_LOG(Timers, "new ImageResource(ResourceRequest, Image) %p", this);
     setStatus(Cached);
 }
 
@@ -351,7 +342,7 @@ inline void ImageResource::clearImage()
 
     // If our Image has an observer, it's always us so we need to clear the back pointer
     // before dropping our reference.
-    m_image->setImageObserver(nullptr);
+    m_image->clearImageObserver();
     m_image.clear();
 }
 
@@ -430,14 +421,12 @@ void ImageResource::responseReceived(const ResourceResponse& response, PassOwnPt
     }
 }
 
-void ImageResource::decodedSizeChanged(const blink::Image* image, int delta)
+void ImageResource::decodedSizeChangedTo(const blink::Image* image, size_t newSize)
 {
     if (!image || image != m_image)
         return;
 
-    CheckedNumeric<intptr_t> signedDecodedSize(decodedSize());
-    signedDecodedSize += delta;
-    setDecodedSize(safeCast<size_t>(signedDecodedSize.ValueOrDie()));
+    setDecodedSize(newSize);
 }
 
 void ImageResource::didDraw(const blink::Image* image)
@@ -510,6 +499,7 @@ void ImageResource::reloadIfLoFi(ResourceFetcher* fetcher)
     m_resourceRequest.setCachePolicy(WebCachePolicy::BypassingCache);
     m_resourceRequest.setLoFiState(WebURLRequest::LoFiOff);
     error(Resource::LoadError);
+    setStatus(NotStarted);
     load(fetcher);
 }
 

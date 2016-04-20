@@ -541,12 +541,15 @@ void GpuVideoDecoder::PictureReady(const media::Picture& picture) {
 
   DCHECK(decoder_texture_target_);
 
-  bool opaque = IsOpaque(config_.format());
+  VideoPixelFormat pixel_format = vda_->GetOutputFormat();
+  if (pixel_format == PIXEL_FORMAT_UNKNOWN) {
+    pixel_format =
+        IsOpaque(config_.format()) ? PIXEL_FORMAT_XRGB : PIXEL_FORMAT_ARGB;
+  }
 
   scoped_refptr<VideoFrame> frame(VideoFrame::WrapNativeTexture(
-      opaque ? PIXEL_FORMAT_XRGB : PIXEL_FORMAT_ARGB,
-      gpu::MailboxHolder(pb.texture_mailbox(0), gpu::SyncToken(),
-                         decoder_texture_target_),
+      pixel_format, gpu::MailboxHolder(pb.texture_mailbox(0), gpu::SyncToken(),
+                                       decoder_texture_target_),
       BindToCurrentLoop(base::Bind(
           &GpuVideoDecoder::ReleaseMailbox, weak_factory_.GetWeakPtr(),
           factories_, picture.picture_buffer_id(), pb.texture_ids())),
@@ -558,6 +561,9 @@ void GpuVideoDecoder::PictureReady(const media::Picture& picture) {
   }
   if (picture.allow_overlay())
     frame->metadata()->SetBoolean(VideoFrameMetadata::ALLOW_OVERLAY, true);
+#if defined(OS_MACOSX) || defined(OS_WIN)
+  frame->metadata()->SetBoolean(VideoFrameMetadata::DECODER_OWNS_FRAME, true);
+#endif
   CHECK_GT(available_pictures_, 0);
   --available_pictures_;
 

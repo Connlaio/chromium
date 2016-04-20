@@ -66,7 +66,6 @@
 <translation id="3130323860337406239">Chromium menggunakan mikrofon anda.</translation>
 <translation id="313551035350905294">Anda log masuk menggunakan akaun terurus dan memberikan kawalan atas profil Chromium anda kepada pentadbirnya. Data Chromium anda, seperti apl, penanda halaman, sejarah, kata laluan dan tetapan anda yang lain akan terikat kepada <ph name="USER_NAME" /> secara kekal. Anda akan dapat memadamkan data ini melalui Papan Pemuka Akaun Google, tetapi anda tidak akan dapat mengaitkan data ini dengan akaun lain.</translation>
 <translation id="3190315855212034486">Alamak! Chromium mengalami ranap sistem. Lancarkan semula sekarang?</translation>
-<translation id="3197823471738295152">Peranti anda telah dikemas kini.</translation>
 <translation id="3244477511402911926">Pusat Pemberitahuan Chromium</translation>
 <translation id="3256316712990552818">Disalin ke Chromium</translation>
 <translation id="3258596308407688501">Chromium tidak dapat membaca atau menulis pada direktori datanya:
@@ -112,6 +111,7 @@
 <translation id="4987820182225656817">Tetamu boleh menggunakan Chromium tanpa meninggalkan apa-apa.</translation>
 <translation id="4994636714258228724">Tambahkan diri anda kepada Chromium</translation>
 <translation id="5032989939245619637">Simpan butiran di Chromium</translation>
+<translation id="5116586539350239523">Chromium akan menyimpan butiran peribadi anda dengan selamat supaya anda tidak perlu menaipnya semula.</translation>
 <translation id="5358375970380395591">Anda log masuk menggunakan akaun yang terurus dan memberikan pentadbirnya kawalan ke atas profil Chromium anda. Data Chromium anda, seperti apl, penanda halaman, sejarah, kata laluan dan tetapan anda yang lain akan terikat kepada <ph name="USER_NAME" /> secara kekal. Anda akan dapat memadamkan data ini melalui Papan Pemuka Akaun Google, tetapi anda tidak akan dapat mengaitkan data ini dengan akaun lain. <ph name="LEARN_MORE" /></translation>
 <translation id="5398878173008909840">Terdapat versi baharu Chromium tersedia.</translation>
 <translation id="5427571867875391349">Tetapkan Chromium sebagai penyemak imbas lalai anda</translation>
@@ -119,6 +119,7 @@
 <translation id="549669000822060376">Sila tunggu sementara Chromium memasang kemas kini sistem terkini.</translation>
 <translation id="5563479599352954471">Carian dengan satu sentuhan</translation>
 <translation id="5620765574781326016">Ketahui tentang topik di tapak web tanpa meninggalkan halaman.</translation>
+<translation id="5634636535844844681">Chromium memerlukan Windows 7 atau lebih tinggi.</translation>
 <translation id="5680901439334282664">log masuk ke Chromium</translation>
 <translation id="5772805321386874569">(memerlukan Chromium <ph name="BEGIN_BUTTON" />dimulakan semula<ph name="END_BUTTON" />)</translation>
 <translation id="5796460469508169315">Chromium hampir sedia.</translation>
@@ -206,6 +207,7 @@ Chromium tidak dapat mengembalikan tetapan anda.</translation>
 <translation id="8586442755830160949">Hak Cipta <ph name="YEAR" /> Pengarang Chromium. Hak cipta terpelihara.</translation>
 <translation id="8621669128220841554">Pemasangan gagal disebabkan ralat yang tidak dinyatakan. Sila muat turun semula Chromium.</translation>
 <translation id="8628626585870903697">Chromium tidak menyertakan pemapar PDF yang diperlukan oleh Pratonton Cetakan untuk berfungsi.</translation>
+<translation id="8667808506758191620"><ph name="DEVICE_TYPE" /> anda sudah dikemas kini.</translation>
 <translation id="8697124171261953979">Sambungan turut mengawal halaman yang ditunjukkan apabila anda memulakan Chromium atau membuat carian dari Kotak Omni.</translation>
 <translation id="8704119203788522458">Ini Chromium anda</translation>
 <translation id="872034308864968620">Benarkan Chromium Dijalankan dalam Latar Belakang</translation>
@@ -222,7 +224,6 @@ Chromium tidak dapat mengembalikan tetapan anda.</translation>
 
 Meneruskan juga log masuk akan menggabungkan maklumat Chromium seperti penanda halaman, sejarah dan tetapan lain ke <ph name="ACCOUNT_EMAIL_NEW" />.</translation>
 <translation id="9013087743919948559">Tambah ke Chromium</translation>
-<translation id="9013262824292842194">Chromium memerlukan Windows Vista atau Windows XP dengan SP2 atau lebih tinggi.</translation>
 <translation id="9019929317751753759">Untuk menjadikan Chromium lebih selamat, kami melumpuhkan sambungan berikut yang tidak disenaraikan dalam  <ph name="IDS_EXTENSION_WEB_STORE_TITLE" /> dan mungkin telah ditambahkan tanpa pengetahuan anda.</translation>
 <translation id="9022552996538154597">Log masuk ke Chromium</translation>
 <translation id="9036189287518468038">Pelancar Apl Chromium</translation>

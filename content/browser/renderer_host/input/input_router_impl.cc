@@ -5,10 +5,12 @@
 #include "content/browser/renderer_host/input/input_router_impl.h"
 
 #include <math.h>
+
 #include <utility>
 
 #include "base/auto_reset.h"
 #include "base/command_line.h"
+#include "base/memory/ptr_util.h"
 #include "base/metrics/histogram.h"
 #include "base/strings/string_number_conversions.h"
 #include "content/browser/renderer_host/input/gesture_event_queue.h"
@@ -97,7 +99,7 @@ InputRouterImpl::~InputRouterImpl() {
   STLDeleteElements(&pending_select_messages_);
 }
 
-bool InputRouterImpl::SendInput(scoped_ptr<IPC::Message> message) {
+bool InputRouterImpl::SendInput(std::unique_ptr<IPC::Message> message) {
   DCHECK(IPC_MESSAGE_ID_CLASS(message->type()) == InputMsgStart);
   switch (message->type()) {
     // Check for types that require an ACK.
@@ -158,8 +160,11 @@ void InputRouterImpl::SendGestureEvent(
 
   wheel_event_queue_.OnGestureScrollEvent(gesture_event);
 
-  if (gesture_event.event.sourceDevice == blink::WebGestureDeviceTouchscreen)
+  if (gesture_event.event.sourceDevice == blink::WebGestureDeviceTouchscreen) {
+    if (gesture_event.event.type == blink::WebInputEvent::GestureScrollBegin)
+      touch_event_queue_.PrependTouchScrollNotification();
     touch_event_queue_.OnGestureScrollEvent(gesture_event);
+  }
 
   gesture_event_queue_.QueueEvent(gesture_event);
 }
@@ -304,8 +309,7 @@ void InputRouterImpl::OnMouseWheelEventAck(
   ack_handler_->OnWheelEventAck(event, ack_result);
 }
 
-bool InputRouterImpl::SendSelectMessage(
-    scoped_ptr<IPC::Message> message) {
+bool InputRouterImpl::SendSelectMessage(std::unique_ptr<IPC::Message> message) {
   DCHECK(message->type() == InputMsg_SelectRange::ID ||
          message->type() == InputMsg_MoveRangeSelectionExtent::ID);
 
@@ -326,7 +330,7 @@ bool InputRouterImpl::SendSelectMessage(
   return Send(message.release());
 }
 
-bool InputRouterImpl::SendMoveCaret(scoped_ptr<IPC::Message> message) {
+bool InputRouterImpl::SendMoveCaret(std::unique_ptr<IPC::Message> message) {
   DCHECK(message->type() == InputMsg_MoveCaret::ID);
   if (move_caret_pending_) {
     next_move_caret_ = std::move(message);
@@ -368,20 +372,11 @@ void InputRouterImpl::OfferToHandlers(const WebInputEvent& input_event,
   if (OfferToClient(input_event, latency_info))
     return;
 
-  // Touch events should always indicate in the event whether they are
-  // cancelable (respect ACK disposition) or not except touchmove.
   bool should_block = WebInputEventTraits::ShouldBlockEventStream(input_event);
-
   OfferToRenderer(input_event, latency_info,
                   should_block
                       ? InputEventDispatchType::DISPATCH_TYPE_BLOCKING
                       : InputEventDispatchType::DISPATCH_TYPE_NON_BLOCKING);
-
-  if (WebInputEvent::isTouchEventType(input_event.type) &&
-      input_event.type != WebInputEvent::TouchMove) {
-    const WebTouchEvent& touch = static_cast<const WebTouchEvent&>(input_event);
-    DCHECK_EQ(should_block, touch.cancelable);
-  }
 
   // Generate a synthetic ack if the event was sent so it doesn't block.
   if (!should_block) {
@@ -426,7 +421,7 @@ bool InputRouterImpl::OfferToRenderer(const WebInputEvent& input_event,
   // This conversion is temporary. WebInputEvent should be generated
   // directly from ui::Event with the viewport coordinates. See
   // crbug.com/563730.
-  scoped_ptr<blink::WebInputEvent> event_in_viewport =
+  std::unique_ptr<blink::WebInputEvent> event_in_viewport =
       ui::ScaleWebInputEvent(input_event, device_scale_factor_);
   const WebInputEvent* event_to_send =
       event_in_viewport ? event_in_viewport.get() : &input_event;
@@ -474,8 +469,8 @@ void InputRouterImpl::OnMsgMoveCaretAck() {
 void InputRouterImpl::OnSelectMessageAck() {
   select_message_pending_ = false;
   if (!pending_select_messages_.empty()) {
-    scoped_ptr<IPC::Message> next_message =
-        make_scoped_ptr(pending_select_messages_.front());
+    std::unique_ptr<IPC::Message> next_message =
+        base::WrapUnique(pending_select_messages_.front());
     pending_select_messages_.pop_front();
 
     SendSelectMessage(std::move(next_message));
@@ -593,7 +588,7 @@ void InputRouterImpl::ProcessMouseAck(blink::WebInputEvent::Type type,
 
   if (next_mouse_move_) {
     DCHECK(next_mouse_move_->event.type == WebInputEvent::MouseMove);
-    scoped_ptr<MouseEventWithLatencyInfo> next_mouse_move =
+    std::unique_ptr<MouseEventWithLatencyInfo> next_mouse_move =
         std::move(next_mouse_move_);
     SendMouseEvent(*next_mouse_move);
   }

@@ -354,10 +354,8 @@ void OneClickSigninSyncStarter::ConfirmAndSignin() {
     content::RecordAction(
         base::UserMetricsAction("Signin_Show_UntrustedSigninPrompt"));
     // Display a confirmation dialog to the user.
-    browser_->window()->ShowOneClickSigninBubble(
-        BrowserWindow::ONE_CLICK_SIGNIN_BUBBLE_TYPE_SAML_MODAL_DIALOG,
+    browser_->window()->ShowOneClickSigninConfirmation(
         base::UTF8ToUTF16(signin->GetUsernameForAuthInProgress()),
-        base::string16(),  // No error message to display.
         base::Bind(&OneClickSigninSyncStarter::UntrustedSigninConfirmed,
                    weak_pointer_factory_.GetWeakPtr()));
     LoginUIServiceFactory::GetForProfile(profile_)->UntrustedLoginUIShown();
@@ -392,7 +390,7 @@ void OneClickSigninSyncStarter::UntrustedSigninConfirmed(
 }
 
 void OneClickSigninSyncStarter::OnSyncConfirmationUIClosed(
-    LoginUIService::SyncConfirmationUIClosedResults results) {
+    LoginUIService::SyncConfirmationUIClosedResult result) {
 
   if (switches::UsePasswordSeparatedSigninFlow()) {
     // We didn't run this callback in AccountAddedToCookie so do it now.
@@ -400,7 +398,7 @@ void OneClickSigninSyncStarter::OnSyncConfirmationUIClosed(
       sync_setup_completed_callback_.Run(SYNC_SETUP_SUCCESS);
   }
 
-  switch (results) {
+  switch (result) {
     case LoginUIService::CONFIGURE_SYNC_FIRST:
       content::RecordAction(
           base::UserMetricsAction("Signin_Signin_WithAdvancedSyncSettings"));

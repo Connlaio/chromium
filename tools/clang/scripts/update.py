@@ -26,7 +26,7 @@ import zipfile
 # Do NOT CHANGE this if you don't know what you're doing -- see
 # https://chromium.googlesource.com/chromium/src/+/master/docs/updating_clang.md
 # Reverting problematic clang rolls is safe, though.
-CLANG_REVISION = '264915'
+CLANG_REVISION = '266460'
 
 use_head_revision = 'LLVM_FORCE_HEAD_REVISION' in os.environ
 if use_head_revision:
@@ -81,6 +81,12 @@ CDS_URL = os.environ.get('CDS_CLANG_BUCKET_OVERRIDE',
 LLVM_REPO_URL='https://llvm.org/svn/llvm-project'
 if 'LLVM_REPO_URL' in os.environ:
   LLVM_REPO_URL = os.environ['LLVM_REPO_URL']
+
+# Bump after VC updates.
+DIA_DLL = {
+  '2013': 'msdia120.dll',
+  '2015': 'msdia140.dll',
+}
 
 
 def DownloadUrl(url, output_file):
@@ -220,8 +226,8 @@ def RunCommand(command, msvc_arch=None, env=None, fail_hard=True):
 
 def CopyFile(src, dst):
   """Copy a file from src to dst."""
-  shutil.copy(src, dst)
   print "Copying %s to %s" % (src, dst)
+  shutil.copy(src, dst)
 
 
 def CopyDirectoryContents(src, dst, filename_filter=None):
@@ -351,6 +357,13 @@ def GetVSVersion():
   return vs_version
 
 
+def CopyDiaDllTo(target_dir):
+  # This script always wants to use the 64-bit msdia*.dll.
+  dia_path = os.path.join(GetVSVersion().Path(), 'DIA SDK', 'bin', 'amd64')
+  dia_dll = os.path.join(dia_path, DIA_DLL[GetVSVersion().ShortName()])
+  CopyFile(dia_dll, target_dir)
+
+
 def UpdateClang(args):
   print 'Updating Clang to %s...' % PACKAGE_VERSION
 
@@ -384,6 +397,8 @@ def UpdateClang(args):
     try:
       DownloadAndUnpack(cds_full_url, LLVM_BUILD_DIR)
       print 'clang %s unpacked' % PACKAGE_VERSION
+      if sys.platform == 'win32':
+        CopyDiaDllTo(os.path.join(LLVM_BUILD_DIR, 'bin'))
       # Download the gold plugin if requested to by an environment variable.
       # This is used by the CFI ClusterFuzz bot, and it's required for official
       # builds on linux.
@@ -476,6 +491,8 @@ def UpdateClang(args):
     RunCommand(['cmake'] + bootstrap_args + [LLVM_DIR], msvc_arch='x64')
     RunCommand(['ninja'], msvc_arch='x64')
     if args.run_tests:
+      if sys.platform == 'win32':
+        CopyDiaDllTo(os.path.join(LLVM_BOOTSTRAP_DIR, 'bin'))
       RunCommand(['ninja', 'check-all'], msvc_arch='x64')
     RunCommand(['ninja', 'install'], msvc_arch='x64')
     if args.gcc_toolchain:
@@ -584,7 +601,6 @@ def UpdateClang(args):
   if cxx is not None: cc_args.append('-DCMAKE_CXX_COMPILER=' + cxx)
   cmake_args += base_cmake_args + [
       '-DLLVM_BINUTILS_INCDIR=' + binutils_incdir,
-      '-DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly',
       '-DCMAKE_C_FLAGS=' + ' '.join(cflags),
       '-DCMAKE_CXX_FLAGS=' + ' '.join(cxxflags),
       '-DCMAKE_EXE_LINKER_FLAGS=' + ' '.join(ldflags),
@@ -760,6 +776,8 @@ def UpdateClang(args):
     os.chdir(LLVM_BUILD_DIR)
     RunCommand(['ninja', 'cr-check-all'], msvc_arch='x64')
   if args.run_tests:
+    if sys.platform == 'win32':
+      CopyDiaDllTo(os.path.join(LLVM_BUILD_DIR, 'bin'))
     os.chdir(LLVM_BUILD_DIR)
     RunCommand(['ninja', 'check-all'], msvc_arch='x64')
 

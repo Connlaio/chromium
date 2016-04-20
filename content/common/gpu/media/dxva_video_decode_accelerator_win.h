@@ -9,6 +9,7 @@
 #include <d3d9.h>
 #include <initguid.h>
 #include <stdint.h>
+
 // Work around bug in this header by disabling the relevant warning for it.
 // https://connect.microsoft.com/VisualStudio/feedback/details/911260/dxva2api-h-in-win8-sdk-triggers-c4201-with-w4
 #pragma warning(push)
@@ -19,6 +20,7 @@
 
 #include <list>
 #include <map>
+#include <memory>
 #include <vector>
 
 #include "base/compiler_specific.h"
@@ -78,7 +80,7 @@ class H264ConfigChangeDetector {
   // we want to honor after we see an IDR slice.
   bool pending_config_changed_;
 
-  scoped_ptr<media::H264Parser> parser_;
+  std::unique_ptr<media::H264Parser> parser_;
 
   DISALLOW_COPY_AND_ASSIGN(H264ConfigChangeDetector);
 };
@@ -374,6 +376,7 @@ class CONTENT_EXPORT DXVAVideoDecodeAccelerator
   // Contains information about a decoded sample.
   struct PendingSampleInfo {
     PendingSampleInfo(int32_t buffer_id, IMFSample* sample);
+    PendingSampleInfo(const PendingSampleInfo& other);
     ~PendingSampleInfo();
 
     int32_t input_buffer_id;
@@ -470,7 +473,7 @@ class CONTENT_EXPORT DXVAVideoDecodeAccelerator
   // when these changes occur then, the decoder works fine. The
   // H264ConfigChangeDetector class provides functionality to check if the
   // stream configuration changed.
-  scoped_ptr<H264ConfigChangeDetector> config_change_detector_;
+  std::unique_ptr<H264ConfigChangeDetector> config_change_detector_;
 
   // Contains the initialization parameters for the video.
   Config config_;

@@ -46,6 +46,7 @@
 #include "chrome/browser/profiles/profile_impl.h"
 #include "chrome/browser/profiles/profile_info_cache.h"
 #include "chrome/browser/profiles/profiles_state.h"
+#include "chrome/browser/push_messaging/background_budget_service.h"
 #include "chrome/browser/push_messaging/push_messaging_app_identifier.h"
 #include "chrome/browser/renderer_host/pepper/device_id_fetcher.h"
 #include "chrome/browser/search/search.h"
@@ -72,6 +73,7 @@
 #include "components/dom_distiller/core/distilled_page_prefs.h"
 #include "components/flags_ui/pref_service_flags_storage.h"
 #include "components/gcm_driver/gcm_channel_status_syncer.h"
+#include "components/metrics/metrics_service.h"
 #include "components/network_time/network_time_tracker.h"
 #include "components/ntp_snippets/ntp_snippets_service.h"
 #include "components/omnibox/browser/zero_suggest_provider.h"
@@ -91,6 +93,7 @@
 #include "components/sync_driver/sync_prefs.h"
 #include "components/syncable_prefs/pref_service_syncable.h"
 #include "components/translate/core/browser/translate_prefs.h"
+#include "components/update_client/update_client.h"
 #include "components/variations/service/variations_service.h"
 #include "components/web_resource/promo_resource_service.h"
 #include "content/public/browser/render_process_host.h"
@@ -279,6 +282,9 @@ const char kGoogleGeolocationAccessEnabled[] =
     "googlegeolocationaccess.enabled";
 #endif
 
+// Deprecated 4/2016.
+const char kCheckDefaultBrowser[] = "browser.check_default_browser";
+
 }  // namespace
 
 namespace chrome {
@@ -309,6 +315,7 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
   SigninManagerFactory::RegisterPrefs(registry);
   ssl_config::SSLConfigServiceManager::RegisterPrefs(registry);
   startup_metric_utils::RegisterPrefs(registry);
+  update_client::RegisterPrefs(registry);
   web_resource::PromoResourceService::RegisterPrefs(registry);
 
 #if defined(ENABLE_AUTOFILL_DIALOG)
@@ -410,6 +417,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   SCOPED_UMA_HISTOGRAM_TIMER("Settings.RegisterProfilePrefsTime");
   // User prefs. Please keep this list alphabetized.
   autofill::AutofillManager::RegisterProfilePrefs(registry);
+  BackgroundBudgetService::RegisterProfilePrefs(registry);
   sync_driver::SyncPrefs::RegisterProfilePrefs(registry);
   ChromeContentBrowserClient::RegisterProfilePrefs(registry);
   ChromeVersionService::RegisterProfilePrefs(registry);
@@ -592,6 +600,8 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
 #if BUILDFLAG(ENABLE_GOOGLE_NOW)
   registry->RegisterBooleanPref(kGoogleGeolocationAccessEnabled, false);
 #endif
+
+  registry->RegisterBooleanPref(kCheckDefaultBrowser, true);
 }
 
 void RegisterUserProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
@@ -673,6 +683,20 @@ void MigrateObsoleteProfilePrefs(Profile* profile) {
   // Added 3/2016.
   profile_prefs->ClearPref(kGoogleGeolocationAccessEnabled);
 #endif
+
+  // Added 4/2016.
+  if (!profile_prefs->GetBoolean(kCheckDefaultBrowser)) {
+    // Seed kDefaultBrowserLastDeclined with the install date.
+    metrics::MetricsService* metrics_service =
+        g_browser_process->metrics_service();
+    base::Time install_time =
+        metrics_service
+            ? base::Time::FromTimeT(metrics_service->GetInstallDate())
+            : base::Time::Now();
+    profile_prefs->SetInt64(prefs::kDefaultBrowserLastDeclined,
+                            install_time.ToInternalValue());
+  }
+  profile_prefs->ClearPref(kCheckDefaultBrowser);
 }
 
 }  // namespace chrome

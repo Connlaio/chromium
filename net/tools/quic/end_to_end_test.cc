@@ -6,10 +6,10 @@
 #include <sys/epoll.h>
 
 #include <list>
+#include <memory>
 #include <string>
 #include <vector>
 
-#include "base/memory/scoped_ptr.h"
 #include "base/memory/singleton.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/synchronization/waitable_event.h"
@@ -97,7 +97,7 @@ struct TestParams {
              bool client_supports_stateless_rejects,
              bool server_uses_stateless_rejects_if_peer_supported,
              QuicTag congestion_control_tag,
-             bool auto_tune_flow_control_window)
+             bool disable_hpack_dynamic_table)
       : client_supported_versions(client_supported_versions),
         server_supported_versions(server_supported_versions),
         negotiated_version(negotiated_version),
@@ -105,7 +105,7 @@ struct TestParams {
         server_uses_stateless_rejects_if_peer_supported(
             server_uses_stateless_rejects_if_peer_supported),
         congestion_control_tag(congestion_control_tag),
-        auto_tune_flow_control_window(auto_tune_flow_control_window) {}
+        disable_hpack_dynamic_table(disable_hpack_dynamic_table) {}
 
   friend ostream& operator<<(ostream& os, const TestParams& p) {
     os << "{ server_supported_versions: "
@@ -119,7 +119,7 @@ struct TestParams {
        << p.server_uses_stateless_rejects_if_peer_supported;
     os << " congestion_control_tag: "
        << QuicUtils::TagToString(p.congestion_control_tag);
-    os << " auto_tune_flow_control_window: " << p.auto_tune_flow_control_window
+    os << " disable_hpack_dynamic_table: " << p.disable_hpack_dynamic_table
        << " }";
     return os;
   }
@@ -130,7 +130,7 @@ struct TestParams {
   bool client_supports_stateless_rejects;
   bool server_uses_stateless_rejects_if_peer_supported;
   QuicTag congestion_control_tag;
-  bool auto_tune_flow_control_window;
+  bool disable_hpack_dynamic_table;
 };
 
 // Constructs various test permutations.
@@ -161,13 +161,13 @@ vector<TestParams> GetTestParams() {
     for (bool client_supports_stateless_rejects : {true, false}) {
       // TODO(rtenneti): Add kTBBR after BBR code is checked in.
       for (const QuicTag congestion_control_tag : {kRENO, kQBIC}) {
-        for (bool auto_tune_flow_control_window : {true, false}) {
+        for (bool disable_hpack_dynamic_table : {true, false}) {
           const int kMaxEnabledOptions = 5;
           int enabled_options = 0;
           if (congestion_control_tag != kQBIC) {
             ++enabled_options;
           }
-          if (auto_tune_flow_control_window) {
+          if (disable_hpack_dynamic_table) {
             ++enabled_options;
           }
           if (client_supports_stateless_rejects) {
@@ -191,7 +191,7 @@ vector<TestParams> GetTestParams() {
                 client_versions, all_supported_versions,
                 client_versions.front(), client_supports_stateless_rejects,
                 server_uses_stateless_rejects_if_peer_supported,
-                congestion_control_tag, auto_tune_flow_control_window));
+                congestion_control_tag, disable_hpack_dynamic_table));
 
             // Run version negotiation tests tests with no options, or all
             // the options enabled to avoid a combinatorial explosion.
@@ -211,7 +211,7 @@ vector<TestParams> GetTestParams() {
                   server_supported_versions.front(),
                   client_supports_stateless_rejects,
                   server_uses_stateless_rejects_if_peer_supported,
-                  congestion_control_tag, auto_tune_flow_control_window));
+                  congestion_control_tag, disable_hpack_dynamic_table));
             }
           }
         }
@@ -343,13 +343,10 @@ class EndToEndTest : public ::testing::TestWithParam<TestParams> {
     // TODO(nimia): Consider setting the congestion control algorithm for the
     // client as well according to the test parameter.
     copt.push_back(GetParam().congestion_control_tag);
+    copt.push_back(kSPSH);
 
     if (GetParam().client_supports_stateless_rejects) {
       copt.push_back(kSREJ);
-    }
-    if (GetParam().auto_tune_flow_control_window) {
-      copt.push_back(kAFCW);
-      copt.push_back(kIFW5);
     }
     client_config_.SetConnectionOptionsToSend(copt);
 
@@ -510,8 +507,8 @@ class EndToEndTest : public ::testing::TestWithParam<TestParams> {
   bool initialized_;
   IPEndPoint server_address_;
   string server_hostname_;
-  scoped_ptr<ServerThread> server_thread_;
-  scoped_ptr<QuicTestClient> client_;
+  std::unique_ptr<ServerThread> server_thread_;
+  std::unique_ptr<QuicTestClient> client_;
   PacketDroppingTestWriter* client_writer_;
   PacketDroppingTestWriter* server_writer_;
   bool server_started_;
@@ -591,7 +588,7 @@ TEST_P(EndToEndTest, MultipleRequestResponse) {
 
 TEST_P(EndToEndTest, MultipleClients) {
   ASSERT_TRUE(Initialize());
-  scoped_ptr<QuicTestClient> client2(CreateQuicClient(nullptr));
+  std::unique_ptr<QuicTestClient> client2(CreateQuicClient(nullptr));
 
   HTTPMessage request(HttpConstants::HTTP_1_1, HttpConstants::POST, "/foo");
   request.AddHeader("content-length", "3");
@@ -1490,10 +1487,8 @@ TEST_P(EndToEndTest, DifferentFlowControlWindows) {
   set_client_initial_stream_flow_control_receive_window(kClientStreamIFCW);
   set_client_initial_session_flow_control_receive_window(kClientSessionIFCW);
 
-  uint32_t kServerStreamIFCW =
-      GetParam().auto_tune_flow_control_window ? 32 * 1024 : 654321;
-  uint32_t kServerSessionIFCW =
-      GetParam().auto_tune_flow_control_window ? 48 * 1024 : 765432;
+  uint32_t kServerStreamIFCW = 32 * 1024;
+  uint32_t kServerSessionIFCW = 48 * 1024;
   set_server_initial_stream_flow_control_receive_window(kServerStreamIFCW);
   set_server_initial_session_flow_control_receive_window(kServerSessionIFCW);
 
@@ -1541,10 +1536,8 @@ TEST_P(EndToEndTest, DifferentFlowControlWindows) {
 TEST_P(EndToEndTest, HeadersAndCryptoStreamsNoConnectionFlowControl) {
   // The special headers and crypto streams should be subject to per-stream flow
   // control limits, but should not be subject to connection level flow control.
-  const uint32_t kStreamIFCW =
-      GetParam().auto_tune_flow_control_window ? 32 * 1024 : 123456;
-  const uint32_t kSessionIFCW =
-      GetParam().auto_tune_flow_control_window ? 48 * 1024 : 234567;
+  const uint32_t kStreamIFCW = 32 * 1024;
+  const uint32_t kSessionIFCW = 48 * 1024;
   set_client_initial_stream_flow_control_receive_window(kStreamIFCW);
   set_client_initial_session_flow_control_receive_window(kSessionIFCW);
   set_server_initial_stream_flow_control_receive_window(kStreamIFCW);
@@ -1745,7 +1738,8 @@ TEST_P(EndToEndTest, ServerSendPublicResetWithDifferentConnectionId) {
   header.rejected_packet_number = 10101;
   QuicFramer framer(server_supported_versions_, QuicTime::Zero(),
                     Perspective::IS_SERVER);
-  scoped_ptr<QuicEncryptedPacket> packet(framer.BuildPublicResetPacket(header));
+  std::unique_ptr<QuicEncryptedPacket> packet(
+      framer.BuildPublicResetPacket(header));
   testing::NiceMock<MockQuicConnectionDebugVisitor> visitor;
   client_->client()->session()->connection()->set_debug_visitor(&visitor);
   EXPECT_CALL(visitor, OnIncorrectConnectionId(incorrect_connection_id))
@@ -1780,7 +1774,8 @@ TEST_P(EndToEndTest, ClientSendPublicResetWithDifferentConnectionId) {
   header.rejected_packet_number = 10101;
   QuicFramer framer(server_supported_versions_, QuicTime::Zero(),
                     Perspective::IS_CLIENT);
-  scoped_ptr<QuicEncryptedPacket> packet(framer.BuildPublicResetPacket(header));
+  std::unique_ptr<QuicEncryptedPacket> packet(
+      framer.BuildPublicResetPacket(header));
   client_writer_->WritePacket(
       packet->data(), packet->length(),
       client_->client()->GetLatestClientAddress().address(), server_address_,
@@ -1799,7 +1794,7 @@ TEST_P(EndToEndTest, ServerSendVersionNegotiationWithDifferentConnectionId) {
   // Send the version negotiation packet.
   QuicConnectionId incorrect_connection_id =
       client_->client()->session()->connection()->connection_id() + 1;
-  scoped_ptr<QuicEncryptedPacket> packet(
+  std::unique_ptr<QuicEncryptedPacket> packet(
       QuicFramer::BuildVersionNegotiationPacket(incorrect_connection_id,
                                                 server_supported_versions_));
   testing::NiceMock<MockQuicConnectionDebugVisitor> visitor;
@@ -1902,7 +1897,7 @@ TEST_P(EndToEndTest, BadEncryptedData) {
   EXPECT_EQ(kFooResponseBody, client_->SendSynchronousRequest("/foo"));
   EXPECT_EQ(200u, client_->response_headers()->parsed_response_code());
 
-  scoped_ptr<QuicEncryptedPacket> packet(ConstructEncryptedPacket(
+  std::unique_ptr<QuicEncryptedPacket> packet(ConstructEncryptedPacket(
       client_->client()->session()->connection()->connection_id(), false, false,
       false, kDefaultPathId, 1, "At least 20 characters.",
       PACKET_8BYTE_CONNECTION_ID, PACKET_6BYTE_PACKET_NUMBER));

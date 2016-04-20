@@ -37,7 +37,6 @@
 #include "platform/weborigin/KURL.h"
 #include "wtf/Deque.h"
 #include "wtf/HashMap.h"
-#include "wtf/RefCounted.h"
 #include "wtf/text/WTFString.h"
 
 
@@ -55,7 +54,7 @@ class XHRReplayData final
     , public ContextLifecycleObserver {
     USING_GARBAGE_COLLECTED_MIXIN(XHRReplayData);
 public:
-    static RawPtr<XHRReplayData> create(ExecutionContext*, const AtomicString& method, const KURL&, bool async, PassRefPtr<EncodedFormData>, bool includeCredentials);
+    static XHRReplayData* create(ExecutionContext*, const AtomicString& method, const KURL&, bool async, PassRefPtr<EncodedFormData>, bool includeCredentials);
 
     void addHeader(const AtomicString& key, const AtomicString& value);
     const AtomicString& method() const { return m_method; }
@@ -132,7 +131,7 @@ public:
 
         DECLARE_TRACE();
     private:
-        bool hasData() const { return m_dataBuffer; }
+        bool hasData() const { return m_dataBuffer.get(); }
         size_t dataLength() const;
         void appendData(const char* data, size_t dataLength);
         size_t decodeDataToContent();
@@ -158,7 +157,7 @@ public:
         RefPtr<BlobDataHandle> m_downloadedFileBlob;
     };
 
-    static RawPtr<NetworkResourcesData> create(size_t totalBufferSize, size_t resourceBufferSize)
+    static NetworkResourcesData* create(size_t totalBufferSize, size_t resourceBufferSize)
     {
         return new NetworkResourcesData(totalBufferSize, resourceBufferSize);
     }

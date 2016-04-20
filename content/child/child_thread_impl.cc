@@ -111,7 +111,8 @@ class WaitAndExitDelegate : public base::PlatformThread::Delegate {
 };
 
 bool CreateWaitAndExitThread(base::TimeDelta duration) {
-  scoped_ptr<WaitAndExitDelegate> delegate(new WaitAndExitDelegate(duration));
+  std::unique_ptr<WaitAndExitDelegate> delegate(
+      new WaitAndExitDelegate(duration));
 
   const bool thread_created =
       base::PlatformThread::CreateNonJoinable(0, delegate.get());
@@ -235,7 +236,10 @@ void InitializeMojoIPCChannel() {
   platform_channel.reset(mojo::edk::PlatformHandle(
       base::GlobalDescriptors::GetInstance()->Get(kMojoIPCChannel)));
 #endif
-  CHECK(platform_channel.is_valid());
+  // Mojo isn't supported on all child process types.
+  // TODO(crbug.com/604282): Support Mojo in the remaining processes.
+  if (!platform_channel.is_valid())
+    return;
   mojo::edk::SetParentPipeHandle(std::move(platform_channel));
 }
 
@@ -264,7 +268,8 @@ ChildThreadImpl::Options::Builder::InBrowserProcess(
     const InProcessChildThreadParams& params) {
   options_.browser_process_io_runner = params.io_runner();
   options_.channel_name = params.channel_name();
-  options_.in_process_message_pipe_handle = params.handle();
+  options_.in_process_ipc_token = params.ipc_token();
+  options_.in_process_application_token = params.application_token();
   return *this;
 }
 
@@ -333,15 +338,18 @@ scoped_refptr<base::SequencedTaskRunner> ChildThreadImpl::GetIOTaskRunner() {
 }
 
 void ChildThreadImpl::ConnectChannel(bool use_mojo_channel,
-                                     mojo::ScopedMessagePipeHandle handle) {
+                                     const std::string& ipc_token) {
   bool create_pipe_now = true;
   if (use_mojo_channel) {
     VLOG(1) << "Mojo is enabled on child";
+    mojo::ScopedMessagePipeHandle handle;
     if (!IsInBrowserProcess()) {
       DCHECK(!handle.is_valid());
       handle = mojo::edk::CreateChildMessagePipe(
           base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
               switches::kMojoChannelToken));
+    } else {
+      handle = mojo::edk::CreateChildMessagePipe(ipc_token);
     }
     DCHECK(handle.is_valid());
     channel_->Init(IPC::ChannelMojo::CreateClientFactory(std::move(handle)),
@@ -388,7 +396,17 @@ void ChildThreadImpl::Init(const Options& options) {
     UMA_HISTOGRAM_TIMES("Mojo.Shell.ChildConnectionTime", timer.Elapsed());
   }
 
-  mojo_application_.reset(new MojoApplication(GetIOTaskRunner()));
+  mojo_application_.reset(new MojoApplication());
+  std::string mojo_application_token;
+  if (!IsInBrowserProcess()) {
+    mojo_application_token =
+        base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+            switches::kMojoApplicationChannelToken);
+  } else {
+    mojo_application_token = options.in_process_application_token;
+  }
+  if (!mojo_application_token.empty())
+    mojo_application_->InitWithToken(mojo_application_token);
 
   sync_message_filter_ = channel_->CreateSyncMessageFilter();
   thread_safe_sender_ = new ThreadSafeSender(
@@ -434,8 +452,8 @@ void ChildThreadImpl::Init(const Options& options) {
 
   // In single process mode we may already have a power monitor
   if (!base::PowerMonitor::Get()) {
-    scoped_ptr<PowerMonitorBroadcastSource> power_monitor_source(
-      new PowerMonitorBroadcastSource());
+    std::unique_ptr<PowerMonitorBroadcastSource> power_monitor_source(
+        new PowerMonitorBroadcastSource());
     channel_->AddFilter(power_monitor_source->GetMessageFilter());
 
     power_monitor_.reset(
@@ -454,9 +472,7 @@ void ChildThreadImpl::Init(const Options& options) {
     channel_->AddFilter(startup_filter);
   }
 
-  ConnectChannel(
-      options.use_mojo_channel,
-      mojo::MakeScopedHandle(options.in_process_message_pipe_handle));
+  ConnectChannel(options.use_mojo_channel, options.in_process_ipc_token);
   IPC::AttachmentBroker* broker = IPC::AttachmentBroker::GetGlobal();
   if (broker && !broker->IsPrivilegedBroker())
     broker->RegisterBrokerCommunicationChannel(channel_.get());
@@ -568,17 +584,17 @@ IPC::MessageRouter* ChildThreadImpl::GetRouter() {
   return &router_;
 }
 
-scoped_ptr<base::SharedMemory> ChildThreadImpl::AllocateSharedMemory(
+std::unique_ptr<base::SharedMemory> ChildThreadImpl::AllocateSharedMemory(
     size_t buf_size) {
   DCHECK(base::MessageLoop::current() == message_loop());
   return AllocateSharedMemory(buf_size, this);
 }
 
 // static
-scoped_ptr<base::SharedMemory> ChildThreadImpl::AllocateSharedMemory(
+std::unique_ptr<base::SharedMemory> ChildThreadImpl::AllocateSharedMemory(
     size_t buf_size,
     IPC::Sender* sender) {
-  scoped_ptr<base::SharedMemory> shared_buf;
+  std::unique_ptr<base::SharedMemory> shared_buf;
   // Ask the browser to create the shared memory, since this is blocked by the
   // sandbox on most platforms.
   base::SharedMemoryHandle shared_mem_handle;
@@ -598,9 +614,6 @@ scoped_ptr<base::SharedMemory> ChildThreadImpl::AllocateSharedMemory(
 }
 
 bool ChildThreadImpl::OnMessageReceived(const IPC::Message& msg) {
-  if (mojo_application_->OnMessageReceived(msg))
-    return true;
-
   // Resource responses are sent to the resource dispatcher.
   if (resource_dispatcher_->OnMessageReceived(msg))
     return true;

@@ -17,12 +17,12 @@
 #include "base/macros.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/display/win/display_info.h"
+#include "ui/display/win/dpi.h"
 #include "ui/display/win/screen_win_display.h"
 #include "ui/gfx/display.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/screen.h"
 #include "ui/gfx/test/display_util.h"
-#include "ui/gfx/win/dpi.h"
 
 namespace display {
 namespace win {
@@ -184,7 +184,7 @@ class TestScreenWinManager : public TestScreenWinInitializer {
 
  private:
   HWND hwndLast_ = nullptr;
-  scoped_ptr<ScreenWin> screen_win_;
+  std::unique_ptr<ScreenWin> screen_win_;
   std::vector<MONITORINFOEX> monitor_infos_;
   std::vector<DisplayInfo> display_infos_;
   std::unordered_map<HWND, gfx::Rect> hwnd_map_;
@@ -198,7 +198,7 @@ class ScreenWinTest : public testing::Test {
 
   void SetUp() override {
     testing::Test::SetUp();
-    gfx::SetDefaultDeviceScaleFactor(1.0);
+    display::win::SetDefaultDeviceScaleFactor(1.0);
     screen_win_initializer_.reset(new TestScreenWinManager());
     SetUpScreen(screen_win_initializer_.get());
     screen_win_initializer_->InitializeScreenWin();
@@ -206,7 +206,7 @@ class ScreenWinTest : public testing::Test {
 
   void TearDown() override {
     screen_win_initializer_.reset();
-    gfx::SetDefaultDeviceScaleFactor(1.0);
+    display::win::SetDefaultDeviceScaleFactor(1.0);
     testing::Test::TearDown();
   }
 
@@ -218,7 +218,7 @@ class ScreenWinTest : public testing::Test {
   }
 
  private:
-  scoped_ptr<TestScreenWinManager> screen_win_initializer_;
+  std::unique_ptr<TestScreenWinManager> screen_win_initializer_;
 
   DISALLOW_COPY_AND_ASSIGN(ScreenWinTest);
 };
@@ -297,8 +297,8 @@ class ScreenWinTestSingleDisplay1_25x : public ScreenWinTest {
   ScreenWinTestSingleDisplay1_25x() = default;
 
   void SetUpScreen(TestScreenWinInitializer* initializer) override {
-    gfx::SetDefaultDeviceScaleFactor(1.25);
-    // Add Monitor of Scale Factor 1.0 since gfx::GetDPIScale performs the
+    display::win::SetDefaultDeviceScaleFactor(1.25);
+    // Add Monitor of Scale Factor 1.0 since display::GetDPIScale performs the
     // clamping and not ScreenWin.
     initializer->AddMonitor(gfx::Rect(0, 0, 1920, 1200),
                             gfx::Rect(0, 0, 1920, 1100),
@@ -358,7 +358,7 @@ class ScreenWinTestSingleDisplay1_5x : public ScreenWinTest {
   ScreenWinTestSingleDisplay1_5x() = default;
 
   void SetUpScreen(TestScreenWinInitializer* initializer) override {
-    gfx::SetDefaultDeviceScaleFactor(1.5);
+    display::win::SetDefaultDeviceScaleFactor(1.5);
     initializer->AddMonitor(gfx::Rect(0, 0, 1920, 1200),
                             gfx::Rect(0, 0, 1920, 1100),
                             L"primary",
@@ -417,7 +417,7 @@ class ScreenWinTestSingleDisplay2x : public ScreenWinTest {
   ScreenWinTestSingleDisplay2x() = default;
 
   void SetUpScreen(TestScreenWinInitializer* initializer) override {
-    gfx::SetDefaultDeviceScaleFactor(2.0);
+    display::win::SetDefaultDeviceScaleFactor(2.0);
     initializer->AddMonitor(gfx::Rect(0, 0, 1920, 1200),
                             gfx::Rect(0, 0, 1920, 1100),
                             L"primary",
@@ -575,7 +575,7 @@ class ScreenWinTestTwoDisplays2x : public ScreenWinTest {
   ScreenWinTestTwoDisplays2x() = default;
 
   void SetUpScreen(TestScreenWinInitializer* initializer) override {
-    gfx::SetDefaultDeviceScaleFactor(2.0);
+    display::win::SetDefaultDeviceScaleFactor(2.0);
     initializer->AddMonitor(gfx::Rect(0, 0, 1920, 1200),
                             gfx::Rect(0, 0, 1920, 1100),
                             L"primary",
@@ -678,7 +678,7 @@ class ScreenWinTestTwoDisplays2x1xVirtualized : public ScreenWinTest {
   ScreenWinTestTwoDisplays2x1xVirtualized() = default;
 
   void SetUpScreen(TestScreenWinInitializer* initializer) override {
-    gfx::SetDefaultDeviceScaleFactor(2.0);
+    display::win::SetDefaultDeviceScaleFactor(2.0);
     initializer->AddMonitor(gfx::Rect(0, 0, 3200, 1600),
                             gfx::Rect(0, 0, 3200, 1500),
                             L"primary",

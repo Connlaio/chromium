@@ -644,18 +644,20 @@ static CSSValue* valueForGridTrackList(GridTrackSizingDirection direction, const
     CSSValueList* list = CSSValueList::createSpaceSeparated();
     size_t insertionIndex;
     if (isLayoutGrid) {
-        const Vector<LayoutUnit>& trackPositions = direction == ForColumns ? toLayoutGrid(layoutObject)->columnPositions() : toLayoutGrid(layoutObject)->rowPositions();
+        const auto* grid = toLayoutGrid(layoutObject);
+        const Vector<LayoutUnit>& trackPositions = direction == ForColumns ? grid->columnPositions() : grid->rowPositions();
         // There are at least #tracks + 1 grid lines (trackPositions). Apart from that, the grid container can generate implicit grid tracks,
         // so we'll have more trackPositions than trackSizes as the latter only contain the explicit grid.
         ASSERT(trackPositions.size() - 1 >= trackSizes.size());
 
         size_t i;
-        LayoutUnit gutterSize = toLayoutGrid(layoutObject)->guttersSize(direction, 2);
+        LayoutUnit gutterSize = grid->guttersSize(direction, 2);
+        LayoutUnit offsetBetweenTracks = grid->offsetBetweenTracks(direction);
         for (i = 0; i < trackPositions.size() - 2; ++i) {
             addValuesForNamedGridLinesAtIndex(orderedNamedGridLines, i, *list);
-            list->append(zoomAdjustedPixelValue(trackPositions[i + 1] - trackPositions[i] - gutterSize, style));
+            list->append(zoomAdjustedPixelValue(trackPositions[i + 1] - trackPositions[i] - gutterSize - offsetBetweenTracks, style));
         }
-        // Last track line does not have any gutter.
+        // Last track line does not have any gutter or distribution offset.
         addValuesForNamedGridLinesAtIndex(orderedNamedGridLines, i, *list);
         list->append(zoomAdjustedPixelValue(trackPositions[i + 1] - trackPositions[i], style));
         insertionIndex = trackPositions.size() - 1;
@@ -2166,6 +2168,25 @@ CSSValue* ComputedStyleCSSValueMapping::get(CSSPropertyID propertyID, const Comp
         if (contextualLigaturesState != FontDescription::NormalLigaturesState)
             valueList->append(cssValuePool().createIdentifierValue(contextualLigaturesState == FontDescription::DisabledLigaturesState ? CSSValueNoContextual : CSSValueContextual));
         return valueList;
+    }
+    case CSSPropertyFontVariantCaps: {
+        FontDescription::FontVariantCaps variantCaps = style.getFontDescription().variantCaps();
+        switch (variantCaps) {
+        case FontDescription::CapsNormal:
+            return cssValuePool().createIdentifierValue(CSSValueNormal);
+        case FontDescription::SmallCaps:
+            return cssValuePool().createIdentifierValue(CSSValueSmallCaps);
+        case FontDescription::AllSmallCaps:
+            return cssValuePool().createIdentifierValue(CSSValueAllSmallCaps);
+        case FontDescription::PetiteCaps:
+            return cssValuePool().createIdentifierValue(CSSValuePetiteCaps);
+        case FontDescription::AllPetiteCaps:
+            return cssValuePool().createIdentifierValue(CSSValueAllPetiteCaps);
+        case FontDescription::Unicase:
+            return cssValuePool().createIdentifierValue(CSSValueUnicase);
+        case FontDescription::TitlingCaps:
+            return cssValuePool().createIdentifierValue(CSSValueTitlingCaps);
+        }
     }
     case CSSPropertyZIndex:
         if (style.hasAutoZIndex())

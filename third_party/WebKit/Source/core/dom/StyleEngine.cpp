@@ -76,29 +76,6 @@ static bool isStyleElement(Node& node)
     return isHTMLStyleElement(node) || isSVGStyleElement(node);
 }
 
-#if !ENABLE(OILPAN)
-void StyleEngine::detachFromDocument()
-{
-    // Cleanup is performed eagerly when the StyleEngine is removed from the
-    // document. The StyleEngine is unreachable after this, since only the
-    // document has a reference to it.
-    for (unsigned i = 0; i < m_injectedAuthorStyleSheets.size(); ++i)
-        m_injectedAuthorStyleSheets[i]->clearOwnerNode();
-
-    if (m_fontSelector) {
-        m_fontSelector->clearDocument();
-        m_fontSelector->unregisterForInvalidationCallbacks(this);
-    }
-
-    // Decrement reference counts for things we could be keeping alive.
-    m_fontSelector.clear();
-    m_resolver.clear();
-    m_styleSheetCollectionMap.clear();
-    m_dirtyTreeScopes.clear();
-    m_activeTreeScopes.clear();
-}
-#endif
-
 inline Document* StyleEngine::master()
 {
     if (isMaster())
@@ -147,7 +124,7 @@ void StyleEngine::resetCSSFeatureFlags(const RuleFeatureSet& features)
     m_maxDirectAdjacentSelectors = features.maxDirectAdjacentSelectors();
 }
 
-void StyleEngine::injectAuthorSheet(RawPtr<StyleSheetContents> authorSheet)
+void StyleEngine::injectAuthorSheet(StyleSheetContents* authorSheet)
 {
     m_injectedAuthorStyleSheets.append(CSSStyleSheet::create(authorSheet, m_document));
     markDocumentDirty();
@@ -531,9 +508,9 @@ static bool isCacheableForStyleElement(const StyleSheetContents& contents)
     return true;
 }
 
-RawPtr<CSSStyleSheet> StyleEngine::createSheet(Element* e, const String& text, TextPosition startPosition)
+CSSStyleSheet* StyleEngine::createSheet(Element* e, const String& text, TextPosition startPosition)
 {
-    RawPtr<CSSStyleSheet> styleSheet = nullptr;
+    CSSStyleSheet* styleSheet = nullptr;
 
     e->document().styleEngine().addPendingSheet();
 
@@ -559,9 +536,9 @@ RawPtr<CSSStyleSheet> StyleEngine::createSheet(Element* e, const String& text, T
     return styleSheet;
 }
 
-RawPtr<CSSStyleSheet> StyleEngine::parseSheet(Element* e, const String& text, TextPosition startPosition)
+CSSStyleSheet* StyleEngine::parseSheet(Element* e, const String& text, TextPosition startPosition)
 {
-    RawPtr<CSSStyleSheet> styleSheet = nullptr;
+    CSSStyleSheet* styleSheet = nullptr;
     styleSheet = CSSStyleSheet::createInline(e, KURL(), startPosition, e->document().characterSet());
     styleSheet->contents()->parseStringAtPosition(text, startPosition);
     return styleSheet;
@@ -603,12 +580,10 @@ void StyleEngine::fontsNeedUpdate(CSSFontSelector*)
     document().setNeedsStyleRecalc(SubtreeStyleChange, StyleChangeReasonForTracing::create(StyleChangeReason::Fonts));
 }
 
-void StyleEngine::setFontSelector(RawPtr<CSSFontSelector> fontSelector)
+void StyleEngine::setFontSelector(CSSFontSelector* fontSelector)
 {
-#if !ENABLE(OILPAN)
     if (m_fontSelector)
         m_fontSelector->unregisterForInvalidationCallbacks(this);
-#endif
     m_fontSelector = fontSelector;
     if (m_fontSelector)
         m_fontSelector->registerForInvalidationCallbacks(this);
@@ -731,24 +706,6 @@ void StyleEngine::setStatsEnabled(bool enabled)
         m_styleResolverStats = StyleResolverStats::create();
     else
         m_styleResolverStats->reset();
-}
-
-void StyleEngine::setShadowCascadeOrder(ShadowCascadeOrder order)
-{
-    DCHECK_NE(order, ShadowCascadeOrder::ShadowCascadeNone);
-
-    if (order == m_shadowCascadeOrder)
-        return;
-
-    if (order == ShadowCascadeOrder::ShadowCascadeV0)
-        m_mayContainV0Shadow = true;
-
-    // For V0 -> V1 upgrade, we need style recalculation for the whole document.
-    if (m_shadowCascadeOrder == ShadowCascadeOrder::ShadowCascadeV0 && order == ShadowCascadeOrder::ShadowCascadeV1)
-        document().setNeedsStyleRecalc(SubtreeStyleChange, StyleChangeReasonForTracing::create(StyleChangeReason::Shadow));
-
-    if (order > m_shadowCascadeOrder)
-        m_shadowCascadeOrder = order;
 }
 
 void StyleEngine::setPreferredStylesheetSetNameIfNotSet(const String& name)

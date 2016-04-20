@@ -92,9 +92,11 @@ class ContentWindowLayoutManager : public aura::LayoutManager {
 class WmNativeWidgetMus : public views::NativeWidgetMus {
  public:
   WmNativeWidgetMus(views::internal::NativeWidgetDelegate* delegate,
-                    mojo::Connector* connector,
+                    shell::Connector* connector,
                     mus::Window* window)
-      : NativeWidgetMus(delegate, connector, window,
+      : NativeWidgetMus(delegate,
+                        connector,
+                        window,
                         mus::mojom::SurfaceType::UNDERLAY) {}
   ~WmNativeWidgetMus() override {
   }
@@ -177,7 +179,7 @@ class ClientViewMus : public views::ClientView {
 
 // static
 void NonClientFrameController::Create(
-    mojo::Connector* connector,
+    shell::Connector* connector,
     mus::Window* window,
     mus::WindowManagerClient* window_manager_client) {
   new NonClientFrameController(connector, window, window_manager_client);
@@ -194,7 +196,7 @@ int NonClientFrameController::GetMaxTitleBarButtonWidth() {
 }
 
 NonClientFrameController::NonClientFrameController(
-    mojo::Connector* connector,
+    shell::Connector* connector,
     mus::Window* window,
     mus::WindowManagerClient* window_manager_client)
     : widget_(new views::Widget), window_(window) {
@@ -254,6 +256,12 @@ bool NonClientFrameController::CanMinimize() const {
   return window_ &&
          (GetResizeBehavior(window_) &
           mus::mojom::kResizeBehaviorCanMinimize) != 0;
+}
+
+bool NonClientFrameController::ShouldShowWindowTitle() const {
+  // Only draw the title if the client hasn't declared any additional client
+  // areas which might conflict with it.
+  return window_ && window_->additional_client_areas().empty();
 }
 
 views::ClientView* NonClientFrameController::CreateClientView(

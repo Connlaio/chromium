@@ -13,6 +13,7 @@
 #include "base/callback.h"
 #include "base/containers/hash_tables.h"
 #include "base/lazy_instance.h"
+#include "base/memory/ptr_util.h"
 #include "content/browser/frame_host/frame_tree_node.h"
 #include "content/browser/frame_host/navigator.h"
 #include "content/browser/frame_host/render_frame_host_factory.h"
@@ -95,7 +96,6 @@ FrameTree::FrameTree(Navigator* navigator,
       root_(new FrameTreeNode(this,
                               navigator,
                               render_frame_delegate,
-                              render_view_delegate,
                               render_widget_delegate,
                               manager_delegate,
                               // The top-level frame must always be in a
@@ -184,10 +184,10 @@ bool FrameTree::AddFrame(
 
   // AddChild is what creates the RenderFrameHost.
   FrameTreeNode* added_node = parent->AddChild(
-      make_scoped_ptr(new FrameTreeNode(
+      base::WrapUnique(new FrameTreeNode(
           this, parent->navigator(), render_frame_delegate_,
-          render_view_delegate_, render_widget_delegate_, manager_delegate_,
-          scope, frame_name, frame_unique_name, frame_owner_properties)),
+          render_widget_delegate_, manager_delegate_, scope, frame_name,
+          frame_unique_name, frame_owner_properties)),
       process_id, new_routing_id);
 
   // Set sandbox flags and make them effective immediately, since initial

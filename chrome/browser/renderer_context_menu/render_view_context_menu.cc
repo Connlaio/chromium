@@ -14,6 +14,7 @@
 #include "base/command_line.h"
 #include "base/logging.h"
 #include "base/macros.h"
+#include "base/metrics/field_trial.h"
 #include "base/metrics/histogram.h"
 #include "base/stl_util.h"
 #include "base/strings/string_util.h"
@@ -454,7 +455,9 @@ void AddAvatarToLastMenuItem(gfx::Image icon, ui::SimpleMenuModel* menu) {
 void AddGoogleIconToLastMenuItem(ui::SimpleMenuModel* menu) {
 #if defined(GOOGLE_CHROME_BUILD)
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-          switches::kEnableGoogleBrandedContextMenu)) {
+          switches::kEnableGoogleBrandedContextMenu) ||
+      base::FieldTrialList::FindFullName("GoogleBrandedContextMenu") ==
+          "branded") {
     menu->SetIcon(
         menu->GetItemCount() - 1,
         ui::ResourceBundle::GetSharedInstance().GetImageNamed(IDR_GOOGLE_ICON));
@@ -1802,7 +1805,7 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
       content::Referrer referrer = CreateReferrer(url, params_);
       DownloadManager* dlm =
           BrowserContext::GetDownloadManager(browser_context_);
-      scoped_ptr<DownloadUrlParameters> dl_params(
+      std::unique_ptr<DownloadUrlParameters> dl_params(
           DownloadUrlParameters::FromWebContents(source_web_contents_, url));
       dl_params->set_referrer(referrer);
       dl_params->set_referrer_encoding(params_.frame_charset);
@@ -2072,7 +2075,7 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
           translate::TranslateDownloadManager::GetLanguageCode(target_lang);
       // Since the user decided to translate for that language and site, clears
       // any preferences for not translating them.
-      scoped_ptr<translate::TranslatePrefs> prefs(
+      std::unique_ptr<translate::TranslatePrefs> prefs(
           ChromeTranslateClient::CreateTranslatePrefs(
               GetPrefs(browser_context_)));
       prefs->UnblockLanguage(original_lang);

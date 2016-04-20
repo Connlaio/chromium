@@ -176,8 +176,9 @@ bool PP_HardwareAccelerationCompatible(bool accelerated,
 
 }  // namespace
 
-PepperVideoEncoderHost::ShmBuffer::ShmBuffer(uint32_t id,
-                                             scoped_ptr<base::SharedMemory> shm)
+PepperVideoEncoderHost::ShmBuffer::ShmBuffer(
+    uint32_t id,
+    std::unique_ptr<base::SharedMemory> shm)
     : id(id), shm(std::move(shm)), in_use(true) {
   DCHECK(this->shm);
 }
@@ -230,6 +231,15 @@ int32_t PepperVideoEncoderHost::OnResourceMessageReceived(
                                         OnHostMsgClose)
   PPAPI_END_MESSAGE_MAP()
   return PP_ERROR_FAILED;
+}
+
+void PepperVideoEncoderHost::OnGpuControlLostContext() {
+#if DCHECK_IS_ON()
+  // This should never occur more than once.
+  DCHECK(!lost_context_);
+  lost_context_ = true;
+#endif
+  NotifyPepperError(PP_ERROR_RESOURCE_FAILED);
 }
 
 int32_t PepperVideoEncoderHost::OnHostMsgGetSupportedProfiles(
@@ -377,7 +387,7 @@ void PepperVideoEncoderHost::RequireBitstreamBuffers(
   frame_count_ = frame_count;
 
   for (uint32_t i = 0; i < kDefaultNumberOfBitstreamBuffers; ++i) {
-    scoped_ptr<base::SharedMemory> shm(
+    std::unique_ptr<base::SharedMemory> shm(
         RenderThread::Get()->HostAllocateSharedMemoryBuffer(
             output_buffer_size));
 
@@ -519,9 +529,8 @@ bool PepperVideoEncoderHost::EnsureGpuChannel() {
     return false;
   }
 
-  command_buffer_->SetContextLostCallback(media::BindToCurrentLoop(
-      base::Bind(&PepperVideoEncoderHost::NotifyPepperError,
-                 weak_ptr_factory_.GetWeakPtr(), PP_ERROR_RESOURCE_FAILED)));
+  command_buffer_->SetGpuControlClient(this);
+
   if (!command_buffer_->Initialize()) {
     Close();
     return false;
@@ -575,7 +584,7 @@ void PepperVideoEncoderHost::AllocateVideoFrames() {
   size *= frame_count_;
   uint32_t total_size = size.ValueOrDie();
 
-  scoped_ptr<base::SharedMemory> shm(
+  std::unique_ptr<base::SharedMemory> shm(
       RenderThreadImpl::current()->HostAllocateSharedMemoryBuffer(total_size));
   if (!shm ||
       !buffer_manager_.SetBuffers(frame_count_, buffer_size_aligned,

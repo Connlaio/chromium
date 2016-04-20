@@ -42,7 +42,7 @@ DownloadInterruptReason BaseFile::Initialize(
     base::File file,
     int64_t bytes_so_far,
     const std::string& hash_so_far,
-    scoped_ptr<crypto::SecureHash> hash_state) {
+    std::unique_ptr<crypto::SecureHash> hash_state) {
   DCHECK_CURRENTLY_ON(BrowserThread::FILE);
   DCHECK(!detached_);
 
@@ -179,7 +179,7 @@ void BaseFile::Cancel() {
   Detach();
 }
 
-scoped_ptr<crypto::SecureHash> BaseFile::Finish() {
+std::unique_ptr<crypto::SecureHash> BaseFile::Finish() {
   DCHECK_CURRENTLY_ON(BrowserThread::FILE);
   Close();
   return std::move(secure_hash_);
@@ -219,18 +219,24 @@ DownloadInterruptReason BaseFile::CalculatePartialHash(
 
   const size_t kMinBufferSize = secure_hash_->GetHashLength();
   const size_t kMaxBufferSize = 1024 * 512;
+  static_assert(kMaxBufferSize <= std::numeric_limits<int>::max(),
+                "kMaxBufferSize must fit on an int");
 
   // The size of the buffer is:
   // - at least kMinBufferSize so that we can use it to hold the hash as well.
   // - at most kMaxBufferSize so that there's a reasonable bound.
   // - not larger than |bytes_so_far_| unless bytes_so_far_ is less than the
   //   hash size.
-  std::vector<char> buffer(std::max(
-      kMinBufferSize, std::min<size_t>(kMaxBufferSize, bytes_so_far_)));
+  std::vector<char> buffer(std::max<int64_t>(
+      kMinBufferSize, std::min<int64_t>(kMaxBufferSize, bytes_so_far_)));
 
   int64_t current_position = 0;
   while (current_position < bytes_so_far_) {
-    int length = file_.ReadAtCurrentPos(&buffer.front(), buffer.size());
+    // While std::min needs to work with int64_t, the result is always at most
+    // kMaxBufferSize, which fits on an int.
+    int bytes_to_read =
+        std::min<int64_t>(buffer.size(), bytes_so_far_ - current_position);
+    int length = file_.ReadAtCurrentPos(&buffer.front(), bytes_to_read);
     if (length == -1) {
       return LogInterruptReason("Reading partial file",
                                 logging::GetLastSystemErrorCode(),
@@ -252,7 +258,7 @@ DownloadInterruptReason BaseFile::CalculatePartialHash(
   if (!hash_to_expect.empty()) {
     DCHECK_EQ(secure_hash_->GetHashLength(), hash_to_expect.size());
     DCHECK(buffer.size() >= secure_hash_->GetHashLength());
-    scoped_ptr<crypto::SecureHash> partial_hash(secure_hash_->Clone());
+    std::unique_ptr<crypto::SecureHash> partial_hash(secure_hash_->Clone());
     partial_hash->Finish(&buffer.front(), buffer.size());
 
     if (memcmp(&buffer.front(),

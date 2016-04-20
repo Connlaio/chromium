@@ -52,7 +52,7 @@ class RecordingProofVerifier : public ProofVerifier {
                               const string& signature,
                               const ProofVerifyContext* context,
                               string* error_details,
-                              scoped_ptr<ProofVerifyDetails>* details,
+                              std::unique_ptr<ProofVerifyDetails>* details,
                               ProofVerifierCallback* callback) override {
     common_name_.clear();
     if (certs.empty()) {
@@ -311,7 +311,7 @@ ssize_t QuicTestClient::SendMessage(const HTTPMessage& message) {
   // CHECK(message.body_chunks().empty())
   //      << "HTTPMessage::body_chunks not supported";
 
-  scoped_ptr<BalsaHeaders> munged_headers(MungeHeaders(message.headers()));
+  std::unique_ptr<BalsaHeaders> munged_headers(MungeHeaders(message.headers()));
   ssize_t ret = GetOrCreateStreamAndSendRequest(
       (munged_headers.get() ? munged_headers.get() : message.headers()),
       message.body(), message.has_complete_message(), nullptr);
@@ -561,6 +561,7 @@ void QuicTestClient::OnClose(QuicSpdyStream* stream) {
     // Always close the stream, regardless of whether it was the last stream
     // written.
     client()->OnClose(stream);
+    ++num_responses_;
   }
   if (stream_ != stream) {
     return;
@@ -581,7 +582,6 @@ void QuicTestClient::OnClose(QuicSpdyStream* stream) {
   response_header_size_ = response_headers_.GetSizeForWriteBuffer();
   response_body_size_ = stream_->data().size();
   stream_ = nullptr;
-  ++num_responses_;
 }
 
 bool QuicTestClient::CheckVary(const SpdyHeaderBlock& client_request,

@@ -19,6 +19,7 @@
 #include "base/i18n/char_iterator.h"
 #include "base/logging.h"
 #include "base/macros.h"
+#include "base/memory/ptr_util.h"
 #include "base/memory/shared_memory.h"
 #include "base/memory/weak_ptr.h"
 #include "base/metrics/field_trial.h"
@@ -103,6 +104,7 @@
 #include "content/renderer/media/render_media_log.h"
 #include "content/renderer/media/renderer_webmediaplayer_delegate.h"
 #include "content/renderer/media/user_media_client_impl.h"
+#include "content/renderer/media/web_media_element_source_utils.h"
 #include "content/renderer/media/webmediaplayer_ms.h"
 #include "content/renderer/mojo/service_registry_js_wrapper.h"
 #include "content/renderer/mojo_bindings_controller.h"
@@ -123,8 +125,6 @@
 #include "content/renderer/shared_worker_repository.h"
 #include "content/renderer/skia_benchmarking_extension.h"
 #include "content/renderer/stats_collection_controller.h"
-#include "content/renderer/usb/web_usb_client_impl.h"
-#include "content/renderer/wake_lock/wake_lock_dispatcher.h"
 #include "content/renderer/web_frame_utils.h"
 #include "content/renderer/web_ui_extension.h"
 #include "content/renderer/websharedworker_proxy.h"
@@ -152,6 +152,7 @@
 #include "third_party/WebKit/public/platform/WebCachePolicy.h"
 #include "third_party/WebKit/public/platform/WebData.h"
 #include "third_party/WebKit/public/platform/WebMediaPlayer.h"
+#include "third_party/WebKit/public/platform/WebMediaPlayerSource.h"
 #include "third_party/WebKit/public/platform/WebSecurityOrigin.h"
 #include "third_party/WebKit/public/platform/WebStorageQuotaCallbacks.h"
 #include "third_party/WebKit/public/platform/WebString.h"
@@ -159,7 +160,6 @@
 #include "third_party/WebKit/public/platform/WebURLError.h"
 #include "third_party/WebKit/public/platform/WebURLResponse.h"
 #include "third_party/WebKit/public/platform/WebVector.h"
-#include "third_party/WebKit/public/platform/modules/webusb/WebUSBClient.h"
 #include "third_party/WebKit/public/web/WebColorSuggestion.h"
 #include "third_party/WebKit/public/web/WebDocument.h"
 #include "third_party/WebKit/public/web/WebFindOptions.h"
@@ -506,7 +506,7 @@ bool IsTopLevelNavigation(WebFrame* frame) {
 
 WebURLRequest CreateURLRequestForNavigation(
     const CommonNavigationParams& common_params,
-    scoped_ptr<StreamOverrideParameters> stream_override,
+    std::unique_ptr<StreamOverrideParameters> stream_override,
     bool is_view_source_mode_enabled) {
   WebURLRequest request(common_params.url);
   if (is_view_source_mode_enabled)
@@ -618,8 +618,9 @@ bool IsReload(FrameMsg_Navigate_Type::Value navigation_type) {
 RenderFrameImpl::CreateRenderFrameImplFunction g_create_render_frame_impl =
     nullptr;
 
-void OnGotInstanceID(mojo::shell::mojom::ConnectResult result,
-                     const std::string& user_id, uint32_t instance_id) {}
+void OnGotInstanceID(shell::mojom::ConnectResult result,
+                     const std::string& user_id,
+                     uint32_t instance_id) {}
 
 WebString ConvertRelativePathToHtmlAttribute(const base::FilePath& path) {
   DCHECK(!path.IsAbsolute());
@@ -1014,7 +1015,6 @@ RenderFrameImpl::RenderFrameImpl(const CreateParams& params)
       contains_media_player_(false),
 #endif
       devtools_agent_(nullptr),
-      wakelock_dispatcher_(nullptr),
       geolocation_dispatcher_(NULL),
       push_messaging_dispatcher_(NULL),
       presentation_dispatcher_(NULL),
@@ -1124,7 +1124,7 @@ void RenderFrameImpl::Initialize() {
 
 void RenderFrameImpl::InitializeBlameContext(RenderFrameImpl* parent_frame) {
   DCHECK(!blame_context_);
-  blame_context_ = new FrameBlameContext(this, parent_frame);
+  blame_context_ = base::WrapUnique(new FrameBlameContext(this, parent_frame));
   blame_context_->Initialize();
 }
 
@@ -1483,12 +1483,12 @@ void RenderFrameImpl::OnNavigate(
   TRACE_EVENT2("navigation", "RenderFrameImpl::OnNavigate", "id", routing_id_,
                "url", common_params.url.possibly_invalid_spec());
   NavigateInternal(common_params, start_params, request_params,
-                   scoped_ptr<StreamOverrideParameters>());
+                   std::unique_ptr<StreamOverrideParameters>());
 }
 
 void RenderFrameImpl::BindServiceRegistry(
-    mojo::shell::mojom::InterfaceProviderRequest services,
-    mojo::shell::mojom::InterfaceProviderPtr exposed_services) {
+    shell::mojom::InterfaceProviderRequest services,
+    shell::mojom::InterfaceProviderPtr exposed_services) {
   service_registry_.Bind(std::move(services));
   service_registry_.BindRemoteServiceProvider(std::move(exposed_services));
 }
@@ -1498,7 +1498,7 @@ ManifestManager* RenderFrameImpl::manifest_manager() {
 }
 
 void RenderFrameImpl::SetPendingNavigationParams(
-    scoped_ptr<NavigationParams> navigation_params) {
+    std::unique_ptr<NavigationParams> navigation_params) {
   pending_navigation_params_ = std::move(navigation_params);
 }
 
@@ -1818,7 +1818,7 @@ void RenderFrameImpl::OnJavaScriptExecuteRequestForTests(
 
   // A bunch of tests expect to run code in the context of a user gesture, which
   // can grant additional privileges (e.g. the ability to create popups).
-  scoped_ptr<blink::WebScopedUserGesture> gesture(
+  std::unique_ptr<blink::WebScopedUserGesture> gesture(
       has_user_gesture ? new blink::WebScopedUserGesture : nullptr);
   v8::HandleScope handle_scope(blink::mainThreadIsolate());
   v8::Local<v8::Value> result =
@@ -1887,7 +1887,7 @@ void RenderFrameImpl::JavaScriptIsolatedWorldRequest::completed(
       converter.SetDateAllowed(true);
       converter.SetRegExpAllowed(true);
       for (const auto& value : result) {
-        scoped_ptr<base::Value> result_value(
+        std::unique_ptr<base::Value> result_value(
             converter.FromV8Value(value, context));
         list.Append(result_value ? std::move(result_value)
                                  : base::Value::CreateNullValue());
@@ -1915,7 +1915,7 @@ void RenderFrameImpl::HandleJavascriptExecutionResult(
       V8ValueConverterImpl converter;
       converter.SetDateAllowed(true);
       converter.SetRegExpAllowed(true);
-      scoped_ptr<base::Value> result_value(
+      std::unique_ptr<base::Value> result_value(
           converter.FromV8Value(result, context));
       list.Set(0, result_value ? std::move(result_value)
                                : base::Value::CreateNullValue());
@@ -2074,7 +2074,7 @@ void RenderFrameImpl::OnPostMessageEvent(
     V8ValueConverterImpl converter;
     converter.SetDateAllowed(true);
     converter.SetRegExpAllowed(true);
-    scoped_ptr<base::Value> value(new base::StringValue(params.data));
+    std::unique_ptr<base::Value> value(new base::StringValue(params.data));
     v8::Local<v8::Value> result_value = converter.ToV8Value(value.get(),
                                                              context);
     serialized_script_value = WebSerializedScriptValue::serialize(result_value);
@@ -2240,7 +2240,7 @@ blink::WebPlugin* RenderFrameImpl::CreatePlugin(
     blink::WebFrame* frame,
     const WebPluginInfo& info,
     const blink::WebPluginParams& params,
-    scoped_ptr<content::PluginInstanceThrottler> throttler) {
+    std::unique_ptr<content::PluginInstanceThrottler> throttler) {
   DCHECK_EQ(frame_, frame);
 #if defined(ENABLE_PLUGINS)
   if (info.type == WebPluginInfo::PLUGIN_TYPE_BROWSER_PLUGIN) {
@@ -2259,7 +2259,7 @@ blink::WebPlugin* RenderFrameImpl::CreatePlugin(
     if (pepper_module.get()) {
       return new PepperWebPluginImpl(
           pepper_module.get(), params, this,
-          make_scoped_ptr(
+          base::WrapUnique(
               static_cast<PluginInstanceThrottlerImpl*>(throttler.release())));
     }
   }
@@ -2410,7 +2410,7 @@ blink::WebPlugin* RenderFrameImpl::createPlugin(
 }
 
 blink::WebMediaPlayer* RenderFrameImpl::createMediaPlayer(
-    const blink::WebURL& url,
+    const blink::WebMediaPlayerSource& source,
     WebMediaPlayerClient* client,
     WebMediaPlayerEncryptedMediaClient* encrypted_client,
     WebContentDecryptionModule* initial_cdm,
@@ -2422,12 +2422,16 @@ blink::WebMediaPlayer* RenderFrameImpl::createMediaPlayer(
     contains_media_player_ = true;
   }
 #endif  // defined(VIDEO_HOLE)
-
-  blink::WebMediaStream web_stream(
-      blink::WebMediaStreamRegistry::lookupMediaStreamDescriptor(url));
+  blink::WebMediaStream web_stream =
+      GetWebMediaStreamFromWebMediaPlayerSource(source);
   if (!web_stream.isNull())
     return CreateWebMediaPlayerForMediaStream(client, sink_id,
                                               frame_->getSecurityOrigin());
+
+  // If |source| was not a MediaStream, it must be a URL.
+  // TODO(guidou): Fix this when support for other srcObject types is added.
+  DCHECK(source.isURL());
+  blink::WebURL url = source.getAsURL();
 
   RenderThreadImpl* render_thread = RenderThreadImpl::current();
 
@@ -2463,10 +2467,10 @@ blink::WebMediaPlayer* RenderFrameImpl::createMediaPlayer(
 #endif  // defined(OS_ANDROID)
 
 #if defined(ENABLE_MOJO_RENDERER)
-  scoped_ptr<media::RendererFactory> media_renderer_factory(
+  std::unique_ptr<media::RendererFactory> media_renderer_factory(
       new media::MojoRendererFactory(GetMediaInterfaceProvider()));
 #else
-  scoped_ptr<media::RendererFactory> media_renderer_factory =
+  std::unique_ptr<media::RendererFactory> media_renderer_factory =
       GetContentClient()->renderer()->CreateMediaRendererFactory(
           this, render_thread->GetGpuFactories(), media_log);
 
@@ -2551,7 +2555,7 @@ blink::WebCookieJar* RenderFrameImpl::cookieJar() {
 
 blink::BlameContext* RenderFrameImpl::frameBlameContext() {
   DCHECK(blame_context_);
-  return blame_context_;
+  return blame_context_.get();
 }
 
 blink::WebServiceWorkerProvider*
@@ -3731,7 +3735,7 @@ void RenderFrameImpl::willSendRequest(
   // PlzNavigate: there may also be a stream url associated with the request.
   WebString custom_user_agent;
   WebString requested_with;
-  scoped_ptr<StreamOverrideParameters> stream_override;
+  std::unique_ptr<StreamOverrideParameters> stream_override;
   if (request.getExtraData()) {
     RequestExtraData* old_extra_data =
         static_cast<RequestExtraData*>(request.getExtraData());
@@ -3966,6 +3970,12 @@ void RenderFrameImpl::didChangePerformanceTiming() {
                     DidChangePerformanceTiming());
 }
 
+void RenderFrameImpl::didObserveLoadingBehavior(
+    blink::WebLoadingBehaviorFlag behavior) {
+  FOR_EACH_OBSERVER(RenderFrameObserver, observers_,
+                    DidObserveLoadingBehavior(behavior));
+}
+
 void RenderFrameImpl::didCreateScriptContext(blink::WebLocalFrame* frame,
                                              v8::Local<v8::Context> context,
                                              int extension_group,
@@ -4041,12 +4051,6 @@ void RenderFrameImpl::requestStorageQuota(
 void RenderFrameImpl::willOpenWebSocket(blink::WebSocketHandle* handle) {
   WebSocketBridge* impl = static_cast<WebSocketBridge*>(handle);
   impl->set_render_frame_id(routing_id_);
-}
-
-blink::WebWakeLockClient* RenderFrameImpl::wakeLockClient() {
-  if (!wakelock_dispatcher_)
-    wakelock_dispatcher_ = new WakeLockDispatcher(this);
-  return wakelock_dispatcher_;
 }
 
 blink::WebGeolocationClient* RenderFrameImpl::geolocationClient() {
@@ -4279,16 +4283,6 @@ blink::WebBluetooth* RenderFrameImpl::bluetooth() {
   return bluetooth_.get();
 }
 
-blink::WebUSBClient* RenderFrameImpl::usbClient() {
-  if (!base::FeatureList::IsEnabled(features::kWebUsb))
-    return nullptr;
-
-  if (!usb_client_)
-    usb_client_.reset(new WebUSBClientImpl(GetServiceRegistry()));
-
-  return usb_client_.get();
-}
-
 #if defined(ENABLE_WEBVR)
 blink::WebVRClient* RenderFrameImpl::webVRClient() {
   if (!vr_dispatcher_)
@@ -4384,7 +4378,7 @@ void RenderFrameImpl::SendDidCommitProvisionalLoad(
   FrameHostMsg_DidCommitProvisionalLoad_Params params;
   params.http_status_code = response.httpStatusCode();
   params.url_is_unreachable = ds->hasUnreachableURL();
-  params.is_post = false;
+  params.method = "GET";
   params.intended_as_new_entry =
       navigation_state->request_params().intended_as_new_entry;
   params.did_create_new_entry = commit_type == blink::WebStandardCommit;
@@ -4452,6 +4446,15 @@ void RenderFrameImpl::SendDidCommitProvisionalLoad(
     params.page_state = SingleHistoryItemToPageState(item);
     post_id = ExtractPostId(item);
   }
+
+  // When using subframe navigation entries, method and post id are set for all
+  // frames. Otherwise, they are only set for the main frame navigation.
+  if (SiteIsolationPolicy::UseSubframeNavigationEntries()) {
+    params.method = request.httpMethod().latin1();
+    if (params.method == "POST")
+      params.post_id = post_id;
+  }
+
   params.frame_unique_name = item.target().utf8();
   params.item_sequence_number = item.itemSequenceNumber();
   params.document_sequence_number = item.documentSequenceNumber();
@@ -4521,10 +4524,12 @@ void RenderFrameImpl::SendDidCommitProvisionalLoad(
           frame, ds->request());
     }
 
-    base::string16 method = request.httpMethod();
-    if (base::EqualsASCII(method, "POST")) {
-      params.is_post = true;
-      params.post_id = post_id;
+    // When using subframe navigation entries, method and post id have already
+    // been set.
+    if (!SiteIsolationPolicy::UseSubframeNavigationEntries()) {
+      params.method = request.httpMethod().latin1();
+      if (params.method == "POST")
+        params.post_id = post_id;
     }
 
     // Send the user agent override back.
@@ -4614,7 +4619,7 @@ void RenderFrameImpl::OnCommitNavigation(
   CHECK(IsBrowserSideNavigationEnabled());
   // This will override the url requested by the WebURLLoader, as well as
   // provide it with the response to the request.
-  scoped_ptr<StreamOverrideParameters> stream_override(
+  std::unique_ptr<StreamOverrideParameters> stream_override(
       new StreamOverrideParameters());
   stream_override->stream_url = stream_url;
   stream_override->response = response;
@@ -4655,7 +4660,7 @@ void RenderFrameImpl::OnFailedNavigation(
   blink::WebURLError error =
       CreateWebURLError(common_params.url, has_stale_copy_in_cache, error_code);
   WebURLRequest failed_request = CreateURLRequestForNavigation(
-      common_params, scoped_ptr<StreamOverrideParameters>(),
+      common_params, std::unique_ptr<StreamOverrideParameters>(),
       frame_->isViewSourceModeEnabled());
   SendFailedProvisionalLoad(failed_request, error, frame_);
 
@@ -5216,7 +5221,7 @@ void RenderFrameImpl::NavigateInternal(
     const CommonNavigationParams& common_params,
     const StartNavigationParams& start_params,
     const RequestNavigationParams& request_params,
-    scoped_ptr<StreamOverrideParameters> stream_params) {
+    std::unique_ptr<StreamOverrideParameters> stream_params) {
   bool browser_side_navigation = IsBrowserSideNavigationEnabled();
 
   // Lower bound for browser initiated navigation start time.
@@ -5316,7 +5321,7 @@ void RenderFrameImpl::NavigateInternal(
     // which should be the case because history navigations are routed via the
     // browser.
     DCHECK_NE(0, request_params.nav_entry_id);
-    scoped_ptr<HistoryEntry> entry =
+    std::unique_ptr<HistoryEntry> entry =
         PageStateToHistoryEntry(request_params.page_state);
     if (entry) {
       if (!SiteIsolationPolicy::UseSubframeNavigationEntries()) {
@@ -5325,7 +5330,7 @@ void RenderFrameImpl::NavigateInternal(
         // process.
         DCHECK(!frame_->parent());
         DCHECK(!browser_side_navigation);
-        scoped_ptr<NavigationParams> navigation_params(
+        std::unique_ptr<NavigationParams> navigation_params(
             new NavigationParams(*pending_navigation_params_.get()));
         has_history_navigation_in_frame =
             render_view_->history_controller()->GoToEntry(
@@ -5516,7 +5521,7 @@ void RenderFrameImpl::InitializeUserMediaClient() {
   DCHECK(!web_user_media_client_);
   web_user_media_client_ = new UserMediaClientImpl(
       this, RenderThreadImpl::current()->GetPeerConnectionDependencyFactory(),
-      make_scoped_ptr(new MediaStreamDispatcher(this)));
+      base::WrapUnique(new MediaStreamDispatcher(this)));
 #endif
 }
 
@@ -5548,17 +5553,17 @@ WebMediaPlayer* RenderFrameImpl::CreateWebMediaPlayerForMediaStream(
 #endif  // defined(ENABLE_WEBRTC)
 }
 
-scoped_ptr<MediaStreamRendererFactory>
+std::unique_ptr<MediaStreamRendererFactory>
 RenderFrameImpl::CreateRendererFactory() {
-  scoped_ptr<MediaStreamRendererFactory> factory =
+  std::unique_ptr<MediaStreamRendererFactory> factory =
       GetContentClient()->renderer()->CreateMediaStreamRendererFactory();
   if (factory.get())
     return factory;
 #if defined(ENABLE_WEBRTC)
-  return scoped_ptr<MediaStreamRendererFactory>(
+  return std::unique_ptr<MediaStreamRendererFactory>(
       new MediaStreamRendererFactoryImpl());
 #else
-  return scoped_ptr<MediaStreamRendererFactory>(
+  return std::unique_ptr<MediaStreamRendererFactory>(
       static_cast<MediaStreamRendererFactory*>(NULL));
 #endif
 }
@@ -5836,12 +5841,12 @@ void RenderFrameImpl::UpdateNavigationState(DocumentState* document_state,
     }
     document_state->set_navigation_state(CreateNavigationStateFromPending());
 
-    const CommonNavigationParams& common_params =
-        pending_navigation_params_->common_params;
     // The |set_was_load_data_with_base_url_request| state should not change for
     // an in-page navigation, so skip updating it from the in-page navigation
     // params in this case.
     if (!was_within_same_page) {
+      const CommonNavigationParams& common_params =
+          pending_navigation_params_->common_params;
       bool load_data = !common_params.base_url_for_data_url.is_empty() &&
                        !common_params.history_url_for_data_url.is_empty() &&
                        common_params.url.SchemeIs(url::kDataScheme);
@@ -5901,8 +5906,7 @@ media::MediaPermission* RenderFrameImpl::GetMediaPermission() {
 }
 
 #if defined(ENABLE_MOJO_MEDIA)
-mojo::shell::mojom::InterfaceProvider*
-RenderFrameImpl::GetMediaInterfaceProvider() {
+shell::mojom::InterfaceProvider* RenderFrameImpl::GetMediaInterfaceProvider() {
   if (!media_interface_provider_) {
     media_interface_provider_.reset(new MediaInterfaceProvider(base::Bind(
         &RenderFrameImpl::ConnectToApplication, base::Unretained(this))));
@@ -5969,14 +5973,14 @@ void RenderFrameImpl::GetInterface(mojo::InterfaceRequest<Interface> request) {
   GetServiceRegistry()->ConnectToRemoteService(std::move(request));
 }
 
-mojo::shell::mojom::InterfaceProviderPtr RenderFrameImpl::ConnectToApplication(
+shell::mojom::InterfaceProviderPtr RenderFrameImpl::ConnectToApplication(
     const GURL& url) {
   if (!connector_)
     GetServiceRegistry()->ConnectToRemoteService(mojo::GetProxy(&connector_));
-  mojo::shell::mojom::InterfaceProviderPtr interface_provider;
-  mojo::shell::mojom::IdentityPtr target(mojo::shell::mojom::Identity::New());
+  shell::mojom::InterfaceProviderPtr interface_provider;
+  shell::mojom::IdentityPtr target(shell::mojom::Identity::New());
   target->name = url.spec();
-  target->user_id = mojo::shell::mojom::kInheritUserID;
+  target->user_id = shell::mojom::kInheritUserID;
   target->instance = "";
   connector_->Connect(std::move(target), GetProxy(&interface_provider), nullptr,
                       nullptr, base::Bind(&OnGotInstanceID));

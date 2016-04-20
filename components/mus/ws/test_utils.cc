@@ -10,7 +10,7 @@
 #include "components/mus/ws/window_manager_access_policy.h"
 #include "components/mus/ws/window_manager_factory_service.h"
 #include "mojo/converters/geometry/geometry_type_converters.h"
-#include "mojo/shell/public/interfaces/connector.mojom.h"
+#include "services/shell/public/interfaces/connector.mojom.h"
 
 namespace mus {
 namespace ws {
@@ -129,7 +129,7 @@ int EventDispatcherTestApi::NumberPointerTargetsForWindow(
 
 WindowTree* TestDisplayBinding::CreateWindowTree(ServerWindow* root) {
   return window_server_->EmbedAtWindow(
-      root, mojo::shell::mojom::kRootUserID, mus::mojom::WindowTreeClientPtr(),
+      root, shell::mojom::kRootUserID, mus::mojom::WindowTreeClientPtr(),
       make_scoped_ptr(new WindowManagerAccessPolicy));
 }
 
@@ -213,10 +213,10 @@ void TestWindowTreeClient::OnWindowViewportMetricsChanged(
 
 void TestWindowTreeClient::OnWindowHierarchyChanged(
     uint32_t window,
-    uint32_t new_parent,
     uint32_t old_parent,
+    uint32_t new_parent,
     mojo::Array<mojom::WindowDataPtr> windows) {
-  tracker_.OnWindowHierarchyChanged(window, new_parent, old_parent,
+  tracker_.OnWindowHierarchyChanged(window, old_parent, new_parent,
                                     std::move(windows));
 }
 
@@ -327,6 +327,10 @@ void TestWindowServerDelegate::CreateDefaultDisplays() {
 
   for (int i = 0; i < num_displays_to_create_; ++i)
     AddDisplay();
+}
+
+bool TestWindowServerDelegate::IsTestConfig() const {
+  return true;
 }
 
 ServerWindow* FirstRoot(WindowTree* tree) {

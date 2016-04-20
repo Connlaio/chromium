@@ -10,6 +10,7 @@
 #include "base/command_line.h"
 #include "base/containers/hash_tables.h"
 #include "base/lazy_instance.h"
+#include "base/memory/ptr_util.h"
 #include "base/metrics/histogram.h"
 #include "base/process/kill.h"
 #include "base/time/time.h"
@@ -274,8 +275,8 @@ RenderFrameHostImpl::~RenderFrameHostImpl() {
   if (is_active() && !frame_tree_node_->IsMainFrame() && render_frame_created_)
     Send(new FrameMsg_Delete(routing_id_));
 
-  // NULL out the swapout timer; in crash dumps this member will be null only if
-  // the dtor has run.
+  // Null out the swapout timer; in crash dumps this member will be null only if
+  // the dtor has run.  (It may also be null in tests.)
   swapout_event_monitor_timeout_.reset();
 
   for (const auto& iter: visual_state_callbacks_) {
@@ -451,7 +452,7 @@ blink::WebPageVisibilityState RenderFrameHostImpl::GetVisibilityState() {
 bool RenderFrameHostImpl::Send(IPC::Message* message) {
   if (IPC_MESSAGE_ID_CLASS(message->type()) == InputMsgStart) {
     return render_view_host_->GetWidget()->input_router()->SendInput(
-        make_scoped_ptr(message));
+        base::WrapUnique(message));
   }
 
   return GetProcess()->Send(message);
@@ -678,6 +679,14 @@ void RenderFrameHostImpl::AccessibilityFatalError() {
 
 gfx::AcceleratedWidget
     RenderFrameHostImpl::AccessibilityGetAcceleratedWidget() {
+  // Only the main frame's current frame host is connected to the native
+  // widget tree for accessibility, so return null if this is queried on
+  // any other frame.
+  if (frame_tree_node()->parent() ||
+      frame_tree_node()->current_frame_host() != this) {
+    return gfx::kNullAcceleratedWidget;
+  }
+
   RenderWidgetHostViewBase* view = static_cast<RenderWidgetHostViewBase*>(
       render_view_host_->GetWidget()->GetView());
   if (view)
@@ -896,10 +905,30 @@ void RenderFrameHostImpl::OnDidStartProvisionalLoad(
 
 void RenderFrameHostImpl::OnDidFailProvisionalLoadWithError(
     const FrameHostMsg_DidFailProvisionalLoadWithError_Params& params) {
-  if (!IsBrowserSideNavigationEnabled() && navigation_handle_) {
+  if (!navigation_handle_) {
+    bad_message::ReceivedBadMessage(
+        GetProcess(), bad_message::RFH_FAIL_PROVISIONAL_LOAD_NO_HANDLE);
+    return;
+  }
+
+  if (IsBrowserSideNavigationEnabled() &&
+      navigation_handle_->GetNetErrorCode() == net::OK) {
+    // The renderer should not be sending this message unless asked to commit
+    // an error page.
+    // TODO(clamy): Stop sending DidFailProvisionalLoad IPCs at all when enough
+    // observers have moved to DidFinishNavigation.
+    bad_message::ReceivedBadMessage(
+        GetProcess(), bad_message::RFH_FAIL_PROVISIONAL_LOAD_NO_ERROR);
+    return;
+  }
+
+  // Update the error code in the NavigationHandle of the navigation.
+  // PlzNavigate: this has already done in NavigationRequest::OnRequestFailed.
+  if (!IsBrowserSideNavigationEnabled()) {
     navigation_handle_->set_net_error_code(
         static_cast<net::Error>(params.error_code));
   }
+
   frame_tree_node_->navigator()->DidFailProvisionalLoadWithError(this, params);
 }
 
@@ -1137,13 +1166,13 @@ int RenderFrameHostImpl::GetEnabledBindings() {
 }
 
 void RenderFrameHostImpl::SetNavigationHandle(
-    scoped_ptr<NavigationHandleImpl> navigation_handle) {
+    std::unique_ptr<NavigationHandleImpl> navigation_handle) {
   navigation_handle_ = std::move(navigation_handle);
   if (navigation_handle_)
     navigation_handle_->set_render_frame_host(this);
 }
 
-scoped_ptr<NavigationHandleImpl>
+std::unique_ptr<NavigationHandleImpl>
 RenderFrameHostImpl::PassNavigationHandleOwnership() {
   DCHECK(!IsBrowserSideNavigationEnabled());
   navigation_handle_->set_is_transferring(true);
@@ -1152,7 +1181,8 @@ RenderFrameHostImpl::PassNavigationHandleOwnership() {
 
 void RenderFrameHostImpl::OnCrossSiteResponse(
     const GlobalRequestID& global_request_id,
-    scoped_ptr<CrossSiteTransferringRequest> cross_site_transferring_request,
+    std::unique_ptr<CrossSiteTransferringRequest>
+        cross_site_transferring_request,
     const std::vector<GURL>& transfer_url_chain,
     const Referrer& referrer,
     ui::PageTransition page_transition,
@@ -1179,8 +1209,10 @@ void RenderFrameHostImpl::SwapOut(
     return;
   }
 
-  swapout_event_monitor_timeout_->Start(
-      base::TimeDelta::FromMilliseconds(RenderViewHostImpl::kUnloadTimeoutMS));
+  if (swapout_event_monitor_timeout_) {
+    swapout_event_monitor_timeout_->Start(base::TimeDelta::FromMilliseconds(
+        RenderViewHostImpl::kUnloadTimeoutMS));
+  }
 
   // There may be no proxy if there are no active views in the process.
   int proxy_routing_id = MSG_ROUTING_NONE;
@@ -1353,7 +1385,8 @@ void RenderFrameHostImpl::OnSwappedOut() {
     return;
 
   TRACE_EVENT_ASYNC_END0("navigation", "RenderFrameHostImpl::SwapOut", this);
-  swapout_event_monitor_timeout_->Stop();
+  if (swapout_event_monitor_timeout_)
+    swapout_event_monitor_timeout_->Stop();
 
   ClearAllWebUI();
 
@@ -1369,8 +1402,8 @@ void RenderFrameHostImpl::OnSwappedOut() {
   CHECK(deleted);
 }
 
-void RenderFrameHostImpl::ResetSwapOutTimerForTesting() {
-  swapout_event_monitor_timeout_->Stop();
+void RenderFrameHostImpl::DisableSwapOutTimerForTesting() {
+  swapout_event_monitor_timeout_.reset();
 }
 
 void RenderFrameHostImpl::OnContextMenu(const ContextMenuParams& params) {
@@ -1876,7 +1909,7 @@ void RenderFrameHostImpl::RegisterMojoServices() {
     // WakeLockServiceContext is owned by WebContentsImpl so it will outlive
     // this RenderFrameHostImpl, hence a raw pointer can be bound to service
     // factory callback.
-    GetServiceRegistry()->AddService<mojom::WakeLockService>(
+    GetServiceRegistry()->AddService<blink::mojom::WakeLockService>(
         base::Bind(&WakeLockServiceContext::CreateService,
                    base::Unretained(wake_lock_service_context),
                    GetProcess()->GetID(), GetRoutingID()));
@@ -1907,7 +1940,7 @@ void RenderFrameHostImpl::RegisterMojoServices() {
   if (!frame_mojo_shell_)
     frame_mojo_shell_.reset(new FrameMojoShell(this));
 
-  GetServiceRegistry()->AddService<mojo::shell::mojom::Connector>(base::Bind(
+  GetServiceRegistry()->AddService<shell::mojom::Connector>(base::Bind(
       &FrameMojoShell::BindRequest, base::Unretained(frame_mojo_shell_.get())));
 
 #if defined(ENABLE_WEBVR)
@@ -2165,7 +2198,7 @@ void RenderFrameHostImpl::JavaScriptDialogClosed(
 // PlzNavigate
 void RenderFrameHostImpl::CommitNavigation(
     ResourceResponse* response,
-    scoped_ptr<StreamHandle> body,
+    std::unique_ptr<StreamHandle> body,
     const CommonNavigationParams& common_params,
     const RequestNavigationParams& request_params,
     bool is_view_source) {
@@ -2239,10 +2272,10 @@ void RenderFrameHostImpl::SetUpMojoIfNeeded() {
   GetProcess()->GetServiceRegistry()->ConnectToRemoteService(
       mojo::GetProxy(&setup));
 
-  mojo::shell::mojom::InterfaceProviderPtr exposed_services;
+  shell::mojom::InterfaceProviderPtr exposed_services;
   service_registry_->Bind(GetProxy(&exposed_services));
 
-  mojo::shell::mojom::InterfaceProviderPtr services;
+  shell::mojom::InterfaceProviderPtr services;
   setup->ExchangeInterfaceProviders(routing_id_, GetProxy(&services),
                                     std::move(exposed_services));
   service_registry_->BindRemoteServiceProvider(std::move(services));
@@ -2513,17 +2546,6 @@ void RenderFrameHostImpl::DidCancelPopupMenu() {
 
 #elif defined(OS_ANDROID)
 
-void RenderFrameHostImpl::ActivateNearestFindResult(int request_id,
-                                                    float x,
-                                                    float y) {
-  Send(
-      new InputMsg_ActivateNearestFindResult(GetRoutingID(), request_id, x, y));
-}
-
-void RenderFrameHostImpl::RequestFindMatchRects(int current_version) {
-  Send(new FrameMsg_FindMatchRects(GetRoutingID(), current_version));
-}
-
 void RenderFrameHostImpl::DidSelectPopupMenuItems(
     const std::vector<int>& selected_indices) {
   Send(new FrameMsg_SelectPopupMenuItems(routing_id_, false, selected_indices));
@@ -2646,23 +2668,25 @@ AXTreeIDRegistry::AXTreeID RenderFrameHostImpl::RoutingIDToAXTreeID(
   RenderFrameProxyHost* rfph = RenderFrameProxyHost::FromID(
       GetProcess()->GetID(), routing_id);
   if (rfph) {
-    FrameTree* frame_tree = frame_tree_node()->frame_tree();
+    FrameTree* frame_tree = rfph->frame_tree_node()->frame_tree();
     FrameTreeNode* frame_tree_node = frame_tree->FindByRoutingID(
         GetProcess()->GetID(), routing_id);
     rfh = frame_tree_node->render_manager()->current_frame_host();
   } else {
     rfh = RenderFrameHostImpl::FromID(GetProcess()->GetID(), routing_id);
+
+    // As a sanity check, make sure we're within the same frame tree and
+    // crash the renderer if not.
+    if (rfh &&
+        rfh->frame_tree_node()->frame_tree() !=
+            frame_tree_node()->frame_tree()) {
+      AccessibilityFatalError();
+      return AXTreeIDRegistry::kNoAXTreeID;
+    }
   }
 
   if (!rfh)
     return AXTreeIDRegistry::kNoAXTreeID;
-
-  // As a sanity check, make sure we're within the same frame tree and
-  // crash the renderer if not.
-  if (rfh->frame_tree_node()->frame_tree() != frame_tree_node()->frame_tree()) {
-    AccessibilityFatalError();
-    return AXTreeIDRegistry::kNoAXTreeID;
-  }
 
   return rfh->GetAXTreeID();
 }
@@ -2743,6 +2767,15 @@ void RenderFrameHostImpl::CreateWebBluetoothService(
   DCHECK(!web_bluetooth_service_);
   web_bluetooth_service_.reset(
       new WebBluetoothServiceImpl(this, std::move(request)));
+  // RFHI owns web_bluetooth_service_ and web_bluetooth_service owns the
+  // binding_ which may run the error handler. binding_ can't run the error
+  // handler after it's destroyed so it can't run after the RFHI is destroyed.
+  web_bluetooth_service_->SetClientConnectionErrorHandler(base::Bind(
+      &RenderFrameHostImpl::DeleteWebBluetoothService, base::Unretained(this)));
+}
+
+void RenderFrameHostImpl::DeleteWebBluetoothService() {
+  web_bluetooth_service_.reset();
 }
 
 }  // namespace content

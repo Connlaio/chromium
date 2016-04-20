@@ -72,7 +72,7 @@ void InspectorHeapProfilerAgent::HeapStatsUpdateTask::startTimer()
     m_timer.startRepeating(0.05, BLINK_FROM_HERE);
 }
 
-RawPtr<InspectorHeapProfilerAgent> InspectorHeapProfilerAgent::create(v8::Isolate* isolate, V8HeapProfilerAgent* agent)
+InspectorHeapProfilerAgent* InspectorHeapProfilerAgent::create(v8::Isolate* isolate, V8HeapProfilerAgent* agent)
 {
     return new InspectorHeapProfilerAgent(isolate, agent);
 }
@@ -89,22 +89,17 @@ InspectorHeapProfilerAgent::~InspectorHeapProfilerAgent()
 }
 
 // InspectorBaseAgent overrides.
-void InspectorHeapProfilerAgent::setState(protocol::DictionaryValue* state)
+void InspectorHeapProfilerAgent::init(InstrumentingAgents* instrumentingAgents, protocol::Frontend* baseFrontend, protocol::Dispatcher* dispatcher, protocol::DictionaryValue* state)
 {
-    InspectorBaseAgent::setState(state);
+    InspectorBaseAgent::init(instrumentingAgents, baseFrontend, dispatcher, state);
     m_v8HeapProfilerAgent->setInspectorState(m_state);
+    m_v8HeapProfilerAgent->setFrontend(frontend());
 }
 
-void InspectorHeapProfilerAgent::setFrontend(protocol::Frontend* frontend)
-{
-    InspectorBaseAgent::setFrontend(frontend);
-    m_v8HeapProfilerAgent->setFrontend(protocol::Frontend::HeapProfiler::from(frontend));
-}
-
-void InspectorHeapProfilerAgent::clearFrontend()
+void InspectorHeapProfilerAgent::dispose()
 {
     m_v8HeapProfilerAgent->clearFrontend();
-    InspectorBaseAgent::clearFrontend();
+    InspectorBaseAgent::dispose();
 }
 
 void InspectorHeapProfilerAgent::restore()

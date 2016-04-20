@@ -10,12 +10,12 @@
 #include <algorithm>
 
 #include "base/macros.h"
+#include "base/memory/ptr_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/trace_event_argument.h"
 #include "cc/debug/traced_value.h"
 #include "cc/playback/raster_source.h"
-#include "cc/raster/raster_buffer.h"
 #include "cc/resources/platform_color.h"
 #include "cc/resources/resource.h"
 
@@ -67,11 +67,11 @@ class RasterBufferImpl : public RasterBuffer {
 }  // namespace
 
 // static
-scoped_ptr<TileTaskWorkerPool> BitmapTileTaskWorkerPool::Create(
+std::unique_ptr<TileTaskWorkerPool> BitmapTileTaskWorkerPool::Create(
     base::SequencedTaskRunner* task_runner,
     TaskGraphRunner* task_graph_runner,
     ResourceProvider* resource_provider) {
-  return make_scoped_ptr<TileTaskWorkerPool>(new BitmapTileTaskWorkerPool(
+  return base::WrapUnique<TileTaskWorkerPool>(new BitmapTileTaskWorkerPool(
       task_runner, task_graph_runner, resource_provider));
 }
 
@@ -85,10 +85,6 @@ BitmapTileTaskWorkerPool::BitmapTileTaskWorkerPool(
       resource_provider_(resource_provider) {}
 
 BitmapTileTaskWorkerPool::~BitmapTileTaskWorkerPool() {
-}
-
-TileTaskRunner* BitmapTileTaskWorkerPool::AsTileTaskRunner() {
-  return this;
 }
 
 void BitmapTileTaskWorkerPool::Shutdown() {
@@ -132,16 +128,20 @@ bool BitmapTileTaskWorkerPool::GetResourceRequiresSwizzle(
   return ResourceFormatRequiresSwizzle(GetResourceFormat(must_support_alpha));
 }
 
-scoped_ptr<RasterBuffer> BitmapTileTaskWorkerPool::AcquireBufferForRaster(
+RasterBufferProvider* BitmapTileTaskWorkerPool::AsRasterBufferProvider() {
+  return this;
+}
+
+std::unique_ptr<RasterBuffer> BitmapTileTaskWorkerPool::AcquireBufferForRaster(
     const Resource* resource,
     uint64_t resource_content_id,
     uint64_t previous_content_id) {
-  return scoped_ptr<RasterBuffer>(new RasterBufferImpl(
+  return std::unique_ptr<RasterBuffer>(new RasterBufferImpl(
       resource_provider_, resource, resource_content_id, previous_content_id));
 }
 
 void BitmapTileTaskWorkerPool::ReleaseBufferForRaster(
-    scoped_ptr<RasterBuffer> buffer) {
+    std::unique_ptr<RasterBuffer> buffer) {
   // Nothing to do here. RasterBufferImpl destructor cleans up after itself.
 }
 

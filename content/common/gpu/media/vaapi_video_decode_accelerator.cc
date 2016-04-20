@@ -6,6 +6,8 @@
 
 #include <string.h>
 
+#include <memory>
+
 #include "base/bind.h"
 #include "base/logging.h"
 #include "base/macros.h"
@@ -330,6 +332,11 @@ bool VaapiVideoDecodeAccelerator::Initialize(const Config& config,
     return false;
   }
 
+  if (config.output_mode != Config::OutputMode::ALLOCATE) {
+    NOTREACHED() << "Only ALLOCATE OutputMode is supported by this VDA";
+    return false;
+  }
+
   client_ptr_factory_.reset(new base::WeakPtrFactory<Client>(client));
   client_ = client_ptr_factory_->GetWeakPtr();
 
@@ -450,7 +457,7 @@ void VaapiVideoDecodeAccelerator::MapAndQueueNewInputBuffer(
   DVLOG(4) << "Mapping new input buffer id: " << bitstream_buffer.id()
            << " size: " << (int)bitstream_buffer.size();
 
-  scoped_ptr<SharedMemoryRegion> shm(
+  std::unique_ptr<SharedMemoryRegion> shm(
       new SharedMemoryRegion(bitstream_buffer, true));
   RETURN_AND_NOTIFY_ON_FAILURE(shm->Map(), "Failed to map input buffer",
                                UNREADABLE_INPUT, );

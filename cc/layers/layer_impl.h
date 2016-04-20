@@ -9,19 +9,19 @@
 #include <stdint.h>
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
 #include "base/logging.h"
 #include "base/macros.h"
-#include "base/memory/scoped_ptr.h"
+#include "base/memory/ptr_util.h"
 #include "base/values.h"
 #include "cc/animation/target_property.h"
 #include "cc/base/cc_export.h"
 #include "cc/base/region.h"
 #include "cc/base/synced_property.h"
-#include "cc/debug/frame_timing_request.h"
 #include "cc/input/input_handler.h"
 #include "cc/layers/draw_properties.h"
 #include "cc/layers/layer_collections.h"
@@ -82,8 +82,8 @@ class CC_EXPORT LayerImpl {
 
   enum RenderingContextConstants { NO_RENDERING_CONTEXT = 0 };
 
-  static scoped_ptr<LayerImpl> Create(LayerTreeImpl* tree_impl, int id) {
-    return make_scoped_ptr(new LayerImpl(tree_impl, id));
+  static std::unique_ptr<LayerImpl> Create(LayerTreeImpl* tree_impl, int id) {
+    return base::WrapUnique(new LayerImpl(tree_impl, id));
   }
 
   virtual ~LayerImpl();
@@ -104,14 +104,13 @@ class CC_EXPORT LayerImpl {
   LayerImpl* parent() { return parent_; }
   LayerImplList& children() { return children_; }
   LayerImpl* child_at(size_t index) const { return children_[index]; }
-  void AddChild(scoped_ptr<LayerImpl> child);
-  scoped_ptr<LayerImpl> RemoveChildForTesting(LayerImpl* child);
+  void AddChild(std::unique_ptr<LayerImpl> child);
+  std::unique_ptr<LayerImpl> RemoveChildForTesting(LayerImpl* child);
   void SetParent(LayerImpl* parent);
 
   void SetScrollParent(LayerImpl* parent);
 
   LayerImpl* scroll_parent() { return scroll_parent_; }
-  const LayerImpl* scroll_parent() const { return scroll_parent_; }
 
   void SetScrollChildren(std::set<LayerImpl*>* children);
 
@@ -169,9 +168,6 @@ class CC_EXPORT LayerImpl {
   LayerImpl* clip_parent() {
     return clip_parent_;
   }
-  const LayerImpl* clip_parent() const {
-    return clip_parent_;
-  }
 
   void SetClipChildren(std::set<LayerImpl*>* children);
 
@@ -180,22 +176,23 @@ class CC_EXPORT LayerImpl {
     return clip_children_.get();
   }
 
-  void PassCopyRequests(std::vector<scoped_ptr<CopyOutputRequest>>* requests);
+  void PassCopyRequests(
+      std::vector<std::unique_ptr<CopyOutputRequest>>* requests);
   // Can only be called when the layer has a copy request.
   void TakeCopyRequestsAndTransformToTarget(
-      std::vector<scoped_ptr<CopyOutputRequest>>* request);
+      std::vector<std::unique_ptr<CopyOutputRequest>>* request);
   bool HasCopyRequest() const { return !copy_requests_.empty(); }
   bool InsideCopyRequest() const;
 
-  void SetMaskLayer(scoped_ptr<LayerImpl> mask_layer);
+  void SetMaskLayer(std::unique_ptr<LayerImpl> mask_layer);
   LayerImpl* mask_layer() { return mask_layer_; }
   const LayerImpl* mask_layer() const { return mask_layer_; }
-  scoped_ptr<LayerImpl> TakeMaskLayer();
+  std::unique_ptr<LayerImpl> TakeMaskLayer();
 
-  void SetReplicaLayer(scoped_ptr<LayerImpl> replica_layer);
+  void SetReplicaLayer(std::unique_ptr<LayerImpl> replica_layer);
   LayerImpl* replica_layer() { return replica_layer_; }
   const LayerImpl* replica_layer() const { return replica_layer_; }
-  scoped_ptr<LayerImpl> TakeReplicaLayer();
+  std::unique_ptr<LayerImpl> TakeReplicaLayer();
 
   bool has_mask() const { return !!mask_layer_; }
   bool has_replica() const { return !!replica_layer_; }
@@ -359,6 +356,11 @@ class CC_EXPORT LayerImpl {
 
   RenderSurfaceImpl* render_surface() const { return render_surface_.get(); }
 
+  // The render surface which this layer draws into. This can be either owned by
+  // the same layer or an ancestor of this layer.
+  RenderSurfaceImpl* render_target();
+  const RenderSurfaceImpl* render_target() const;
+
   DrawProperties& draw_properties() { return draw_properties_; }
   const DrawProperties& draw_properties() const { return draw_properties_; }
 
@@ -390,17 +392,6 @@ class CC_EXPORT LayerImpl {
   gfx::Rect visible_layer_rect() const {
     return draw_properties_.visible_layer_rect;
   }
-  LayerImpl* render_target() {
-    DCHECK(!draw_properties_.render_target ||
-           draw_properties_.render_target->render_surface());
-    return draw_properties_.render_target;
-  }
-  const LayerImpl* render_target() const {
-    DCHECK(!draw_properties_.render_target ||
-           draw_properties_.render_target->render_surface());
-    return draw_properties_.render_target;
-  }
-
   size_t num_unclipped_descendants() const {
     return draw_properties_.num_unclipped_descendants;
   }
@@ -446,9 +437,6 @@ class CC_EXPORT LayerImpl {
       uint32_t main_thread_scrolling_reasons);
   uint32_t main_thread_scrolling_reasons() const {
     return main_thread_scrolling_reasons_;
-  }
-  bool should_scroll_on_main_thread() const {
-    return !!main_thread_scrolling_reasons_;
   }
 
   void SetNonFastScrollableRegion(const Region& region) {
@@ -522,7 +510,7 @@ class CC_EXPORT LayerImpl {
   // ReleaseResources call.
   virtual void RecreateResources();
 
-  virtual scoped_ptr<LayerImpl> CreateLayerImpl(LayerTreeImpl* tree_impl);
+  virtual std::unique_ptr<LayerImpl> CreateLayerImpl(LayerTreeImpl* tree_impl);
   virtual void PushPropertiesTo(LayerImpl* layer);
 
   virtual void GetAllPrioritizedTilesForTracing(
@@ -536,19 +524,12 @@ class CC_EXPORT LayerImpl {
   virtual void RunMicroBenchmark(MicroBenchmarkImpl* benchmark);
 
   void SetDebugInfo(
-      scoped_ptr<base::trace_event::ConvertableToTraceFormat> debug_info);
+      std::unique_ptr<base::trace_event::ConvertableToTraceFormat> debug_info);
 
   bool IsDrawnRenderSurfaceLayerListMember() const;
 
   void Set3dSortingContextId(int id);
   int sorting_context_id() { return sorting_context_id_; }
-
-  void SetFrameTimingRequests(
-      const std::vector<FrameTimingRequest>& frame_timing_requests);
-  const std::vector<FrameTimingRequest>& frame_timing_requests() const {
-    return frame_timing_requests_;
-  }
-  void GatherFrameTimingRequestIds(std::vector<int64_t>* request_ids);
 
   const SyncedScrollOffset* synced_scroll_offset() const;
   SyncedScrollOffset* synced_scroll_offset();
@@ -559,11 +540,11 @@ class CC_EXPORT LayerImpl {
 
   virtual gfx::Rect GetEnclosingRectInTargetSpace() const;
 
-  void set_layer_or_descendant_is_drawn(bool layer_or_descendant_is_drawn) {
-    layer_or_descendant_is_drawn_ = layer_or_descendant_is_drawn;
+  void set_scrolls_drawn_descendant(bool scrolls_drawn_descendant) {
+    scrolls_drawn_descendant_ = scrolls_drawn_descendant;
   }
 
-  bool layer_or_descendant_is_drawn() { return layer_or_descendant_is_drawn_; }
+  bool scrolls_drawn_descendant() { return scrolls_drawn_descendant_; }
 
   void set_layer_or_descendant_has_touch_handler(
       bool layer_or_descendant_has_touch_handler) {
@@ -642,10 +623,10 @@ class CC_EXPORT LayerImpl {
   // used. If this pointer turns out to be too heavy, we could have this (and
   // the scroll parent above) be stored in a LayerImpl -> scroll_info
   // map somewhere.
-  scoped_ptr<std::set<LayerImpl*>> scroll_children_;
+  std::unique_ptr<std::set<LayerImpl*>> scroll_children_;
 
   LayerImpl* clip_parent_;
-  scoped_ptr<std::set<LayerImpl*>> clip_children_;
+  std::unique_ptr<std::set<LayerImpl*>> clip_children_;
 
   // mask_layer_ can be temporarily stolen during tree sync, we need this ID to
   // confirm newly assigned layer is still the previous one
@@ -749,22 +730,21 @@ class CC_EXPORT LayerImpl {
   // space.
   gfx::Rect damage_rect_;
 
-  std::vector<scoped_ptr<CopyOutputRequest>> copy_requests_;
+  std::vector<std::unique_ptr<CopyOutputRequest>> copy_requests_;
 
   // Group of properties that need to be computed based on the layer tree
   // hierarchy before layers can be drawn.
   DrawProperties draw_properties_;
   PerformanceProperties<LayerImpl> performance_properties_;
 
-  scoped_ptr<base::trace_event::ConvertableToTraceFormat> owned_debug_info_;
+  std::unique_ptr<base::trace_event::ConvertableToTraceFormat>
+      owned_debug_info_;
   base::trace_event::ConvertableToTraceFormat* debug_info_;
-  scoped_ptr<RenderSurfaceImpl> render_surface_;
+  std::unique_ptr<RenderSurfaceImpl> render_surface_;
 
   bool force_render_surface_;
 
-  std::vector<FrameTimingRequest> frame_timing_requests_;
-  bool frame_timing_requests_dirty_;
-  bool layer_or_descendant_is_drawn_;
+  bool scrolls_drawn_descendant_;
   // If true, the layer or one of its descendants has a touch handler.
   bool layer_or_descendant_has_touch_handler_;
 

@@ -120,7 +120,7 @@ Page::Page(PageClients& pageClients)
     , m_autoscrollController(AutoscrollController::create(*this))
     , m_chromeClient(pageClients.chromeClient)
     , m_dragCaretController(DragCaretController::create())
-    , m_dragController(DragController::create(this, pageClients.dragClient))
+    , m_dragController(DragController::create(this))
     , m_focusController(FocusController::create(this))
     , m_contextMenuController(ContextMenuController::create(this, pageClients.contextMenuClient))
     , m_pointerLockController(PointerLockController::create(this))
@@ -148,9 +148,6 @@ Page::Page(PageClients& pageClients)
 
 Page::~Page()
 {
-#if !ENABLE(OILPAN)
-    ASSERT(!ordinaryPages().contains(this));
-#endif
     // willBeDestroyed() must be called before Page destruction.
     ASSERT(!m_mainFrame);
 }
@@ -552,10 +549,6 @@ void Page::willBeDestroyed()
     ASSERT(allPages().contains(this));
     allPages().remove(this);
     ordinaryPages().remove(this);
-#if !ENABLE(OILPAN)
-    if (m_memoryPurgeController)
-        m_memoryPurgeController->unregisterClient(this);
-#endif
 
     if (m_scrollingCoordinator)
         m_scrollingCoordinator->willBeDestroyed();
@@ -579,7 +572,6 @@ Page::PageClients::PageClients()
     : chromeClient(nullptr)
     , contextMenuClient(nullptr)
     , editorClient(nullptr)
-    , dragClient(nullptr)
     , spellCheckerClient(nullptr)
 {
 }

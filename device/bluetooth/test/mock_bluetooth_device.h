@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 
 #include "base/memory/scoped_vector.h"
@@ -87,6 +88,9 @@ class MockBluetoothDevice : public BluetoothDevice {
                void(const GattConnectionCallback& callback,
                     const ConnectErrorCallback& error_callback));
 
+  MOCK_METHOD1(SetGattServicesDiscoveryComplete, void(bool));
+  MOCK_CONST_METHOD0(IsGattServicesDiscoveryComplete, bool());
+
   MOCK_CONST_METHOD0(GetGattServices, std::vector<BluetoothGattService*>());
   MOCK_CONST_METHOD1(GetGattService, BluetoothGattService*(const std::string&));
   MOCK_METHOD0(CreateGattConnectionImpl, void());
@@ -100,7 +104,7 @@ class MockBluetoothDevice : public BluetoothDevice {
   // ON_CALL(*mock_device, GetGattServices))
   //   .WillByDefault(Invoke(*mock_device,
   //                         &MockBluetoothDevice::GetMockServices));
-  void AddMockService(scoped_ptr<MockBluetoothGattService> mock_device);
+  void AddMockService(std::unique_ptr<MockBluetoothGattService> mock_device);
   std::vector<BluetoothGattService*> GetMockServices() const;
   BluetoothGattService* GetMockService(const std::string& identifier) const;
 

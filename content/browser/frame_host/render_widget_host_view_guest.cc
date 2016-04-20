@@ -9,6 +9,7 @@
 #include "base/bind_helpers.h"
 #include "base/command_line.h"
 #include "base/logging.h"
+#include "base/memory/ptr_util.h"
 #include "base/message_loop/message_loop.h"
 #include "build/build_config.h"
 #include "cc/surfaces/surface.h"
@@ -206,7 +207,7 @@ void RenderWidgetHostViewGuest::SetTooltipText(
 
 void RenderWidgetHostViewGuest::OnSwapCompositorFrame(
     uint32_t output_surface_id,
-    scoped_ptr<cc::CompositorFrame> frame) {
+    std::unique_ptr<cc::CompositorFrame> frame) {
   TRACE_EVENT0("content", "RenderWidgetHostViewGuest::OnSwapCompositorFrame");
 
   last_scroll_offset_ = frame->metadata.root_scroll_offset;
@@ -235,7 +236,7 @@ void RenderWidgetHostViewGuest::OnSwapCompositorFrame(
 
   if (!surface_factory_) {
     cc::SurfaceManager* manager = GetSurfaceManager();
-    surface_factory_ = make_scoped_ptr(new cc::SurfaceFactory(manager, this));
+    surface_factory_ = base::WrapUnique(new cc::SurfaceFactory(manager, this));
   }
 
   if (surface_id_.is_null()) {
@@ -346,6 +347,18 @@ void RenderWidgetHostViewGuest::UpdateCursor(const WebCursor& cursor) {
 
 void RenderWidgetHostViewGuest::SetIsLoading(bool is_loading) {
   platform_view_->SetIsLoading(is_loading);
+}
+
+void RenderWidgetHostViewGuest::TextInputStateChanged(
+    const ViewHostMsg_TextInputState_Params& params) {
+  if (!guest_)
+    return;
+
+  RenderWidgetHostViewBase* rwhv = GetOwnerRenderWidgetHostView();
+  if (!rwhv)
+    return;
+  // Forward the information to embedding RWHV.
+  rwhv->TextInputStateChanged(params);
 }
 
 void RenderWidgetHostViewGuest::ImeCancelComposition() {
@@ -493,10 +506,6 @@ void RenderWidgetHostViewGuest::DestroyGuestView() {
   // Let our observers know we're going away, since we don't want any event
   // processing calls coming in after we release host_.
   NotifyObserversAboutShutdown();
-
-  // The WebContentsImpl should be notified about us so that it will not hold
-  // an invalid text input state which was due to active text on this view.
-  NotifyHostDelegateAboutShutdown();
 
   host_->SetView(NULL);
   host_ = NULL;

@@ -7,6 +7,8 @@
 
 #include <stdint.h>
 
+#include <memory>
+
 #include "base/macros.h"
 #include "content/common/gpu/media/avda_shared_state.h"
 #include "gpu/command_buffer/service/gl_stream_texture_image.h"
@@ -84,7 +86,7 @@ class AVDACodecImage : public gpu::gles2::GLStreamTextureImage {
   void AttachSurfaceTextureToContext();
 
   // Make shared_state_->context() current if it isn't already.
-  scoped_ptr<ui::ScopedMakeCurrent> MakeCurrentIfNeeded();
+  std::unique_ptr<ui::ScopedMakeCurrent> MakeCurrentIfNeeded();
 
   // Return whether or not the current context is in the same share group as
   // |surface_texture_|'s client texture.

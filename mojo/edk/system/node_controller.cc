@@ -197,6 +197,7 @@ void NodeController::ReservePort(const std::string& token,
 
 void NodeController::MergePortIntoParent(const std::string& token,
                                          const ports::PortRef& port) {
+  bool was_merged = false;
   {
     // This request may be coming from within the process that reserved the
     // "parent" side (e.g. for Chrome single-process mode), so if this token is
@@ -206,8 +207,12 @@ void NodeController::MergePortIntoParent(const std::string& token,
     if (it != reserved_ports_.end()) {
       node_->MergePorts(port, name_, it->second.name());
       reserved_ports_.erase(it);
-      return;
+      was_merged = true;
     }
+  }
+  if (was_merged) {
+    AcceptIncomingMessages();
+    return;
   }
 
   scoped_refptr<NodeChannel> parent;
@@ -251,6 +256,7 @@ void NodeController::RequestShutdown(const base::Closure& callback) {
   {
     base::AutoLock lock(shutdown_lock_);
     shutdown_callback_ = callback;
+    shutdown_callback_flag_.Set(true);
   }
 
   AttemptShutdownIfRequested();
@@ -475,7 +481,7 @@ void NodeController::SendPeerMessage(const ports::NodeName& name,
 }
 
 void NodeController::AcceptIncomingMessages() {
-  for (;;) {
+  while (incoming_messages_flag_) {
     // TODO: We may need to be more careful to avoid starving the rest of the
     // thread here. Revisit this if it turns out to be a problem. One
     // alternative would be to schedule a task to continue pumping messages
@@ -490,6 +496,7 @@ void NodeController::AcceptIncomingMessages() {
     // the size is 0. So avoid creating it until it is necessary.
     std::queue<ports::ScopedMessage> messages;
     std::swap(messages, incoming_messages_);
+    incoming_messages_flag_.Set(false);
     messages_lock_.Release();
 
     while (!messages.empty()) {
@@ -553,6 +560,7 @@ void NodeController::ForwardMessage(const ports::NodeName& node,
     // AcceptMessage, we flush the queue after calling any of those methods.
     base::AutoLock lock(messages_lock_);
     incoming_messages_.emplace(std::move(message));
+    incoming_messages_flag_.Set(true);
   } else {
     SendPeerMessage(node, std::move(message));
   }
@@ -970,17 +978,21 @@ void NodeController::DestroyOnIOThreadShutdown() {
 }
 
 void NodeController::AttemptShutdownIfRequested() {
+  if (!shutdown_callback_flag_)
+    return;
+
   base::Closure callback;
   {
     base::AutoLock lock(shutdown_lock_);
     if (shutdown_callback_.is_null())
       return;
-    if (!node_->CanShutdownCleanly(true /* allow_local_ports */)) {
-      DVLOG(2) << "Unable to cleanly shut down node " << name_ << ".";
-      return;
-    }
+
+    // TODO(rockot): We should return here if clean shutdown of |node_| is not
+    // yet possible. See http://crbug.com/589864 for why we don't.
+
     callback = shutdown_callback_;
     shutdown_callback_.Reset();
+    shutdown_callback_flag_.Set(false);
   }
 
   DCHECK(!callback.is_null());

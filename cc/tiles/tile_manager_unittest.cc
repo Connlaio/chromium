@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "base/memory/ptr_util.h"
 #include "base/run_loop.h"
 #include "base/thread_task_runner_handle.h"
 #include "cc/playback/raster_source.h"
@@ -134,7 +135,7 @@ class TileManagerTilePriorityQueueTest : public testing::Test {
       pending_layer = static_cast<FakePictureLayerImpl*>(old_pending_root);
       pending_layer->SetRasterSourceOnPending(raster_source, Region());
     } else {
-      scoped_ptr<FakePictureLayerImpl> new_root =
+      std::unique_ptr<FakePictureLayerImpl> new_root =
           FakePictureLayerImpl::CreateWithRasterSource(pending_tree, id_,
                                                        raster_source);
       pending_layer = new_root.get();
@@ -167,7 +168,7 @@ class TileManagerTilePriorityQueueTest : public testing::Test {
   bool ready_to_activate_;
   int id_;
   FakeImplTaskRunnerProvider task_runner_provider_;
-  scoped_ptr<OutputSurface> output_surface_;
+  std::unique_ptr<OutputSurface> output_surface_;
   FakeLayerTreeHostImpl host_impl_;
   FakePictureLayerImpl* pending_layer_;
   FakePictureLayerImpl* active_layer_;
@@ -178,7 +179,7 @@ TEST_F(TileManagerTilePriorityQueueTest, RasterTilePriorityQueue) {
   host_impl_.SetViewportSize(layer_bounds);
   SetupDefaultTrees(layer_bounds);
 
-  scoped_ptr<RasterTilePriorityQueue> queue(host_impl_.BuildRasterQueue(
+  std::unique_ptr<RasterTilePriorityQueue> queue(host_impl_.BuildRasterQueue(
       SAME_PRIORITY_FOR_BOTH_TREES, RasterTilePriorityQueue::Type::ALL));
   EXPECT_FALSE(queue->IsEmpty());
 
@@ -479,7 +480,7 @@ TEST_F(TileManagerTilePriorityQueueTest,
     }
   }
 
-  scoped_ptr<RasterTilePriorityQueue> queue(host_impl_.BuildRasterQueue(
+  std::unique_ptr<RasterTilePriorityQueue> queue(host_impl_.BuildRasterQueue(
       SMOOTHNESS_TAKES_PRIORITY, RasterTilePriorityQueue::Type::ALL));
   EXPECT_FALSE(queue->IsEmpty());
 
@@ -546,7 +547,7 @@ TEST_F(TileManagerTilePriorityQueueTest,
     }
   }
 
-  scoped_ptr<RasterTilePriorityQueue> queue(host_impl_.BuildRasterQueue(
+  std::unique_ptr<RasterTilePriorityQueue> queue(host_impl_.BuildRasterQueue(
       SAME_PRIORITY_FOR_BOTH_TREES, RasterTilePriorityQueue::Type::ALL));
   EXPECT_FALSE(queue->IsEmpty());
 
@@ -632,7 +633,7 @@ TEST_F(TileManagerTilePriorityQueueTest, RasterTilePriorityQueueInvalidation) {
 
   // The actual test will now build different queues and verify that the queues
   // return the same information as computed manually above.
-  scoped_ptr<RasterTilePriorityQueue> queue(host_impl_.BuildRasterQueue(
+  std::unique_ptr<RasterTilePriorityQueue> queue(host_impl_.BuildRasterQueue(
       SAME_PRIORITY_FOR_BOTH_TREES, RasterTilePriorityQueue::Type::ALL));
   std::set<Tile*> actual_now_tiles;
   std::set<Tile*> actual_all_tiles;
@@ -679,7 +680,7 @@ TEST_F(TileManagerTilePriorityQueueTest, ActivationComesBeforeEventually) {
   // Create a pending child layer.
   scoped_refptr<FakeRasterSource> pending_raster_source =
       FakeRasterSource::CreateFilled(layer_bounds);
-  scoped_ptr<FakePictureLayerImpl> pending_child =
+  std::unique_ptr<FakePictureLayerImpl> pending_child =
       FakePictureLayerImpl::CreateWithRasterSource(
           host_impl_.pending_tree(), id_ + 1, pending_raster_source);
   FakePictureLayerImpl* pending_child_raw = pending_child.get();
@@ -695,7 +696,7 @@ TEST_F(TileManagerTilePriorityQueueTest, ActivationComesBeforeEventually) {
   host_impl_.pending_tree()->UpdateDrawProperties(update_lcd_text);
 
   host_impl_.SetRequiresHighResToDraw();
-  scoped_ptr<RasterTilePriorityQueue> queue(host_impl_.BuildRasterQueue(
+  std::unique_ptr<RasterTilePriorityQueue> queue(host_impl_.BuildRasterQueue(
       SMOOTHNESS_TAKES_PRIORITY, RasterTilePriorityQueue::Type::ALL));
   EXPECT_FALSE(queue->IsEmpty());
 
@@ -727,14 +728,15 @@ TEST_F(TileManagerTilePriorityQueueTest, EvictionTilePriorityQueue) {
   ASSERT_TRUE(pending_layer_->HighResTiling());
   EXPECT_FALSE(pending_layer_->LowResTiling());
 
-  scoped_ptr<EvictionTilePriorityQueue> empty_queue(
+  std::unique_ptr<EvictionTilePriorityQueue> empty_queue(
       host_impl_.BuildEvictionQueue(SAME_PRIORITY_FOR_BOTH_TREES));
   EXPECT_TRUE(empty_queue->IsEmpty());
   std::set<Tile*> all_tiles;
   size_t tile_count = 0;
 
-  scoped_ptr<RasterTilePriorityQueue> raster_queue(host_impl_.BuildRasterQueue(
-      SAME_PRIORITY_FOR_BOTH_TREES, RasterTilePriorityQueue::Type::ALL));
+  std::unique_ptr<RasterTilePriorityQueue> raster_queue(
+      host_impl_.BuildRasterQueue(SAME_PRIORITY_FOR_BOTH_TREES,
+                                  RasterTilePriorityQueue::Type::ALL));
   while (!raster_queue->IsEmpty()) {
     ++tile_count;
     EXPECT_TRUE(raster_queue->Top().tile());
@@ -748,7 +750,7 @@ TEST_F(TileManagerTilePriorityQueueTest, EvictionTilePriorityQueue) {
   tile_manager()->InitializeTilesWithResourcesForTesting(
       std::vector<Tile*>(all_tiles.begin(), all_tiles.end()));
 
-  scoped_ptr<EvictionTilePriorityQueue> queue(
+  std::unique_ptr<EvictionTilePriorityQueue> queue(
       host_impl_.BuildEvictionQueue(SMOOTHNESS_TAKES_PRIORITY));
   EXPECT_FALSE(queue->IsEmpty());
 
@@ -902,7 +904,7 @@ TEST_F(TileManagerTilePriorityQueueTest,
       FakeRasterSource::CreateFilled(layer_bounds);
   SetupPendingTree(pending_raster_source);
 
-  scoped_ptr<FakePictureLayerImpl> pending_child =
+  std::unique_ptr<FakePictureLayerImpl> pending_child =
       FakePictureLayerImpl::CreateWithRasterSource(host_impl_.pending_tree(), 2,
                                                    pending_raster_source);
   pending_layer_->AddChild(std::move(pending_child));
@@ -925,8 +927,9 @@ TEST_F(TileManagerTilePriorityQueueTest,
 
   std::set<Tile*> all_tiles;
   size_t tile_count = 0;
-  scoped_ptr<RasterTilePriorityQueue> raster_queue(host_impl_.BuildRasterQueue(
-      SAME_PRIORITY_FOR_BOTH_TREES, RasterTilePriorityQueue::Type::ALL));
+  std::unique_ptr<RasterTilePriorityQueue> raster_queue(
+      host_impl_.BuildRasterQueue(SAME_PRIORITY_FOR_BOTH_TREES,
+                                  RasterTilePriorityQueue::Type::ALL));
   while (!raster_queue->IsEmpty()) {
     ++tile_count;
     EXPECT_TRUE(raster_queue->Top().tile());
@@ -973,7 +976,7 @@ TEST_F(TileManagerTilePriorityQueueTest,
   TreePriority tree_priority = NEW_CONTENT_TAKES_PRIORITY;
   size_t occluded_count = 0u;
   PrioritizedTile last_tile;
-  scoped_ptr<EvictionTilePriorityQueue> queue(
+  std::unique_ptr<EvictionTilePriorityQueue> queue(
       host_impl_.BuildEvictionQueue(tree_priority));
   while (!queue->IsEmpty()) {
     PrioritizedTile prioritized_tile = queue->Top();
@@ -1018,7 +1021,7 @@ TEST_F(TileManagerTilePriorityQueueTest,
       FakeRasterSource::CreateFilled(layer_bounds);
   SetupPendingTree(pending_raster_source);
 
-  scoped_ptr<FakePictureLayerImpl> pending_child =
+  std::unique_ptr<FakePictureLayerImpl> pending_child =
       FakePictureLayerImpl::CreateWithRasterSource(host_impl_.pending_tree(), 2,
                                                    pending_raster_source);
   FakePictureLayerImpl* pending_child_layer = pending_child.get();
@@ -1078,7 +1081,7 @@ TEST_F(TileManagerTilePriorityQueueTest,
   TreePriority tree_priority = NEW_CONTENT_TAKES_PRIORITY;
   std::set<Tile*> new_content_tiles;
   size_t tile_count = 0;
-  scoped_ptr<EvictionTilePriorityQueue> queue(
+  std::unique_ptr<EvictionTilePriorityQueue> queue(
       host_impl_.BuildEvictionQueue(tree_priority));
   while (!queue->IsEmpty()) {
     PrioritizedTile prioritized_tile = queue->Top();
@@ -1103,7 +1106,7 @@ TEST_F(TileManagerTilePriorityQueueTest, RasterTilePriorityQueueEmptyLayers) {
   host_impl_.SetViewportSize(layer_bounds);
   SetupDefaultTrees(layer_bounds);
 
-  scoped_ptr<RasterTilePriorityQueue> queue(host_impl_.BuildRasterQueue(
+  std::unique_ptr<RasterTilePriorityQueue> queue(host_impl_.BuildRasterQueue(
       SAME_PRIORITY_FOR_BOTH_TREES, RasterTilePriorityQueue::Type::ALL));
   EXPECT_FALSE(queue->IsEmpty());
 
@@ -1120,7 +1123,7 @@ TEST_F(TileManagerTilePriorityQueueTest, RasterTilePriorityQueueEmptyLayers) {
   EXPECT_EQ(16u, tile_count);
 
   for (int i = 1; i < 10; ++i) {
-    scoped_ptr<FakePictureLayerImpl> pending_layer =
+    std::unique_ptr<FakePictureLayerImpl> pending_layer =
         FakePictureLayerImpl::Create(host_impl_.pending_tree(), id_ + i);
     pending_layer->SetDrawsContent(true);
     pending_layer->set_has_valid_tile_priorities(true);
@@ -1148,8 +1151,9 @@ TEST_F(TileManagerTilePriorityQueueTest, EvictionTilePriorityQueueEmptyLayers) {
   host_impl_.SetViewportSize(layer_bounds);
   SetupDefaultTrees(layer_bounds);
 
-  scoped_ptr<RasterTilePriorityQueue> raster_queue(host_impl_.BuildRasterQueue(
-      SAME_PRIORITY_FOR_BOTH_TREES, RasterTilePriorityQueue::Type::ALL));
+  std::unique_ptr<RasterTilePriorityQueue> raster_queue(
+      host_impl_.BuildRasterQueue(SAME_PRIORITY_FOR_BOTH_TREES,
+                                  RasterTilePriorityQueue::Type::ALL));
   EXPECT_FALSE(raster_queue->IsEmpty());
 
   size_t tile_count = 0;
@@ -1167,14 +1171,14 @@ TEST_F(TileManagerTilePriorityQueueTest, EvictionTilePriorityQueueEmptyLayers) {
   host_impl_.tile_manager()->InitializeTilesWithResourcesForTesting(tiles);
 
   for (int i = 1; i < 10; ++i) {
-    scoped_ptr<FakePictureLayerImpl> pending_layer =
+    std::unique_ptr<FakePictureLayerImpl> pending_layer =
         FakePictureLayerImpl::Create(host_impl_.pending_tree(), id_ + i);
     pending_layer->SetDrawsContent(true);
     pending_layer->set_has_valid_tile_priorities(true);
     pending_layer_->AddChild(std::move(pending_layer));
   }
 
-  scoped_ptr<EvictionTilePriorityQueue> queue(
+  std::unique_ptr<EvictionTilePriorityQueue> queue(
       host_impl_.BuildEvictionQueue(SAME_PRIORITY_FOR_BOTH_TREES));
   EXPECT_FALSE(queue->IsEmpty());
 
@@ -1204,10 +1208,11 @@ TEST_F(TileManagerTilePriorityQueueTest,
   client.SetTileSize(gfx::Size(30, 30));
   LayerTreeSettings settings;
 
-  scoped_ptr<PictureLayerTilingSet> tiling_set = PictureLayerTilingSet::Create(
-      ACTIVE_TREE, &client, settings.tiling_interest_area_padding,
-      settings.skewport_target_time_in_seconds,
-      settings.skewport_extrapolation_limit_in_content_pixels);
+  std::unique_ptr<PictureLayerTilingSet> tiling_set =
+      PictureLayerTilingSet::Create(
+          ACTIVE_TREE, &client, settings.tiling_interest_area_padding,
+          settings.skewport_target_time_in_seconds,
+          settings.skewport_extrapolation_limit_in_content_pixels);
 
   scoped_refptr<FakeRasterSource> raster_source =
       FakeRasterSource::CreateFilled(layer_bounds);
@@ -1227,7 +1232,7 @@ TEST_F(TileManagerTilePriorityQueueTest,
   // 3. Third iteration ensures that no tiles are returned, since they were all
   //    marked as ready to draw.
   for (int i = 0; i < 3; ++i) {
-    scoped_ptr<TilingSetRasterQueueAll> queue(
+    std::unique_ptr<TilingSetRasterQueueAll> queue(
         new TilingSetRasterQueueAll(tiling_set.get(), false));
 
     // There are 3 bins in TilePriority.
@@ -1313,10 +1318,11 @@ TEST_F(TileManagerTilePriorityQueueTest,
   client.SetTileSize(gfx::Size(30, 30));
   LayerTreeSettings settings;
 
-  scoped_ptr<PictureLayerTilingSet> tiling_set = PictureLayerTilingSet::Create(
-      ACTIVE_TREE, &client, settings.tiling_interest_area_padding,
-      settings.skewport_target_time_in_seconds,
-      settings.skewport_extrapolation_limit_in_content_pixels);
+  std::unique_ptr<PictureLayerTilingSet> tiling_set =
+      PictureLayerTilingSet::Create(
+          ACTIVE_TREE, &client, settings.tiling_interest_area_padding,
+          settings.skewport_target_time_in_seconds,
+          settings.skewport_extrapolation_limit_in_content_pixels);
 
   scoped_refptr<FakeRasterSource> raster_source =
       FakeRasterSource::CreateFilled(layer_bounds);
@@ -1337,7 +1343,7 @@ TEST_F(TileManagerTilePriorityQueueTest,
   PrioritizedTile last_tile;
   int eventually_bin_order_correct_count = 0;
   int eventually_bin_order_incorrect_count = 0;
-  scoped_ptr<TilingSetRasterQueueAll> queue(
+  std::unique_ptr<TilingSetRasterQueueAll> queue(
       new TilingSetRasterQueueAll(tiling_set.get(), false));
   for (; !queue->IsEmpty(); queue->Pop()) {
     if (!last_tile.tile())
@@ -1382,7 +1388,7 @@ TEST_F(TileManagerTilePriorityQueueTest, SetIsLikelyToRequireADraw) {
   SetupDefaultTrees(layer_bounds);
 
   // Verify that the queue has a required for draw tile at Top.
-  scoped_ptr<RasterTilePriorityQueue> queue(host_impl_.BuildRasterQueue(
+  std::unique_ptr<RasterTilePriorityQueue> queue(host_impl_.BuildRasterQueue(
       SAME_PRIORITY_FOR_BOTH_TREES, RasterTilePriorityQueue::Type::ALL));
   EXPECT_FALSE(queue->IsEmpty());
   EXPECT_TRUE(queue->Top().tile()->required_for_draw());
@@ -1399,7 +1405,7 @@ TEST_F(TileManagerTilePriorityQueueTest,
   SetupDefaultTrees(layer_bounds);
 
   // Verify that the queue has a required for draw tile at Top.
-  scoped_ptr<RasterTilePriorityQueue> queue(host_impl_.BuildRasterQueue(
+  std::unique_ptr<RasterTilePriorityQueue> queue(host_impl_.BuildRasterQueue(
       SAME_PRIORITY_FOR_BOTH_TREES, RasterTilePriorityQueue::Type::ALL));
   EXPECT_FALSE(queue->IsEmpty());
   EXPECT_TRUE(queue->Top().tile()->required_for_draw());
@@ -1420,7 +1426,7 @@ TEST_F(TileManagerTilePriorityQueueTest,
   SetupDefaultTrees(layer_bounds);
 
   // Verify that the queue has a required for draw tile at Top.
-  scoped_ptr<RasterTilePriorityQueue> queue(host_impl_.BuildRasterQueue(
+  std::unique_ptr<RasterTilePriorityQueue> queue(host_impl_.BuildRasterQueue(
       SAME_PRIORITY_FOR_BOTH_TREES, RasterTilePriorityQueue::Type::ALL));
   EXPECT_FALSE(queue->IsEmpty());
   EXPECT_TRUE(queue->Top().tile()->required_for_draw());
@@ -1472,8 +1478,9 @@ TEST_F(TileManagerTilePriorityQueueTest, RasterQueueAllUsesCorrectTileBounds) {
   FakePictureLayerTilingClient pending_client;
   pending_client.SetTileSize(gfx::Size(64, 64));
 
-  scoped_ptr<PictureLayerTilingSet> tiling_set = PictureLayerTilingSet::Create(
-      WhichTree::ACTIVE_TREE, &pending_client, 1.0f, 1.0f, 1000);
+  std::unique_ptr<PictureLayerTilingSet> tiling_set =
+      PictureLayerTilingSet::Create(WhichTree::ACTIVE_TREE, &pending_client,
+                                    1.0f, 1.0f, 1000);
   pending_client.set_twin_tiling_set(tiling_set.get());
 
   auto* tiling = tiling_set->AddTiling(1.0f, raster_source);
@@ -1493,7 +1500,7 @@ TEST_F(TileManagerTilePriorityQueueTest, RasterQueueAllUsesCorrectTileBounds) {
         intersecting_rect,      // Skewport rect.
         intersecting_rect,      // Soon rect.
         intersecting_rect);     // Eventually rect.
-    scoped_ptr<TilingSetRasterQueueAll> queue(
+    std::unique_ptr<TilingSetRasterQueueAll> queue(
         new TilingSetRasterQueueAll(tiling_set.get(), false));
     EXPECT_FALSE(queue->IsEmpty());
   }
@@ -1503,7 +1510,7 @@ TEST_F(TileManagerTilePriorityQueueTest, RasterQueueAllUsesCorrectTileBounds) {
         non_intersecting_rect,  // Skewport rect.
         intersecting_rect,      // Soon rect.
         intersecting_rect);     // Eventually rect.
-    scoped_ptr<TilingSetRasterQueueAll> queue(
+    std::unique_ptr<TilingSetRasterQueueAll> queue(
         new TilingSetRasterQueueAll(tiling_set.get(), false));
     EXPECT_FALSE(queue->IsEmpty());
   }
@@ -1513,7 +1520,7 @@ TEST_F(TileManagerTilePriorityQueueTest, RasterQueueAllUsesCorrectTileBounds) {
         non_intersecting_rect,  // Skewport rect.
         non_intersecting_rect,  // Soon rect.
         intersecting_rect);     // Eventually rect.
-    scoped_ptr<TilingSetRasterQueueAll> queue(
+    std::unique_ptr<TilingSetRasterQueueAll> queue(
         new TilingSetRasterQueueAll(tiling_set.get(), false));
     EXPECT_FALSE(queue->IsEmpty());
   }
@@ -1523,7 +1530,7 @@ TEST_F(TileManagerTilePriorityQueueTest, NoRasterTasksforSolidColorTiles) {
   gfx::Size size(10, 10);
   const gfx::Size layer_bounds(1000, 1000);
 
-  scoped_ptr<FakeRecordingSource> recording_source =
+  std::unique_ptr<FakeRecordingSource> recording_source =
       FakeRecordingSource::CreateFilledRecordingSource(layer_bounds);
 
   SkPaint solid_paint;
@@ -1547,7 +1554,7 @@ TEST_F(TileManagerTilePriorityQueueTest, NoRasterTasksforSolidColorTiles) {
   FakePictureLayerTilingClient tiling_client;
   tiling_client.SetTileSize(size);
 
-  scoped_ptr<PictureLayerImpl> layer_impl =
+  std::unique_ptr<PictureLayerImpl> layer_impl =
       PictureLayerImpl::Create(host_impl_.active_tree(), 1, false);
   PictureLayerTilingSet* tiling_set = layer_impl->picture_layer_tiling_set();
 
@@ -1582,7 +1589,7 @@ class TileManagerTest : public testing::Test {
  public:
   TileManagerTest()
       : output_surface_(FakeOutputSurface::CreateSoftware(
-            make_scoped_ptr(new SoftwareOutputDevice))) {}
+            base::WrapUnique(new SoftwareOutputDevice))) {}
 
   void SetUp() override {
     LayerTreeSettings settings;
@@ -1630,7 +1637,7 @@ class TileManagerTest : public testing::Test {
       pending_layer->SetRasterSourceOnPending(raster_source, Region());
     } else {
       int id = 7;
-      scoped_ptr<FakePictureLayerImpl> new_root =
+      std::unique_ptr<FakePictureLayerImpl> new_root =
           FakePictureLayerImpl::CreateWithRasterSource(pending_tree, id,
                                                        raster_source);
       pending_layer = new_root.get();
@@ -1670,8 +1677,8 @@ class TileManagerTest : public testing::Test {
   TestSharedBitmapManager shared_bitmap_manager_;
   TestTaskGraphRunner task_graph_runner_;
   FakeImplTaskRunnerProvider task_runner_provider_;
-  scoped_ptr<OutputSurface> output_surface_;
-  scoped_ptr<MockLayerTreeHostImpl> host_impl_;
+  std::unique_ptr<OutputSurface> output_surface_;
+  std::unique_ptr<MockLayerTreeHostImpl> host_impl_;
 };
 
 // Test to ensure that we call NotifyAllTileTasksCompleted when PrepareTiles is
@@ -1751,7 +1758,7 @@ TEST_F(TileManagerTest, LowResHasNoImage) {
     skia::RefPtr<SkImage> blue_image =
         skia::AdoptRef(surface->newImageSnapshot());
 
-    scoped_ptr<FakeRecordingSource> recording_source =
+    std::unique_ptr<FakeRecordingSource> recording_source =
         FakeRecordingSource::CreateFilledRecordingSource(size);
     recording_source->SetBackgroundColor(SK_ColorTRANSPARENT);
     recording_source->SetRequiresClear(true);
@@ -1767,7 +1774,7 @@ TEST_F(TileManagerTest, LowResHasNoImage) {
     FakePictureLayerTilingClient tiling_client;
     tiling_client.SetTileSize(size);
 
-    scoped_ptr<PictureLayerImpl> layer =
+    std::unique_ptr<PictureLayerImpl> layer =
         PictureLayerImpl::Create(host_impl_->active_tree(), 1, false);
     PictureLayerTilingSet* tiling_set = layer->picture_layer_tiling_set();
 
@@ -1820,13 +1827,14 @@ TEST_F(TileManagerTest, LowResHasNoImage) {
   }
 }
 
-// Fake TileTaskRunner that just no-ops all calls.
-class FakeTileTaskRunner : public TileTaskRunner, public TileTaskClient {
+// Fake TileTaskWorkerPool that just no-ops all calls.
+class FakeTileTaskWorkerPool : public TileTaskWorkerPool,
+                               public RasterBufferProvider {
  public:
-  FakeTileTaskRunner() {}
-  ~FakeTileTaskRunner() override {}
+  FakeTileTaskWorkerPool() {}
+  ~FakeTileTaskWorkerPool() override {}
 
-  // TileTaskRunner methods.
+  // TileTaskWorkerPool methods.
   void Shutdown() override {}
   void CheckForCompletedTasks() override {}
   ResourceFormat GetResourceFormat(bool must_support_alpha) const override {
@@ -1835,25 +1843,26 @@ class FakeTileTaskRunner : public TileTaskRunner, public TileTaskClient {
   bool GetResourceRequiresSwizzle(bool must_support_alpha) const override {
     return false;
   }
+  RasterBufferProvider* AsRasterBufferProvider() override { return this; }
 
   void ScheduleTasks(TaskGraph* graph) override {}
 
-  // TileTaskClient methods.
-  scoped_ptr<RasterBuffer> AcquireBufferForRaster(
+  // RasterBufferProvider methods.
+  std::unique_ptr<RasterBuffer> AcquireBufferForRaster(
       const Resource* resource,
       uint64_t resource_content_id,
       uint64_t previous_content_id) override {
     NOTREACHED();
     return nullptr;
   }
-  void ReleaseBufferForRaster(scoped_ptr<RasterBuffer> buffer) override {}
+  void ReleaseBufferForRaster(std::unique_ptr<RasterBuffer> buffer) override {}
 };
 
-// Fake TileTaskRunner that just cancels all scheduled tasks immediately.
-class CancellingTileTaskRunner : public FakeTileTaskRunner {
+// Fake TileTaskWorkerPool that just cancels all scheduled tasks immediately.
+class CancellingTileTaskWorkerPool : public FakeTileTaskWorkerPool {
  public:
-  CancellingTileTaskRunner() {}
-  ~CancellingTileTaskRunner() override {}
+  CancellingTileTaskWorkerPool() {}
+  ~CancellingTileTaskWorkerPool() override {}
 
   void ScheduleTasks(TaskGraph* graph) override {
     // Just call CompleteOnOriginThread on each item in the queue. As none of
@@ -1876,8 +1885,9 @@ class PartialRasterTileManagerTest : public TileManagerTest {
 TEST_F(PartialRasterTileManagerTest, CancelledTasksHaveNoContentId) {
   // Create a CancellingTaskRunner and set it on the tile manager so that all
   // scheduled work is immediately cancelled.
-  CancellingTileTaskRunner cancelling_runner;
-  host_impl_->tile_manager()->SetTileTaskRunnerForTesting(&cancelling_runner);
+  CancellingTileTaskWorkerPool cancelling_worker_pool;
+  host_impl_->tile_manager()->SetTileTaskWorkerPoolForTesting(
+      &cancelling_worker_pool);
 
   // Pick arbitrary IDs - they don't really matter as long as they're constant.
   const int kLayerId = 7;
@@ -1890,7 +1900,7 @@ TEST_F(PartialRasterTileManagerTest, CancelledTasksHaveNoContentId) {
   LayerTreeImpl* pending_tree = host_impl_->pending_tree();
 
   // Steal from the recycled tree.
-  scoped_ptr<FakePictureLayerImpl> pending_layer =
+  std::unique_ptr<FakePictureLayerImpl> pending_layer =
       FakePictureLayerImpl::CreateWithRasterSource(pending_tree, kLayerId,
                                                    pending_raster_source);
   pending_layer->SetDrawsContent(true);
@@ -1905,12 +1915,13 @@ TEST_F(PartialRasterTileManagerTest, CancelledTasksHaveNoContentId) {
   host_impl_->pending_tree()->UpdateDrawProperties(false /* update_lcd_text */);
 
   // Build the raster queue and invalidate the top tile.
-  scoped_ptr<RasterTilePriorityQueue> queue(host_impl_->BuildRasterQueue(
+  std::unique_ptr<RasterTilePriorityQueue> queue(host_impl_->BuildRasterQueue(
       SAME_PRIORITY_FOR_BOTH_TREES, RasterTilePriorityQueue::Type::ALL));
   EXPECT_FALSE(queue->IsEmpty());
   queue->Top().tile()->SetInvalidated(gfx::Rect(), kInvalidatedId);
 
-  // PrepareTiles to schedule tasks. Due to the CancellingTileTaskRunner, these
+  // PrepareTiles to schedule tasks. Due to the CancellingTileTaskWorkerPool,
+  // these
   // tasks will immediately be canceled.
   host_impl_->tile_manager()->PrepareTiles(host_impl_->global_tile_state());
 
@@ -1920,17 +1931,21 @@ TEST_F(PartialRasterTileManagerTest, CancelledTasksHaveNoContentId) {
   EXPECT_FALSE(host_impl_->resource_pool()->TryAcquireResourceWithContentId(
       kInvalidatedId));
 
-  // Free our host_impl_ before the cancelling_runner we passed it, as it will
+  // Free our host_impl_ before the cancelling_worker_pool we passed it, as it
+  // will
   // use that class in clean up.
   host_impl_ = nullptr;
 }
 
-// Fake TileTaskRunner that verifies the resource content ID of raster tasks.
-class VerifyResourceContentIdTileTaskRunner : public FakeTileTaskRunner {
+// Fake TileTaskWorkerPool that verifies the resource content ID of raster
+// tasks.
+class VerifyResourceContentIdTileTaskWorkerPool
+    : public FakeTileTaskWorkerPool {
  public:
-  explicit VerifyResourceContentIdTileTaskRunner(uint64_t expected_resource_id)
+  explicit VerifyResourceContentIdTileTaskWorkerPool(
+      uint64_t expected_resource_id)
       : expected_resource_id_(expected_resource_id) {}
-  ~VerifyResourceContentIdTileTaskRunner() override {}
+  ~VerifyResourceContentIdTileTaskWorkerPool() override {}
 
   void ScheduleTasks(TaskGraph* graph) override {
     for (const auto& node : graph->nodes) {
@@ -1942,8 +1957,8 @@ class VerifyResourceContentIdTileTaskRunner : public FakeTileTaskRunner {
     }
   }
 
-  // TileTaskClient methods.
-  scoped_ptr<RasterBuffer> AcquireBufferForRaster(
+  // RasterBufferProvider methods.
+  std::unique_ptr<RasterBuffer> AcquireBufferForRaster(
       const Resource* resource,
       uint64_t resource_content_id,
       uint64_t previous_content_id) override {
@@ -1958,7 +1973,7 @@ class VerifyResourceContentIdTileTaskRunner : public FakeTileTaskRunner {
 // Runs a test to ensure that partial raster is either enabled or disabled,
 // depending on |partial_raster_enabled|'s value. Takes ownership of host_impl
 // so that cleanup order can be controlled.
-void RunPartialRasterCheck(scoped_ptr<LayerTreeHostImpl> host_impl,
+void RunPartialRasterCheck(std::unique_ptr<LayerTreeHostImpl> host_impl,
                            bool partial_raster_enabled) {
   // Pick arbitrary IDs - they don't really matter as long as they're constant.
   const int kLayerId = 7;
@@ -1966,10 +1981,12 @@ void RunPartialRasterCheck(scoped_ptr<LayerTreeHostImpl> host_impl,
   const uint64_t kExpectedId = partial_raster_enabled ? kInvalidatedId : 0u;
   const gfx::Size kTileSize(128, 128);
 
-  // Create a VerifyResourceContentIdTileTaskRunner to ensure that the raster
+  // Create a VerifyResourceContentIdTileTaskWorkerPool to ensure that the
+  // raster
   // task we see is created with |kExpectedId|.
-  VerifyResourceContentIdTileTaskRunner verifying_runner(kExpectedId);
-  host_impl->tile_manager()->SetTileTaskRunnerForTesting(&verifying_runner);
+  VerifyResourceContentIdTileTaskWorkerPool verifying_worker_pool(kExpectedId);
+  host_impl->tile_manager()->SetTileTaskWorkerPoolForTesting(
+      &verifying_worker_pool);
 
   // Ensure there's a resource with our |kInvalidatedId| in the resource pool.
   host_impl->resource_pool()->ReleaseResource(
@@ -1983,7 +2000,7 @@ void RunPartialRasterCheck(scoped_ptr<LayerTreeHostImpl> host_impl,
   LayerTreeImpl* pending_tree = host_impl->pending_tree();
 
   // Steal from the recycled tree.
-  scoped_ptr<FakePictureLayerImpl> pending_layer =
+  std::unique_ptr<FakePictureLayerImpl> pending_layer =
       FakePictureLayerImpl::CreateWithRasterSource(pending_tree, kLayerId,
                                                    pending_raster_source);
   pending_layer->SetDrawsContent(true);
@@ -1998,17 +2015,18 @@ void RunPartialRasterCheck(scoped_ptr<LayerTreeHostImpl> host_impl,
   host_impl->pending_tree()->UpdateDrawProperties(false /* update_lcd_text */);
 
   // Build the raster queue and invalidate the top tile.
-  scoped_ptr<RasterTilePriorityQueue> queue(host_impl->BuildRasterQueue(
+  std::unique_ptr<RasterTilePriorityQueue> queue(host_impl->BuildRasterQueue(
       SAME_PRIORITY_FOR_BOTH_TREES, RasterTilePriorityQueue::Type::ALL));
   EXPECT_FALSE(queue->IsEmpty());
   queue->Top().tile()->SetInvalidated(gfx::Rect(), kInvalidatedId);
 
   // PrepareTiles to schedule tasks. Due to the
-  // VerifyPreviousContentTileTaskRunner, these tasks will verified and
+  // VerifyPreviousContentTileTaskWorkerPool, these tasks will verified and
   // cancelled.
   host_impl->tile_manager()->PrepareTiles(host_impl->global_tile_state());
 
-  // Free our host_impl before the cancelling_runner we passed it, as it will
+  // Free our host_impl before the cancelling_worker_pool we passed it, as it
+  // will
   // use that class in clean up.
   host_impl = nullptr;
 }

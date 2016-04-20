@@ -572,6 +572,9 @@ cr.define('cr.ui.login', function() {
 
       $('step-logo').hidden = newStep.classList.contains('no-logo');
 
+      $('oobe').dispatchEvent(
+          new CustomEvent('screenchanged',
+                          {detail: this.currentScreen.id}));
       chrome.send('updateCurrentScreen', [this.currentScreen.id]);
     },
 
@@ -919,8 +922,9 @@ cr.define('cr.ui.login', function() {
   DisplayManager.resetSigninUI = function(forceOnline) {
     var currentScreenId = Oobe.getInstance().currentScreen.id;
 
-    $(SCREEN_GAIA_SIGNIN).reset(
-        currentScreenId == SCREEN_GAIA_SIGNIN, forceOnline);
+    if ($(SCREEN_GAIA_SIGNIN))
+      $(SCREEN_GAIA_SIGNIN).reset(
+          currentScreenId == SCREEN_GAIA_SIGNIN, forceOnline);
     $('login-header-bar').disabled = false;
     $('pod-row').reset(currentScreenId == SCREEN_ACCOUNT_PICKER);
   };

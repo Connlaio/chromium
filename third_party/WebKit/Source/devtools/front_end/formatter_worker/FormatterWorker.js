@@ -131,11 +131,11 @@ WebInspector.evaluatableJavaScriptSubstring = function(content)
  */
 WebInspector.javaScriptIdentifiers = function(content)
 {
-    var root = acorn.parse(content, {});
+    var root = acorn.parse(content, { ranges: false, ecmaVersion: 6 });
+
     /** @type {!Array<!ESTree.Node>} */
     var identifiers = [];
-    var functionDeclarationCounter = 0;
-    var walker = new WebInspector.ESTreeWalker(beforeVisit, afterVisit);
+    var walker = new WebInspector.ESTreeWalker(beforeVisit);
 
     /**
      * @param {!ESTree.Node} node
@@ -143,7 +143,7 @@ WebInspector.javaScriptIdentifiers = function(content)
      */
     function isFunction(node)
     {
-        return node.type === "FunctionDeclaration" || node.type === "FunctionExpression";
+        return node.type === "FunctionDeclaration" || node.type === "FunctionExpression" || node.type === "ArrowFunctionExpression";
     }
 
     /**
@@ -151,29 +151,29 @@ WebInspector.javaScriptIdentifiers = function(content)
      */
     function beforeVisit(node)
     {
-        if (isFunction(node))
-            functionDeclarationCounter++;
+        if (isFunction(node)) {
+            if (node.id)
+                identifiers.push(node.id);
+            return WebInspector.ESTreeWalker.SkipSubtree;
+        }
 
-        if (functionDeclarationCounter > 1)
+        if (node.type !== "Identifier")
             return;
 
-        if (isFunction(node) && node.params)
-            identifiers.pushAll(node.params);
-
-        if (node.type === "VariableDeclarator")
-            identifiers.push(/** @type {!ESTree.Node} */(node.id));
+        if (node.parent && node.parent.type === "MemberExpression" && node.parent.property === node && !node.parent.computed)
+            return;
+        identifiers.push(node);
     }
 
-    /**
-     * @param {!ESTree.Node} node
-     */
-    function afterVisit(node)
-    {
-        if (isFunction(node))
-            functionDeclarationCounter--;
+    if (!root || root.type !== "Program" || root.body.length !== 1 || !isFunction(root.body[0])) {
+        postMessage([]);
+        return;
     }
 
-    walker.walk(root);
+    var functionNode = root.body[0];
+    for (var param of functionNode.params)
+        walker.walk(param);
+    walker.walk(functionNode.body);
     var reduced = identifiers.map(id => ({name: id.name, offset: id.start}));
     postMessage(reduced);
 }
@@ -193,7 +193,8 @@ WebInspector.format = function(mimeType, text, indentString)
     try {
         switch (mimeType) {
         case "text/html":
-            formatMixedHTML(builder, text, lineEndings);
+            var formatter = new WebInspector.HTMLFormatter(builder);
+            formatter.format(text, lineEndings);
             break;
         case "text/css":
             var formatter = new WebInspector.CSSFormatter(builder);
@@ -216,35 +217,3 @@ WebInspector.format = function(mimeType, text, indentString)
     }
     postMessage(result);
 }
-
-/**
- * @param {!WebInspector.FormattedContentBuilder} builder
- * @param {string} text
- * @param {!Array<number>} lineEndings
- */
-function formatMixedHTML(builder, text, lineEndings)
-{
-    var htmlFormatter = new WebInspector.HTMLFormatter(builder);
-    var jsFormatter = new WebInspector.JavaScriptFormatter(builder);
-    var cssFormatter = new WebInspector.CSSFormatter(builder);
-    var identityFormatter = new WebInspector.IdentityFormatter(builder);
-
-    var offset = 0;
-    while (offset < text.length) {
-        var result = htmlFormatter.format(text, lineEndings, offset);
-        if (result.offset >= text.length)
-            break;
-        builder.addNewLine();
-        var closeTag = "</" + result.tagName;
-        offset = text.indexOf(closeTag, result.offset);
-        if (offset === -1)
-            offset = text.length;
-        if (result.tagName === "script")
-            jsFormatter.format(text, lineEndings, result.offset, offset);
-        else if (result.tagName === "style")
-            cssFormatter.format(text, lineEndings, result.offset, offset);
-        else
-            identityFormatter.format(text, lineEndings, result.offset, offset);
-    }
-}
-

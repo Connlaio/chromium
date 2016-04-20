@@ -34,6 +34,7 @@ component("views") {
     "//skia",
     "//third_party/icu",
     "//ui/accessibility",
+    "//ui/display",
     "//ui/native_theme",
     "//ui/resources",
     "//ui/strings",
@@ -104,6 +105,7 @@ component("views") {
     ]
     deps += [
       "//ui/events/devices",
+      "//ui/events/devices/x11",
       "//ui/events/platform/x11",
       "//ui/gfx/x",
     ]

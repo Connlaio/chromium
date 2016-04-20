@@ -58,6 +58,7 @@ public:
     void disable(ErrorString*) override;
     void restore() override;
     void didCommitLoadForLocalFrame(LocalFrame*) override;
+    void discardAgent() override;
 
     // Called from the front-end.
     void enable(ErrorString*) override;
@@ -67,6 +68,7 @@ public:
     void didOpenDatabase(blink::Database*, const String& domain, const String& name, const String& version);
 private:
     explicit InspectorDatabaseAgent(Page*);
+    void registerDatabaseOnCreation(blink::Database*);
 
     blink::Database* databaseForId(const String& databaseId);
     InspectorDatabaseResource* findByFileName(const String& fileName);

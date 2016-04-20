@@ -89,7 +89,8 @@ IAccessible* BrowserAccessibilityManagerWin::GetParentIAccessible() {
 
 void BrowserAccessibilityManagerWin::MaybeCallNotifyWinEvent(
     DWORD event, BrowserAccessibility* node) {
-  BrowserAccessibilityDelegate* delegate = GetDelegateFromRootManager();
+  BrowserAccessibilityDelegate* delegate =
+      node->manager()->GetDelegateFromRootManager();
   if (!delegate) {
     // This line and other LOG(WARNING) lines are temporary, to debug
     // flaky failures in DumpAccessibilityEvent* tests.
@@ -114,7 +115,7 @@ void BrowserAccessibilityManagerWin::MaybeCallNotifyWinEvent(
 
   // It doesn't make sense to fire a REORDER event on a leaf node; that
   // happens when the node has internal children line inline text boxes.
-  if (event == EVENT_OBJECT_REORDER && node->PlatformIsLeaf())
+  if (event == EVENT_OBJECT_REORDER && node->PlatformChildCount() == 0)
     return;
 
   // Pass the negation of this node's unique id in the |child_id|
@@ -223,7 +224,6 @@ void BrowserAccessibilityManagerWin::NotifyAccessibilityEvent(
   if (event_id != EVENT_MIN)
     MaybeCallNotifyWinEvent(event_id, node);
 
-
   // If this is a layout complete notification (sent when a container scrolls)
   // and there is a descendant tracked object, send a notification on it.
   // TODO(dmazzoni): remove once http://crbug.com/113483 is fixed.
@@ -290,12 +290,6 @@ void BrowserAccessibilityManagerWin::OnAtomicUpdateFinished(
     const std::vector<ui::AXTreeDelegate::Change>& changes) {
   BrowserAccessibilityManager::OnAtomicUpdateFinished(
       tree, root_changed, changes);
-
-  if (root_changed) {
-    // In order to make screen readers aware of the new accessibility root,
-    // we need to fire a focus event on it.
-    OnWindowFocused();
-  }
 
   // Do a sequence of Windows-specific updates on each node. Each one is
   // done in a single pass that must complete before the next step starts.

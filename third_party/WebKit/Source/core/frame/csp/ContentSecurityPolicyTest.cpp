@@ -191,10 +191,23 @@ TEST_F(ContentSecurityPolicyTest, ReportURIInMeta)
     policy.appendTo(characters);
     const UChar* begin = characters.data();
     const UChar* end = begin + characters.size();
-    RawPtr<CSPDirectiveList> directiveList(CSPDirectiveList::create(csp, begin, end, ContentSecurityPolicyHeaderTypeEnforce, ContentSecurityPolicyHeaderSourceMeta));
+    CSPDirectiveList* directiveList(CSPDirectiveList::create(csp, begin, end, ContentSecurityPolicyHeaderTypeEnforce, ContentSecurityPolicyHeaderSourceMeta));
     EXPECT_TRUE(directiveList->reportEndpoints().isEmpty());
     directiveList = CSPDirectiveList::create(csp, begin, end, ContentSecurityPolicyHeaderTypeEnforce, ContentSecurityPolicyHeaderSourceHTTP);
     EXPECT_FALSE(directiveList->reportEndpoints().isEmpty());
+}
+
+// Tests that object-src directives are applied to a request to load a
+// plugin, but not to subresource requests that the plugin itself
+// makes. https://crbug.com/603952
+TEST_F(ContentSecurityPolicyTest, ObjectSrc)
+{
+    KURL url(KURL(), "https://example.test");
+    csp->bindToExecutionContext(document.get());
+    csp->didReceiveHeader("object-src 'none';", ContentSecurityPolicyHeaderTypeEnforce, ContentSecurityPolicyHeaderSourceMeta);
+    EXPECT_FALSE(csp->allowRequest(WebURLRequest::RequestContextObject, url, ContentSecurityPolicy::DidNotRedirect, ContentSecurityPolicy::SuppressReport));
+    EXPECT_FALSE(csp->allowRequest(WebURLRequest::RequestContextEmbed, url, ContentSecurityPolicy::DidNotRedirect, ContentSecurityPolicy::SuppressReport));
+    EXPECT_TRUE(csp->allowRequest(WebURLRequest::RequestContextPlugin, url, ContentSecurityPolicy::DidNotRedirect, ContentSecurityPolicy::SuppressReport));
 }
 
 } // namespace blink

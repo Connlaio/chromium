@@ -132,6 +132,7 @@ class VIEWS_EXPORT NativeWidgetMac : public internal::NativeWidgetPrivate {
   bool IsTranslucentWindowOpacitySupported() const override;
   void OnSizeConstraintsChanged() override;
   void RepostNativeEvent(gfx::NativeEvent native_event) override;
+  std::string GetName() const override;
 
  protected:
   // Creates the NSWindow that will be passed to the BridgedNativeWidget.
@@ -146,9 +147,12 @@ class VIEWS_EXPORT NativeWidgetMac : public internal::NativeWidgetPrivate {
   friend class test::HitTestNativeWidgetMac;
 
   internal::NativeWidgetDelegate* delegate_;
-  scoped_ptr<BridgedNativeWidget> bridge_;
+  std::unique_ptr<BridgedNativeWidget> bridge_;
 
   Widget::InitParams::Ownership ownership_;
+
+  // Internal name.
+  std::string name_;
 
   DISALLOW_COPY_AND_ASSIGN(NativeWidgetMac);
 };

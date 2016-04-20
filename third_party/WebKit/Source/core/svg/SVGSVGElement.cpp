@@ -86,18 +86,6 @@ DEFINE_NODE_FACTORY(SVGSVGElement)
 
 SVGSVGElement::~SVGSVGElement()
 {
-#if !ENABLE(OILPAN)
-    if (m_viewSpec)
-        m_viewSpec->detachContextElement();
-
-    // There are cases where removedFromDocument() is not called.
-    // see ContainerNode::removeAllChildren, called by its destructor.
-    // With Oilpan, either removedFrom is called or the document
-    // is dead as well and there is no reason to clear the extensions.
-    document().accessSVGExtensions().removeTimeContainer(this);
-
-    ASSERT(inShadowIncludingDocument() || !accessDocumentSVGExtensions().isSVGRootWithRelativeLengthDescendents(this));
-#endif
 }
 
 SVGRectTearOff* SVGSVGElement::viewport() const
@@ -205,6 +193,14 @@ void SVGSVGElement::parseAttribute(const QualifiedName& name, const AtomicString
     } else if (name == HTMLNames::onerrorAttr) {
         document().setWindowAttributeEventListener(EventTypeNames::error, createAttributeEventListener(document().frame(), name, value, eventParameterName()));
     } else if (SVGZoomAndPan::parseAttribute(name, value)) {
+    } else if (name == SVGNames::widthAttr || name == SVGNames::heightAttr) {
+        SVGAnimatedLength* property = name == SVGNames::widthAttr ? m_width : m_height;
+        SVGParsingError parseError;
+        if (!value.isNull())
+            parseError = property->setBaseValueAsString(value);
+        if (parseError != SVGParseStatus::NoError || value.isNull())
+            property->setDefaultValueAsString("100%");
+        reportAttributeParsingError(parseError, name, value);
     } else {
         SVGElement::parseAttribute(name, oldValue, value);
     }

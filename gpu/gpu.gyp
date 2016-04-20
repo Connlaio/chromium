@@ -311,8 +311,11 @@
         '../ipc/ipc.gyp:test_support_ipc',
         '../skia/skia.gyp:skia',
         '../testing/gtest.gyp:gtest',
+        '../testing/gmock.gyp:gmock',
         '../third_party/mesa/mesa.gyp:mesa_headers',
         '../ui/gfx/gfx.gyp:gfx_test_support',
+        '../ui/gl/gl.gyp:gl_unittest_utils',
+        '../ui/gl/gl.gyp:gl_test_support',
         '../url/url.gyp:url_lib',
         'command_buffer_common',
         'command_buffer_service',
@@ -531,17 +534,17 @@
         'gles2_conform_support/egl/test_support.cc',
         'gles2_conform_support/egl/test_support.h',
       ],
-          'defines': [
+      'defines': [
         'COMMAND_BUFFER_GLES_LIB_SUPPORT_ONLY',
         'EGLAPIENTRY=',
-          ],
+      ],
       'conditions': [
         ['OS=="win"', {
           'defines': [
             'EGLAPI=__declspec(dllexport)',
           ],
         }, { # OS!="win"
-                  'defines': [
+          'defines': [
             'EGLAPI=__attribute__((visibility(\"default\")))'
           ],
         }],
@@ -564,7 +567,7 @@
         'command_buffer/tests/command_buffer_gles2_tests_main.cc',
         'command_buffer/tests/egl_test.cc',
       ],
-          'defines': [
+      'defines': [
          'COMMAND_BUFFER_GLES_LIB_SUPPORT_ONLY',
          'EGLAPIENTRY=',
       ],
@@ -574,7 +577,7 @@
             'EGLAPI=__declspec(dllimport)',
           ],
         }, { # OS!="win"
-                  'defines': [
+          'defines': [
             'EGLAPI=',
           ],
         }],

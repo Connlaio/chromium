@@ -5,8 +5,9 @@
 #ifndef CONTENT_PUBLIC_COMMON_SANDBOX_INIT_H_
 #define CONTENT_PUBLIC_COMMON_SANDBOX_INIT_H_
 
+#include <memory>
+
 #include "base/files/scoped_file.h"
-#include "base/memory/scoped_ptr.h"
 #include "base/memory/shared_memory.h"
 #include "base/process/launch.h"
 #include "base/process/process.h"
@@ -40,16 +41,6 @@ class SandboxedProcessLauncherDelegate;
 // returned.
 CONTENT_EXPORT bool InitializeSandbox(
     sandbox::SandboxInterfaceInfo* sandbox_info);
-
-// This is a restricted version of Windows' DuplicateHandle() function
-// that works inside the sandbox and can send handles but not retrieve
-// them.  Unlike DuplicateHandle(), it takes a process ID rather than
-// a process handle.  It returns true on success, false otherwise.
-CONTENT_EXPORT bool BrokerDuplicateHandle(HANDLE source_handle,
-                                          DWORD target_process_id,
-                                          HANDLE* target_handle,
-                                          DWORD desired_access,
-                                          DWORD options);
 
 // Inform the current process's sandbox broker (e.g. the broker for
 // 32-bit processes) about a process created under a different sandbox
@@ -97,12 +88,12 @@ class SandboxInitializerDelegate;
 // /proc, |proc_fd| must be a valid file descriptor to /proc/.
 // Returns true if the sandbox has been properly engaged.
 CONTENT_EXPORT bool InitializeSandbox(
-    scoped_ptr<sandbox::bpf_dsl::Policy> policy,
+    std::unique_ptr<sandbox::bpf_dsl::Policy> policy,
     base::ScopedFD proc_fd);
 
 // Return a "baseline" policy. This is used by a SandboxInitializerDelegate to
 // implement a policy that is derived from the baseline.
-CONTENT_EXPORT scoped_ptr<sandbox::bpf_dsl::Policy>
+CONTENT_EXPORT std::unique_ptr<sandbox::bpf_dsl::Policy>
 GetBPFSandboxBaselinePolicy();
 #endif  // defined(OS_LINUX) || defined(OS_NACL_NONSFI)
 

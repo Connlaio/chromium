@@ -8,6 +8,7 @@
 
 #include "base/bind.h"
 #include "base/logging.h"
+#include "base/memory/ptr_util.h"
 #include "cc/layers/video_frame_provider_client_impl.h"
 #include "cc/quads/io_surface_draw_quad.h"
 #include "cc/quads/stream_video_draw_quad.h"
@@ -27,7 +28,7 @@
 namespace cc {
 
 // static
-scoped_ptr<VideoLayerImpl> VideoLayerImpl::Create(
+std::unique_ptr<VideoLayerImpl> VideoLayerImpl::Create(
     LayerTreeImpl* tree_impl,
     int id,
     VideoFrameProvider* provider,
@@ -39,7 +40,7 @@ scoped_ptr<VideoLayerImpl> VideoLayerImpl::Create(
       VideoFrameProviderClientImpl::Create(
           provider, tree_impl->GetVideoFrameControllerClient());
 
-  return make_scoped_ptr(new VideoLayerImpl(
+  return base::WrapUnique(new VideoLayerImpl(
       tree_impl, id, std::move(provider_client_impl), video_rotation));
 }
 
@@ -66,9 +67,9 @@ VideoLayerImpl::~VideoLayerImpl() {
   }
 }
 
-scoped_ptr<LayerImpl> VideoLayerImpl::CreateLayerImpl(
+std::unique_ptr<LayerImpl> VideoLayerImpl::CreateLayerImpl(
     LayerTreeImpl* tree_impl) {
-  return make_scoped_ptr(new VideoLayerImpl(
+  return base::WrapUnique(new VideoLayerImpl(
       tree_impl, id(), provider_client_impl_, video_rotation_));
 }
 
@@ -232,8 +233,6 @@ void VideoLayerImpl::AppendQuads(RenderPass* render_pass,
       break;
     }
     case VideoFrameExternalResources::YUV_RESOURCE: {
-      DCHECK_GE(frame_resources_.size(), 3u);
-
       YUVVideoDrawQuad::ColorSpace color_space = YUVVideoDrawQuad::REC_601;
       int videoframe_color_space;
       if (frame_->metadata()->GetInteger(media::VideoFrameMetadata::COLOR_SPACE,
@@ -250,12 +249,18 @@ void VideoLayerImpl::AppendQuads(RenderPass* render_pass,
           frame_->format(), media::VideoFrame::kUPlane, coded_size);
 
       if (frame_->HasTextures()) {
-        DCHECK_EQ(media::PIXEL_FORMAT_I420, frame_->format());
-        DCHECK_EQ(3u, frame_resources_.size());  // Alpha is not supported yet.
+        if (frame_->format() == media::PIXEL_FORMAT_NV12) {
+          DCHECK_EQ(2u, frame_resources_.size());
+        } else {
+          DCHECK_EQ(media::PIXEL_FORMAT_I420, frame_->format());
+          DCHECK_EQ(3u,
+                    frame_resources_.size());  // Alpha is not supported yet.
+        }
       } else {
         DCHECK(uv_tex_size ==
                media::VideoFrame::PlaneSize(
                    frame_->format(), media::VideoFrame::kVPlane, coded_size));
+        DCHECK_GE(frame_resources_.size(), 3u);
         DCHECK(frame_resources_.size() <= 3 ||
                ya_tex_size == media::VideoFrame::PlaneSize(
                                   frame_->format(), media::VideoFrame::kAPlane,
@@ -281,7 +286,8 @@ void VideoLayerImpl::AppendQuads(RenderPass* render_pass,
           shared_quad_state, quad_rect, opaque_rect, visible_quad_rect,
           ya_tex_coord_rect, uv_tex_coord_rect, ya_tex_size, uv_tex_size,
           frame_resources_[0].id, frame_resources_[1].id,
-          frame_resources_[2].id,
+          frame_resources_.size() > 2 ? frame_resources_[2].id
+                                      : frame_resources_[1].id,
           frame_resources_.size() > 3 ? frame_resources_[3].id : 0, color_space,
           frame_resource_offset_, frame_resource_multiplier_);
       ValidateQuadResources(yuv_video_quad);

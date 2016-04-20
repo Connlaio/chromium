@@ -11,9 +11,10 @@
 #include "base/path_service.h"
 #include "build/build_config.h"
 #include "components/resource_provider/public/cpp/resource_loader.h"
-#include "mojo/shell/public/cpp/connector.h"
+#include "services/shell/public/cpp/connector.h"
 #include "ui/aura/env.h"
 #include "ui/base/ime/input_method_initializer.h"
+#include "ui/base/material_design/material_design_controller.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/base/ui_base_paths.h"
 #include "ui/views/views_delegate.h"
@@ -50,11 +51,12 @@ class MusViewsDelegate : public ViewsDelegate {
 
 }  // namespace
 
-AuraInit::AuraInit(mojo::Connector* connector, const std::string& resource_file)
+AuraInit::AuraInit(shell::Connector* connector,
+                   const std::string& resource_file)
     : resource_file_(resource_file),
+      env_(aura::Env::CreateInstance()),
       views_delegate_(new MusViewsDelegate) {
-  aura::Env::CreateInstance(false);
-
+  ui::MaterialDesignController::Initialize();
   InitializeResources(connector);
 
   ui::InitializeInputMethodForTesting();
@@ -72,7 +74,7 @@ AuraInit::~AuraInit() {
 #endif
 }
 
-void AuraInit::InitializeResources(mojo::Connector* connector) {
+void AuraInit::InitializeResources(shell::Connector* connector) {
   if (ui::ResourceBundle::HasSharedInstance())
     return;
   resource_provider::ResourceLoader resource_loader(

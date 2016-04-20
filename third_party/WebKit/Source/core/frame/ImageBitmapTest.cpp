@@ -69,7 +69,7 @@ protected:
         // Garbage collection is required prior to switching out the
         // test's memory cache; image resources are released, evicting
         // them from the cache.
-        Heap::collectGarbage(BlinkGC::NoHeapPointersOnStack, BlinkGC::GCWithSweep, BlinkGC::ForcedGC);
+        ThreadHeap::collectGarbage(BlinkGC::NoHeapPointersOnStack, BlinkGC::GCWithSweep, BlinkGC::ForcedGC);
 
         replaceMemoryCacheForTesting(m_globalMemoryCache.release());
     }
@@ -81,7 +81,7 @@ protected:
 TEST_F(ImageBitmapTest, ImageResourceConsistency)
 {
     const ImageBitmapOptions defaultOptions;
-    HTMLImageElement* imageElement = HTMLImageElement::create(*Document::create().get());
+    HTMLImageElement* imageElement = HTMLImageElement::create(*Document::create());
     ImageResource* image = ImageResource::create(StaticBitmapImage::create(m_image).get());
     imageElement->setImageResource(image);
 
@@ -109,7 +109,7 @@ TEST_F(ImageBitmapTest, ImageResourceConsistency)
 // Verifies that ImageBitmaps constructed from HTMLImageElements hold a reference to the original Image if the HTMLImageElement src is changed.
 TEST_F(ImageBitmapTest, ImageBitmapSourceChanged)
 {
-    HTMLImageElement* image = HTMLImageElement::create(*Document::create().get());
+    HTMLImageElement* image = HTMLImageElement::create(*Document::create());
     ImageResource* originalImageResource = ImageResource::create(
         StaticBitmapImage::create(m_image).get());
     image->setImageResource(originalImageResource);

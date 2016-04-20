@@ -36,6 +36,7 @@
 #include "core/layout/LayoutGeometryMap.h"
 #include "core/layout/LayoutPart.h"
 #include "core/layout/LayoutView.h"
+#include "core/layout/api/LayoutViewItem.h"
 #include "core/layout/compositing/CompositedLayerMapping.h"
 #include "core/layout/compositing/PaintLayerCompositor.h"
 #include "core/page/ChromeClient.h"
@@ -210,8 +211,11 @@ void ScrollingCoordinator::updateAfterCompositingChangeIfNeeded()
     for (const Frame* child = tree.firstChild(); child; child = child->tree().nextSibling()) {
         if (!child->isLocalFrame())
             continue;
-        if (WebLayer* scrollLayer = toWebLayer(toLocalFrame(child)->view()->layerForScrolling()))
-            scrollLayer->setBounds(toLocalFrame(child)->view()->contentsSize());
+        FrameView* frameView = toLocalFrame(child)->view();
+        if (!frameView || frameView->shouldThrottleRendering())
+            continue;
+        if (WebLayer* scrollLayer = toWebLayer(frameView->layerForScrolling()))
+            scrollLayer->setBounds(frameView->contentsSize());
     }
 }
 
@@ -713,7 +717,7 @@ Region ScrollingCoordinator::computeShouldHandleScrollGestureOnMainThreadRegion(
 {
     Region shouldHandleScrollGestureOnMainThreadRegion;
     FrameView* frameView = frame->view();
-    if (!frameView)
+    if (!frameView || frameView->shouldThrottleRendering())
         return shouldHandleScrollGestureOnMainThreadRegion;
 
     IntPoint offset = frameLocation;
@@ -721,6 +725,8 @@ Region ScrollingCoordinator::computeShouldHandleScrollGestureOnMainThreadRegion(
 
     if (const FrameView::ScrollableAreaSet* scrollableAreas = frameView->scrollableAreas()) {
         for (const ScrollableArea* scrollableArea : *scrollableAreas) {
+            if (scrollableArea->isFrameView() && toFrameView(scrollableArea)->shouldThrottleRendering())
+                continue;
             // Composited scrollable areas can be scrolled off the main thread.
             if (scrollableArea->usesCompositedScrolling())
                 continue;
@@ -769,7 +775,7 @@ Region ScrollingCoordinator::computeShouldHandleScrollGestureOnMainThreadRegion(
 static void accumulateDocumentTouchEventTargetRects(LayerHitTestRects& rects, const Document* document)
 {
     ASSERT(document);
-    const EventTargetSet* targets = document->frameHost()->eventHandlerRegistry().eventHandlerTargets(EventHandlerRegistry::TouchEventBlocking);
+    const EventTargetSet* targets = document->frameHost()->eventHandlerRegistry().eventHandlerTargets(EventHandlerRegistry::TouchStartOrMoveEventBlocking);
     if (!targets)
         return;
 
@@ -781,13 +787,19 @@ static void accumulateDocumentTouchEventTargetRects(LayerHitTestRects& rects, co
     // Fullscreen HTML5 video when OverlayFullscreenVideo is enabled is implemented by replacing the
     // root cc::layer with the video layer so doing this optimization causes the compositor to think
     // that there are no handlers, therefore skip it.
-    if (!document->layoutView()->compositor()->inOverlayFullscreenVideo()) {
+    if (!document->layoutViewItem().compositor()->inOverlayFullscreenVideo()) {
         for (const auto& eventTarget : *targets) {
             EventTarget* target = eventTarget.key;
             Node* node = target->toNode();
-            if (target->toDOMWindow() || node == document || node == document->documentElement() || node == document->body()) {
-                if (LayoutView* layoutView = document->layoutView()) {
-                    layoutView->computeLayerHitTestRects(rects);
+            LocalDOMWindow* window = target->toLocalDOMWindow();
+            // If the target is inside a throttled frame, skip it.
+            if (window && window->frame()->view() && window->frame()->view()->shouldThrottleRendering())
+                continue;
+            if (node && node->document().view() && node->document().view()->shouldThrottleRendering())
+                continue;
+            if (window || node == document || node == document->documentElement() || node == document->body()) {
+                if (LayoutViewItem layoutView = document->layoutViewItem()) {
+                    layoutView.computeLayerHitTestRects(rects);
                 }
                 return;
             }
@@ -803,6 +815,10 @@ static void accumulateDocumentTouchEventTargetRects(LayerHitTestRects& rects, co
         // If the document belongs to an invisible subframe it does not have a composited layer
         // and should be skipped.
         if (node->document().isInInvisibleSubframe())
+            continue;
+
+        // If the node belongs to a throttled frame, skip it.
+        if (node->document().view() && node->document().view()->shouldThrottleRendering())
             continue;
 
         if (node->isDocumentNode() && node != document) {
@@ -934,7 +950,8 @@ bool ScrollingCoordinator::hasVisibleSlowRepaintViewportConstrainedObjects(Frame
 
     for (const LayoutObject* layoutObject : *viewportConstrainedObjects) {
         ASSERT(layoutObject->isBoxModelObject() && layoutObject->hasLayer());
-        ASSERT(layoutObject->style()->position() == FixedPosition);
+        ASSERT(layoutObject->style()->position() == FixedPosition
+            || layoutObject->style()->position() == StickyPosition);
         PaintLayer* layer = toLayoutBoxModelObject(layoutObject)->layer();
 
         // Whether the Layer scrolls with the viewport is a tree-depenent
@@ -978,11 +995,13 @@ MainThreadScrollingReasons ScrollingCoordinator::mainThreadScrollingReasons() co
             continue;
 
         FrameView* frameView = toLocalFrame(frame)->view();
-        if (!frameView)
+        if (!frameView || frameView->shouldThrottleRendering())
             continue;
 
         if (frameView->hasBackgroundAttachmentFixedObjects())
             reasons |= MainThreadScrollingReason::kHasBackgroundAttachmentFixedObjects;
+        if (frameView->hasStickyPositionObjects())
+            reasons |= MainThreadScrollingReason::kHasStickyPositionObjects;
         FrameView::ScrollingReasons scrollingReasons = frameView->getScrollingReasons();
         const bool mayBeScrolledByInput = (scrollingReasons == FrameView::Scrollable);
         const bool mayBeScrolledByScript = mayBeScrolledByInput || (scrollingReasons ==
@@ -1008,6 +1027,8 @@ String ScrollingCoordinator::mainThreadScrollingReasonsAsText(MainThreadScrollin
         stringBuilder.appendLiteral("Has background-attachment:fixed, ");
     if (reasons & MainThreadScrollingReason::kHasNonLayerViewportConstrainedObjects)
         stringBuilder.appendLiteral("Has non-layer viewport-constrained objects, ");
+    if (reasons & MainThreadScrollingReason::kHasStickyPositionObjects)
+        stringBuilder.appendLiteral("Has sticky position objects, ");
     if (reasons & MainThreadScrollingReason::kThreadedScrollingDisabled)
         stringBuilder.appendLiteral("Threaded scrolling is disabled, ");
     if (reasons & MainThreadScrollingReason::kAnimatingScrollOnMainThread)

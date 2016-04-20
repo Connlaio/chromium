@@ -57,6 +57,7 @@ LayerTreeSettingsScrollbarAnimatorFromProto(
 LayerTreeSettings::LayerTreeSettings()
     : single_thread_proxy_scheduler(true),
       use_external_begin_frame_source(false),
+      use_output_surface_begin_frame_source(false),
       main_frame_before_activation_enabled(false),
       using_synchronous_renderer_compositor(false),
       can_use_lcd_text(true),
@@ -100,6 +101,7 @@ LayerTreeSettings::LayerTreeSettings()
       wait_for_beginframe_interval(true),
       abort_commit_before_output_surface_creation(true),
       use_mouse_wheel_gestures(false),
+      use_layer_lists(false),
       max_staging_buffer_usage_in_bytes(32 * 1024 * 1024),
       memory_policy_(64 * 1024 * 1024,
                      gpu::MemoryAllocation::CUTOFF_ALLOW_EVERYTHING,

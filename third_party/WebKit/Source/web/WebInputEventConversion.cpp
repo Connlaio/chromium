@@ -91,6 +91,20 @@ FloatPoint convertHitPointToRootFrame(const Widget* widget, FloatPoint pointInRe
         (pointInRendererViewport.y() - offset.height()) / scale + visualViewport.y() + overscrollOffset.height());
 }
 
+PlatformEvent::DispatchType toPlatformDispatchType(WebInputEvent::DispatchType type)
+{
+    static_assert(PlatformEvent::DispatchType::Blocking == static_cast<PlatformEvent::DispatchType>(WebInputEvent::DispatchType::Blocking),
+        "Dispatch Types not equal");
+    static_assert(PlatformEvent::DispatchType::EventNonBlocking == static_cast<PlatformEvent::DispatchType>(WebInputEvent::DispatchType::EventNonBlocking),
+        "Dispatch Types not equal");
+    static_assert(PlatformEvent::DispatchType::ListenersNonBlockingPassive == static_cast<PlatformEvent::DispatchType>(WebInputEvent::DispatchType::ListenersNonBlockingPassive),
+        "Dispatch Types not equal");
+    static_assert(PlatformEvent::DispatchType::ListenersForcedNonBlockingPassive == static_cast<PlatformEvent::DispatchType>(WebInputEvent::DispatchType::ListenersForcedNonBlockingPassive),
+        "Dispatch Types not equal");
+
+    return static_cast<PlatformEvent::DispatchType>(type);
+}
+
 unsigned toPlatformModifierFrom(WebMouseEvent::Button button)
 {
     if (button == WebMouseEvent::ButtonNone)
@@ -115,7 +129,7 @@ ScrollGranularity toPlatformScrollGranularity(WebGestureEvent::ScrollUnits units
     case WebGestureEvent::ScrollUnits::Page:
         return ScrollGranularity::ScrollByPage;
     default:
-        ASSERT_NOT_REACHED();
+        NOTREACHED();
         return ScrollGranularity::ScrollByPrecisePixel;
     }
 }
@@ -130,7 +144,7 @@ WebGestureEvent::ScrollUnits toWebGestureScrollUnits(ScrollGranularity granulari
     case ScrollGranularity::ScrollByPage:
         return WebGestureEvent::ScrollUnits::Page;
     default:
-        ASSERT_NOT_REACHED();
+        NOTREACHED();
         return WebGestureEvent::ScrollUnits::PrecisePixels;
     }
 }
@@ -176,7 +190,7 @@ PlatformMouseEventBuilder::PlatformMouseEventBuilder(Widget* widget, const WebMo
         break;
 
     default:
-        ASSERT_NOT_REACHED();
+        NOTREACHED();
     }
 }
 
@@ -271,7 +285,7 @@ PlatformGestureEventBuilder::PlatformGestureEventBuilder(Widget* widget, const W
         // DoubleTap gesture is now handled as PlatformEvent::GestureTap with tap_count = 2. So no
         // need to convert to a Platfrom DoubleTap gesture. But in WebViewImpl::handleGestureEvent
         // all WebGestureEvent are converted to PlatformGestureEvent, for completeness and not reach
-        // the ASSERT_NOT_REACHED() at the end, convert the DoubleTap to a NoType.
+        // the NOTREACHED() at the end, convert the DoubleTap to a NoType.
         m_type = PlatformEvent::NoType;
         break;
     case WebInputEvent::GestureTwoFingerTap:
@@ -297,7 +311,7 @@ PlatformGestureEventBuilder::PlatformGestureEventBuilder(Widget* widget, const W
         m_data.m_pinchUpdate.m_scale = e.data.pinchUpdate.scale;
         break;
     default:
-        ASSERT_NOT_REACHED();
+        NOTREACHED();
     }
     m_position = widget->convertFromRootFrame(flooredIntPoint(convertHitPointToRootFrame(widget, FloatPoint(e.x, e.y))));
     m_globalPosition = IntPoint(e.globalX, e.globalY);
@@ -311,7 +325,7 @@ PlatformGestureEventBuilder::PlatformGestureEventBuilder(Widget* widget, const W
         m_source = PlatformGestureSourceTouchscreen;
         break;
     case WebGestureDeviceUninitialized:
-        ASSERT_NOT_REACHED();
+        NOTREACHED();
     }
 }
 
@@ -329,7 +343,7 @@ inline PlatformEvent::EventType toPlatformKeyboardEventType(WebInputEvent::Type 
     case WebInputEvent::Char:
         return PlatformEvent::Char;
     default:
-        ASSERT_NOT_REACHED();
+        NOTREACHED();
     }
     return PlatformEvent::KeyDown;
 }
@@ -393,8 +407,10 @@ inline PlatformEvent::EventType toPlatformTouchEventType(const WebInputEvent::Ty
         return PlatformEvent::TouchEnd;
     case WebInputEvent::TouchCancel:
         return PlatformEvent::TouchCancel;
+    case WebInputEvent::TouchScrollStarted:
+        return PlatformEvent::TouchScrollStarted;
     default:
-        ASSERT_NOT_REACHED();
+        NOTREACHED();
     }
     return PlatformEvent::TouchStart;
 }
@@ -413,7 +429,7 @@ inline PlatformTouchPoint::TouchState toPlatformTouchPointState(const WebTouchPo
     case WebTouchPoint::StateCancelled:
         return PlatformTouchPoint::TouchCancelled;
     case WebTouchPoint::StateUndefined:
-        ASSERT_NOT_REACHED();
+        NOTREACHED();
     }
     return PlatformTouchPoint::TouchReleased;
 }
@@ -457,7 +473,7 @@ PlatformTouchEventBuilder::PlatformTouchEventBuilder(Widget* widget, const WebTo
     for (unsigned i = 0; i < event.touchesLength; ++i)
         m_touchPoints.append(PlatformTouchPointBuilder(widget, event.touches[i]));
 
-    m_cancelable = event.cancelable;
+    m_dispatchType = toPlatformDispatchType(event.dispatchType);
 }
 
 static FloatPoint convertAbsoluteLocationForLayoutObjectFloat(const LayoutPoint& location, const LayoutObject& layoutObject)
@@ -710,14 +726,14 @@ WebTouchEventBuilder::WebTouchEventBuilder(const LayoutObject* layoutObject, con
     else if (event.type() == EventTypeNames::touchcancel)
         type = TouchCancel;
     else {
-        ASSERT_NOT_REACHED();
+        NOTREACHED();
         type = Undefined;
         return;
     }
 
     timeStampSeconds = event.platformTimeStamp();
     modifiers = event.modifiers();
-    cancelable = event.cancelable();
+    dispatchType = event.cancelable() ? WebInputEvent::Blocking : WebInputEvent::EventNonBlocking;
     movedBeyondSlopRegion = event.causesScrollingIfUncanceled();
 
     // Currently touches[] is empty, add stationary points as-is.
@@ -785,7 +801,7 @@ WebGestureEventBuilder::WebGestureEventBuilder(const LayoutObject* layoutObject,
         sourceDevice = WebGestureDeviceTouchscreen;
         break;
     case GestureSourceUninitialized:
-        ASSERT_NOT_REACHED();
+        NOTREACHED();
     }
 }
 

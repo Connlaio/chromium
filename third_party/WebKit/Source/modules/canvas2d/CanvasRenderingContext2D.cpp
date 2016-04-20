@@ -61,10 +61,10 @@
 #include "public/platform/Platform.h"
 #include "third_party/skia/include/core/SkCanvas.h"
 #include "third_party/skia/include/core/SkImageFilter.h"
-#include "wtf/ArrayBufferContents.h"
 #include "wtf/MathExtras.h"
 #include "wtf/OwnPtr.h"
 #include "wtf/text/StringBuilder.h"
+#include "wtf/typed_arrays/ArrayBufferContents.h"
 
 namespace blink {
 
@@ -123,9 +123,7 @@ CanvasRenderingContext2D::CanvasRenderingContext2D(HTMLCanvasElement* canvas, co
     if (document.settings() && document.settings()->antialiasedClips2dCanvasEnabled())
         m_clipAntialiasing = AntiAliased;
     setShouldAntialias(true);
-#if ENABLE(OILPAN)
     ThreadState::current()->registerPreFinalizer(this);
-#endif
 }
 
 void CanvasRenderingContext2D::setCanvasGetContextResult(RenderingContext& result)
@@ -145,16 +143,12 @@ void CanvasRenderingContext2D::unwindStateStack()
 
 CanvasRenderingContext2D::~CanvasRenderingContext2D()
 {
-    if (m_pruneLocalFontCacheScheduled) {
-        Platform::current()->currentThread()->removeTaskObserver(this);
-    }
-#if !ENABLE(OILPAN)
-    dispose();
-#endif
 }
 
 void CanvasRenderingContext2D::dispose()
 {
+    if (m_pruneLocalFontCacheScheduled)
+        Platform::current()->currentThread()->removeTaskObserver(this);
     clearFilterReferences();
 }
 
@@ -378,12 +372,17 @@ void CanvasRenderingContext2D::didDraw(const SkIRect& dirtyRect)
 
 bool CanvasRenderingContext2D::stateHasFilter()
 {
-    return state().hasFilter(canvas(), accessFont(), canvas()->size(), this);
+    return state().hasFilter(canvas(), canvas()->size(), this);
 }
 
 SkImageFilter* CanvasRenderingContext2D::stateGetFilter()
 {
-    return state().getFilter(canvas(), accessFont(), canvas()->size(), this);
+    return state().getFilter(canvas(), canvas()->size(), this);
+}
+
+void CanvasRenderingContext2D::snapshotStateForFilter()
+{
+    modifiableState().setFontForFilter(accessFont());
 }
 
 SkCanvas* CanvasRenderingContext2D::drawingCanvas() const
@@ -603,6 +602,16 @@ std::pair<Element*, String> CanvasRenderingContext2D::getControlAndIdIfHitRegion
         return std::make_pair(nullptr, hitRegion->id());
     }
     return std::make_pair(nullptr, String());
+}
+
+String CanvasRenderingContext2D::getIdFromControl(const Element* element)
+{
+    if (hitRegionsCount() <= 0)
+        return String();
+
+    if (HitRegion* hitRegion = m_hitRegionManager->getHitRegionByControl(element))
+        return hitRegion->id();
+    return String();
 }
 
 String CanvasRenderingContext2D::textAlign() const

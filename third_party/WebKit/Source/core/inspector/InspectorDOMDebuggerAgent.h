@@ -59,7 +59,7 @@ class CORE_EXPORT InspectorDOMDebuggerAgent final
     , public protocol::Backend::DOMDebugger {
     WTF_MAKE_NONCOPYABLE(InspectorDOMDebuggerAgent);
 public:
-    static RawPtr<InspectorDOMDebuggerAgent> create(v8::Isolate*, InspectorDOMAgent*, V8RuntimeAgent*, V8DebuggerAgent*);
+    static InspectorDOMDebuggerAgent* create(v8::Isolate*, InspectorDOMAgent*, V8RuntimeAgent*, V8DebuggerAgent*);
 
     static void eventListenersInfoForTarget(v8::Isolate*, v8::Local<v8::Value>, V8EventListenerInfoList& listeners);
 
@@ -90,6 +90,7 @@ public:
     void didFireWebGLError(const String& errorName);
     void didFireWebGLWarning();
     void didFireWebGLErrorOrWarning(const String& message);
+    void cancelPauseOnNextStatement();
 
     void disable(ErrorString*) override;
     void restore() override;

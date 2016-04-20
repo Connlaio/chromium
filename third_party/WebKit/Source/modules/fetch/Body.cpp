@@ -66,7 +66,7 @@ class BodyArrayBufferConsumer final : public BodyConsumerBase {
 public:
     explicit BodyArrayBufferConsumer(ScriptPromiseResolver* resolver) : BodyConsumerBase(resolver) {}
 
-    void didFetchDataLoadedArrayBuffer(PassRefPtr<DOMArrayBuffer> arrayBuffer) override
+    void didFetchDataLoadedArrayBuffer(DOMArrayBuffer* arrayBuffer) override
     {
         resolver()->resolve(arrayBuffer);
     }
@@ -270,12 +270,12 @@ ScriptValue Body::v8ExtraStreamBody(ScriptState* scriptState)
 
 bool Body::bodyUsed()
 {
-    return body() && body()->isDisturbed();
+    return bodyBuffer() && bodyBuffer()->isStreamDisturbed();
 }
 
 bool Body::isBodyLocked()
 {
-    return body() && body()->isLocked();
+    return bodyBuffer() && bodyBuffer()->isStreamLocked();
 }
 
 bool Body::hasPendingActivity() const

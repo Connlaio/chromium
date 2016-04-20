@@ -41,9 +41,11 @@ group("remoting_all") {
       "//remoting:remoting_breakpad_tester",
       "//remoting/host:remoting_console",
       "//remoting/host:remoting_desktop",
-
-      # "//remoting:remoting_host_installation",
     ]
+
+    if (is_chrome_branded) {
+      deps += [ "//remoting/host:remoting_host_installation" ]
+    }
   }
 
   if (is_android) {
@@ -57,10 +59,13 @@ group("remoting_all") {
     deps += [
       "//remoting:remoting_perftests",
       "//remoting/host",
-      "//remoting/host:remoting_native_messaging_manifests",
     ]
 
-    if (!is_chromeos) {
+    if (!is_android) {
+      deps += [ "//remoting/host:remoting_native_messaging_manifests" ]
+    }
+
+    if (!is_chromeos && !is_android) {
       deps += [
         "//remoting/host:remoting_start_host",
         "//remoting/host/it2me:remote_assistance_host",

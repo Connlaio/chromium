@@ -115,11 +115,6 @@
 #include "content/public/common/page_zoom.h"
 #include "ui/base/l10n/l10n_util.h"
 
-#if defined(OS_ANDROID)
-#include "chrome/browser/media/protected_media_identifier_permission_context.h"
-#include "chrome/browser/media/protected_media_identifier_permission_context_factory.h"
-#endif
-
 #if defined(OS_CHROMEOS)
 #include "chrome/browser/chromeos/locale_change_guard.h"
 #include "chrome/browser/chromeos/preferences.h"
@@ -915,35 +910,12 @@ PrefService* ProfileImpl::GetOffTheRecordPrefs() {
   return otr_prefs_.get();
 }
 
-net::URLRequestContextGetter* ProfileImpl::GetRequestContext() {
-  return GetDefaultStoragePartition(this)->GetURLRequestContext();
-}
-
-net::URLRequestContextGetter* ProfileImpl::GetMediaRequestContext() {
-  // Return the default media context.
-  return io_data_.GetMediaRequestContextGetter().get();
-}
-
-net::URLRequestContextGetter*
-ProfileImpl::GetMediaRequestContextForRenderProcess(
-    int renderer_child_id) {
-  content::RenderProcessHost* rph = content::RenderProcessHost::FromID(
-      renderer_child_id);
-  content::StoragePartition* storage_partition = rph->GetStoragePartition();
-
-  return storage_partition->GetMediaURLRequestContext();
-}
-
-net::URLRequestContextGetter*
-ProfileImpl::GetMediaRequestContextForStoragePartition(
-    const base::FilePath& partition_path,
-    bool in_memory) {
-  return io_data_
-      .GetIsolatedMediaRequestContextGetter(partition_path, in_memory).get();
-}
-
 content::ResourceContext* ProfileImpl::GetResourceContext() {
   return io_data_.GetResourceContext();
+}
+
+net::URLRequestContextGetter* ProfileImpl::GetRequestContext() {
+  return GetDefaultStoragePartition(this)->GetURLRequestContext();
 }
 
 net::URLRequestContextGetter* ProfileImpl::GetRequestContextForExtensions() {
@@ -1019,6 +991,18 @@ ProfileImpl::CreateRequestContextForStoragePartition(
                      partition_path, in_memory, protocol_handlers,
                      std::move(request_interceptors))
       .get();
+}
+
+net::URLRequestContextGetter* ProfileImpl::CreateMediaRequestContext() {
+  return io_data_.GetMediaRequestContextGetter().get();
+}
+
+net::URLRequestContextGetter*
+ProfileImpl::CreateMediaRequestContextForStoragePartition(
+    const base::FilePath& partition_path,
+    bool in_memory) {
+  return io_data_
+      .GetIsolatedMediaRequestContextGetter(partition_path, in_memory).get();
 }
 
 bool ProfileImpl::IsSameProfile(Profile* profile) {

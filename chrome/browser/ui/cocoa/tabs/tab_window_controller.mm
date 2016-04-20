@@ -33,23 +33,15 @@
 @implementation TabWindowOverlayWindow
 
 - (const ui::ThemeProvider*)themeProvider {
-  if ([self parentWindow])
-    return [[[self parentWindow] windowController] themeProvider];
-  return NULL;
+  return [[self parentWindow] themeProvider];
 }
 
 - (ThemedWindowStyle)themedWindowStyle {
-  if ([self parentWindow])
-    return [[[self parentWindow] windowController] themedWindowStyle];
-  return NO;
+  return [[self parentWindow] themedWindowStyle];
 }
 
 - (NSPoint)themeImagePositionForAlignment:(ThemeImageAlignment)alignment {
-  if ([self parentWindow]) {
-    return [[[self parentWindow] windowController]
-        themeImagePositionForAlignment:alignment];
-  }
-  return NSZeroPoint;
+  return [[self parentWindow] themeImagePositionForAlignment:alignment];
 }
 
 @end
@@ -255,6 +247,11 @@
   return NULL;
 }
 
+- (void)detachedWindowEnterFullscreenIfNeeded:(TabWindowController*)source {
+  // Subclasses should implement this.
+  NOTIMPLEMENTED();
+}
+
 - (void)insertPlaceholderForTab:(TabView*)tab frame:(NSRect)frame {
   [self showNewTabButton:NO];
 }
@@ -305,6 +302,12 @@
   // subclass must implement
   NOTIMPLEMENTED();
   return NO;
+}
+
+- (CGFloat)menubarOffset {
+  // Subclasses should implement this.
+  NOTIMPLEMENTED();
+  return 0;
 }
 
 - (NSString*)activeTabTitle {

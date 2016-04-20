@@ -378,6 +378,28 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   </summary>
 </histogram>
 
+<histogram name="Android.MultiWindowMode.Active" enum="BooleanEnabled">
+  <owner>twellington@chromium.org</owner>
+  <summary>
+    Records on every metrics upload whether the activity is running in Android N
+    multi-window mode or not.
+  </summary>
+</histogram>
+
+<histogram name="Android.NTP.Impression" enum="NTPImpressionType">
+  <owner>finkm@chromium.org</owner>
+  <summary>
+    Counts impressions of the NTP on Android. It also counts potential
+    impressions. A potential impression is a place where it would make sense to
+    open the NTP instead of the current view. E.g. the no-tab view is counted as
+    a potential impression since this view could be replaced with the NTP. For
+    better comparison regular impressions are also counted. The no-tab view
+    counting happens right after the user closed the last tab and the regular
+    impression counting happens at construction time of the NTP (=whenever a new
+    tab is opened).
+  </summary>
+</histogram>
+
 <histogram name="Android.SeccompStatus.Prctl" enum="AndroidSeccompStatus">
   <owner>rsesek@chromium.org</owner>
   <summary>
@@ -1528,21 +1550,21 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.AttemptCountFail">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Count of DnsAttempts before DnsTransaction completes with failure.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.AttemptCountSuccess">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Count of DnsAttempts before DnsTransaction completes successfully.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.ConfigChange" enum="BooleanSuccess">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Whether DnsConfigService::OnConfigChange actually corresponded to a change
     in DnsConfig.
@@ -1550,45 +1572,45 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.ConfigNotifyInterval" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time between calls to DnsConfigService::InvalidateConfig.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.ConfigParseDuration" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>Duration of time spent parsing DnsConfig.</summary>
 </histogram>
 
 <histogram name="AsyncDNS.ConfigParsePosix" enum="AsyncDNSConfigParsePosix">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Counts of results of parsing DnsConfig in DnsConfigServicePosix.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.ConfigParseResult" enum="BooleanSuccess">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>Whether DnsConfig was parsed successfully.</summary>
 </histogram>
 
 <histogram name="AsyncDNS.ConfigParseWin" enum="AsyncDNSConfigParseWin">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Counts of results of parsing DnsConfig in DnsConfigServiceWin.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.DNSChangerDetected" enum="BooleanSuccess">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Whether the first valid DnsConfig included a rogue nameserver.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.DnsClientDisabledReason" enum="NetErrorCodes">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Counts of specific error codes returned by DnsTask if a subsequent ProcTask
     succeeded, at the end of a streak of failures after which the DnsClient was
@@ -1597,7 +1619,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.DnsClientEnabled" enum="BooleanSuccess">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     TRUE counts the events when a valid DnsConfig is received and used to enable
     DnsClient, while FALSE counts the events when DnsClient is disabled after a
@@ -1606,21 +1628,21 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.FallbackFail" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time spent by ProcTask in failing fallback resolutions.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.FallbackSuccess" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time spent by ProcTask in successful fallback resolutions.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.HaveDnsConfig" enum="BooleanSuccess">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Whether there was a valid DNS configuration at the start of a job which
     eventually completed successfully.
@@ -1628,12 +1650,12 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.HostParseResult" enum="BooleanSuccess">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>Whether DnsHosts were parsed successfully.</summary>
 </histogram>
 
 <histogram name="AsyncDNS.HostsChange" enum="BooleanSuccess">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Whether DnsConfigService::OnHostsChange actually corresponded to a change in
     DnsHosts.
@@ -1641,33 +1663,33 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.HostsNotifyInterval" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time between calls to DnsConfigService::InvalidateHosts.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.HostsParseDuration" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>Duration of time spent parsing DnsHosts.</summary>
 </histogram>
 
 <histogram name="AsyncDNS.HostsParseWin" enum="AsyncDNSHostsParseWin">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Counts of results of parsing DnsHosts in DnsConfigServiceWin.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.HostsSize" units="bytes">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The size of the HOSTS file observed before each attempt to parse it.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.JobQueueTime" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the time the HostResolverImpl::Job was created and the
     time the Job was started (using DnsClient).
@@ -1675,7 +1697,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.JobQueueTime_HIGHEST" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the time the HostResolverImpl::Job was created and the
     time the Job was started (using DnsClient). Includes only Jobs which had
@@ -1684,7 +1706,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.JobQueueTime_IDLE" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the time the HostResolverImpl::Job was created and the
     time the Job was started (using DnsClient). Includes only Jobs which had
@@ -1693,7 +1715,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.JobQueueTime_LOW" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the time the HostResolverImpl::Job was created and the
     time the Job was started (using DnsClient). Includes only Jobs which had
@@ -1702,7 +1724,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.JobQueueTime_LOWEST" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the time the HostResolverImpl::Job was created and the
     time the Job was started (using DnsClient). Includes only Jobs which had
@@ -1711,7 +1733,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.JobQueueTime_MEDIUM" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the time the HostResolverImpl::Job was created and the
     time the Job was started (using DnsClient). Includes only Jobs which had
@@ -1720,7 +1742,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.JobQueueTimeAfterChange" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the last time the priority of a HostResolverImpl::Job
     changed (when a Request was attached or detached) and the time the Job was
@@ -1729,7 +1751,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.JobQueueTimeAfterChange_HIGHEST" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the last time the priority of a HostResolverImpl::Job
     changed (when a Request was attached or detached) and the time the Job was
@@ -1739,7 +1761,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.JobQueueTimeAfterChange_IDLE" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the last time the priority of a HostResolverImpl::Job
     changed (when a Request was attached or detached) and the time the Job was
@@ -1749,7 +1771,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.JobQueueTimeAfterChange_LOW" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the last time the priority of a HostResolverImpl::Job
     changed (when a Request was attached or detached) and the time the Job was
@@ -1759,7 +1781,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.JobQueueTimeAfterChange_LOWEST" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the last time the priority of a HostResolverImpl::Job
     changed (when a Request was attached or detached) and the time the Job was
@@ -1769,7 +1791,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.JobQueueTimeAfterChange_MEDIUM" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the last time the priority of a HostResolverImpl::Job
     changed (when a Request was attached or detached) and the time the Job was
@@ -1782,7 +1804,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <obsolete>
     Deprecated as of 4/2016.
   </obsolete>
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Type of nameservers in the DNS config, recorded each time the config is read
     by the DNSConfigService.
@@ -1790,7 +1812,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.ParseToAddressList" enum="AsyncDNSParseResult">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Counts of results of parsing addresses out of DNS responses in successful
     DnsTransactions.
@@ -1798,7 +1820,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.PrefDefaultSource" enum="AsyncDNSPrefDefaultSource">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The source of the async DNS preference's default. Logged at startup, when
     the IO thread is created.
@@ -1806,7 +1828,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.PrefSource" enum="AsyncDNSPrefSource">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The source of the async DNS preference's value. Logged at startup, when the
     IO thread is created.
@@ -1814,7 +1836,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.ResolveError" enum="NetErrorCodes">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Counts of specific error codes returned by DnsTask if a subsequent ProcTask
     succeeded.
@@ -1822,7 +1844,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.ResolveFail" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time taken by DnsTask in resolutions that failed. Excludes time
     spent in the subsequent fallback.
@@ -1830,7 +1852,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.ResolveStatus" enum="AsyncDNSResolveStatus">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Counts of the overall results of using asynchronous DNS in HostResolverImpl.
     This only includes jobs started with valid DNS configuration and excludes
@@ -1839,35 +1861,35 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.ResolveSuccess" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time taken by DnsTask in resolutions that succeeded.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.ResolveSuccess_FAMILY_IPV4" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Same as AsyncDNS.ResolveSuccess, but limited to pure IPv4 lookups.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.ResolveSuccess_FAMILY_IPV6" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Same as AsyncDNS.ResolveSuccess, but limited to pure IPv6 lookups.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.ResolveSuccess_FAMILY_UNSPEC" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Same as AsyncDNS.ResolveSuccess, but limited to IPv4/IPv6 lookups.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.ServerCount">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Count of servers in DnsConfig. Recorded on every new DnsSession, which is
     created on DNS change.
@@ -1875,14 +1897,14 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.ServerFailureIndex">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Index in DnsConfig of the failing server, recorded at the time of failure.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.ServerFailuresAfterNetworkChange">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Count of server failures after network change before first success in the
     DnsSession. Recorded at the time of first success.
@@ -1890,7 +1912,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.ServerFailuresAfterSuccess">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Count of server failures after success until the end of the session. Server
     has reported success at some point during the session. Recorded at the end
@@ -1899,7 +1921,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.ServerFailuresBeforeSuccess">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Count of server failures before success. This is NOT the first success in
     the DnsSession. Recorded at the time of success.
@@ -1907,7 +1929,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.ServerFailuresWithoutSuccess">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Count of server failures without success until the end of the session.
     Server has never reported success during the DnsSession. Recorded at the end
@@ -1916,14 +1938,14 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.ServerIsGood" enum="BooleanSuccess">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The current server is &quot;good&quot; and does not have to be skipped.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.SortFailure" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time taken in failing calls to AddressSorter in dual-stack
     resolutions using DnsTask.
@@ -1931,7 +1953,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.SortSuccess" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time taken in successful calls to AddressSorter in dual-stack
     resolutions using DnsTask.
@@ -1939,7 +1961,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.SuffixSearchDone">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The number of names from the search name list consumed during a successful
     transaction (QTYPE A only).
@@ -1947,7 +1969,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.SuffixSearchRemain">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The number of names left on the search name list at the end of a successful
     transaction (QTYPE A only).
@@ -1955,7 +1977,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.SuffixSearchStart">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The number of names on the search name list at the start of a transaction
     (QTYPE A only).
@@ -1963,7 +1985,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.TCPAttemptFail" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time taken by DnsTCPAttempt in failed attempts. Excludes
     timeouts.
@@ -1971,42 +1993,42 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.TCPAttemptSuccess" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time taken by DnsTCPAttempt in successful attempts.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.TimeoutErrorHistogram" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Difference between RTT and timeout calculated using Histogram algorithm.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.TimeoutErrorHistogramUnder" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Difference between timeout calculated using Histogram algorithm and RTT.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.TimeoutErrorJacobson" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Difference between RTT and timeout calculated using Jacobson algorithm.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.TimeoutErrorJacobsonUnder" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Difference between timeout calculated using Jacobson algorithm and RTT.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.TimeoutSpentHistogram" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time that would be spent waiting for lost request using
     Histogram algorithm.
@@ -2014,7 +2036,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.TimeoutSpentJacobson" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time that would be spent waiting for lost request using Jacobson
     algorithm.
@@ -2022,7 +2044,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.TotalTime" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time since a HostResolverImpl::Resolve request to the time a
     result is posted. Excludes canceled, evicted, and aborted requests. Includes
@@ -2031,7 +2053,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.TotalTime_speculative" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time since a HostResolverImpl::Resolve request to the time a
     result is posted. Excludes canceled, evicted, and aborted requests. Includes
@@ -2040,7 +2062,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.TransactionFailure" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time taken in failing DnsTransactions. This includes server
     failures, timeouts and NXDOMAIN results.
@@ -2048,7 +2070,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.TransactionSuccess" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time taken in successful DnsTransactions. This includes all
     NOERROR answers, even if they indicate the name has no addresses or they
@@ -2057,21 +2079,21 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.TransactionSuccess_A" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Same as AsyncDNS.TransactionSuccess but limited to A query type.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.TransactionSuccess_AAAA" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Same as AsyncDNS.TransactionSuccess but limited to AAAA query type.
   </summary>
 </histogram>
 
 <histogram name="AsyncDNS.TTL" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     TTL of the resolved addresses, as in the response received from the server.
     For results served from local cache, the TTL is from the original response.
@@ -2079,7 +2101,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.UDPAttemptFail" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time taken by DnsUDPAttempt in failed attempts. Excludes
     timeouts.
@@ -2087,7 +2109,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.UDPAttemptSuccess" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time taken by DnsUDPAttempt in successful attempts. Includes
     responses arriving after timeout, if multiple attempts are allowed.
@@ -2095,7 +2117,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.UnchangedConfigInterval" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time since the last empty config result to the time a non-change
     OnConfigChange is received.
@@ -2103,7 +2125,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.UnchangedHostsInterval" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time since the last empty config result to the time a non-change
     OnHostsChange is received.
@@ -2111,7 +2133,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="AsyncDNS.WatchStatus" enum="AsyncDNSWatchStatus">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The result of DnsConfigService watch. Counts STARTED on every initialization
     and FAILED_* on any failure.
@@ -5406,6 +5428,23 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   </summary>
 </histogram>
 
+<histogram name="Compositing.Browser.NumActiveLayers" units="layers">
+  <owner>paint-dev@chromium.org</owner>
+  <summary>
+    The number of layers in the active tree for each compositor frame. This is
+    logged once per frame, before the frame is drawn (in a browser process).
+  </summary>
+</histogram>
+
+<histogram name="Compositing.Browser.NumRenderSurfaces" units="surfaces">
+  <owner>paint-dev@chromium.org</owner>
+  <summary>
+    The number of render surfaces in the render surface layer list. Recorded
+    each time the render surface layer list is constructed (in a browser
+    process).
+  </summary>
+</histogram>
+
 <histogram name="Compositing.Browser.PictureMemoryUsageKb" units="KB">
   <owner>paint-dev@chromium.org</owner>
   <summary>
@@ -5518,6 +5557,10 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="Compositing.NumActiveLayers">
+  <obsolete>
+    Deprecated 04/2016, replaced by similar metrics under Compositing.Renderer
+    and Compositing.Browser, depending on which process it occurs in.
+  </obsolete>
   <owner>dneto@chromium.org</owner>
   <summary>
     The number of layers in the active tree for each compositor frame. This is
@@ -5621,6 +5664,23 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <summary>
     Time spent updating layer draw properties, in microseconds. Recorded when a
     LayerTreeImpl's draw properties are updated (in a renderer process).
+  </summary>
+</histogram>
+
+<histogram name="Compositing.Renderer.NumActiveLayers" units="layers">
+  <owner>paint-dev@chromium.org</owner>
+  <summary>
+    The number of layers in the active tree for each compositor frame. This is
+    logged once per frame, before the frame is drawn (in a renderer process).
+  </summary>
+</histogram>
+
+<histogram name="Compositing.Renderer.NumRenderSurfaces" units="surfaces">
+  <owner>paint-dev@chromium.org</owner>
+  <summary>
+    The number of render surfaces in the render surface layer list. Recorded
+    each time the render surface layer list is constructed (in a renderer
+    process).
   </summary>
 </histogram>
 
@@ -5916,6 +5976,38 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <summary>
     Tracks whether the mixed content shield was shown, and how the user
     interacted with it.
+  </summary>
+</histogram>
+
+<histogram name="ContentSettings.NumberOfAllowCookiesExceptions">
+  <owner>battre@chromium.org</owner>
+  <summary>
+    The number of user defined cookies setting exceptions for allowing cookies
+    at browser start.
+  </summary>
+</histogram>
+
+<histogram name="ContentSettings.NumberOfBlockCookiesExceptions">
+  <owner>battre@chromium.org</owner>
+  <summary>
+    The number of user defined cookies setting exceptions for blocking cookies
+    at browser start.
+  </summary>
+</histogram>
+
+<histogram name="ContentSettings.NumberOfExceptions">
+  <owner>battre@chromium.org</owner>
+  <summary>
+    The number of user defined hostname patterns for content settings at browser
+    start.
+  </summary>
+</histogram>
+
+<histogram name="ContentSettings.NumberOfSessionOnlyCookiesExceptions">
+  <owner>battre@chromium.org</owner>
+  <summary>
+    The number of user defined cookies setting exceptions for 'clearing cookies
+    on browser exit' at browser start.
   </summary>
 </histogram>
 
@@ -6702,6 +6794,9 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
     enum="DataReductionProxyAutoLoFiAccuracy">
   <owner>bengr@chromium.org</owner>
   <owner>tbansal@chromium.org</owner>
+  <obsolete>
+    Replaced by DataReductionProxy.LoFi.Accuracy.
+  </obsolete>
   <summary>
     Counts the accuracy of estimated network quality when using Lo-Fi. Counters
     are incremented when a main frame URL request is handled by Data Reduction
@@ -7060,6 +7155,19 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 <histogram name="DataReductionProxy.LevelDBSize" units="KB">
   <owner>kundaji@chromium.org</owner>
   <summary>Size of Data Reduction Proxy LevelDB measured at startup.</summary>
+</histogram>
+
+<histogram name="DataReductionProxy.LoFi.Accuracy"
+    enum="DataReductionProxyAutoLoFiAccuracy">
+  <owner>bengr@chromium.org</owner>
+  <owner>tbansal@chromium.org</owner>
+  <summary>
+    Records the accuracy of estimated network quality when using Lo-Fi. Network
+    quality predicted at the time of navigation start is compared with the
+    network quality observed during the specified time interval following the
+    start of the navigation. This metric is recorded only when the session is in
+    Lo-Fi enabled field trial.
+  </summary>
 </histogram>
 
 <histogram name="DataReductionProxy.LoFi.ImplicitOptOutAction"
@@ -7629,6 +7737,26 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <owner>pmonette@chromium.org</owner>
   <summary>
     The outcome of an attempt to set Chrome as the user's default browser.
+  </summary>
+</histogram>
+
+<histogram name="DefaultBrowser.SettingsInteraction.ConcludeReason"
+    enum="SettingsInteractionConcludeReason">
+  <owner>pmonette@chromium.org</owner>
+  <summary>
+    The reason why the default browser settings interaction concluded on Windows
+    10.
+  </summary>
+</histogram>
+
+<histogram name="DefaultBrowser.SettingsInteraction.RegistryWatcherDuration"
+    units="ms">
+  <owner>pmonette@chromium.org</owner>
+  <summary>
+    The registry keys for the default browser protocols (http/https) are
+    monitored to know when the user finished interacting with the system
+    settings. This is how long it took for the last registry watcher to get
+    signaled.
   </summary>
 </histogram>
 
@@ -8431,14 +8559,14 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.AttemptCancelled">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The attempt which completed after the job was already cancelled.
   </summary>
 </histogram>
 
 <histogram name="DNS.AttemptDiscarded">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The attempt which completed after the job was already cancelled OR the
     attempt that has finished after host resolution was already completed by an
@@ -8447,7 +8575,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.AttemptFailDuration" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time taken in OS resolutions for actual navigations. These
     attempts which completed after the job was already canceled OR after the job
@@ -8457,12 +8585,12 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.AttemptFailure">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>The attempt that has not resolved the host successfully.</summary>
 </histogram>
 
 <histogram name="DNS.AttemptFirstFailure">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The attempt that resolved the host first and the resolution was not
     successful.
@@ -8470,19 +8598,19 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.AttemptFirstSuccess">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The attempt that resolved the host first and the resolution was successful.
   </summary>
 </histogram>
 
 <histogram name="DNS.AttemptSuccess">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>The attempt that has resolved the host successfully.</summary>
 </histogram>
 
 <histogram name="DNS.AttemptSuccessDuration" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time taken in OS resolutions that succeeded and were requested
     for actual navigations. These attempts which completed after the job was
@@ -8493,7 +8621,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.AttemptTimeSavedByRetry" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     This histogram shows the time saved by having spawned an extra attempt, when
     the first attempt didn't finish before retry attempt.
@@ -8501,7 +8629,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.CacheEvicted" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The time left to expiration of an entry when it is removed while compacting
     the HostCache.
@@ -8509,7 +8637,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.CacheExpired" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The time since expiration of an entry when it is removed while compacting
     the HostCache.
@@ -8517,7 +8645,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.CacheExpiredOnGet" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The time since expiration of an entry when it is removed on lookup.
   </summary>
@@ -8525,14 +8653,14 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 
 <histogram name="DNS.EmptyAddressListAndNoError"
     enum="DNSEmptyAddressListAndNoError">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Error status when an empty address list was found in OnLookupComplete().
   </summary>
 </histogram>
 
 <histogram name="DNS.IndependentFailedNavigation" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     When either a pre-resolution was not done recently enough to provide
     benefit, or the corresponding pre-resolution is still pending, this
@@ -8545,7 +8673,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.IndependentNavigation" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     When either a pre-resolution was not done recently enough to provide
     benefit, or the corresponding pre-resolution is still pending, this
@@ -8558,7 +8686,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.JobQueueTime" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the time the HostResolverImpl::Job was created and the
     time the Job was started (a getaddrinfo call was dispatched to the thread
@@ -8567,7 +8695,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.JobQueueTime_HIGHEST" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the time the HostResolverImpl::Job was created and the
     time the Job was started (a getaddrinfo call was dispatched to the thread
@@ -8576,7 +8704,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.JobQueueTime_IDLE" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the time the HostResolverImpl::Job was created and the
     time the Job was started (a getaddrinfo call was dispatched to the thread
@@ -8585,7 +8713,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.JobQueueTime_LOW" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the time the HostResolverImpl::Job was created and the
     time the Job was started (a getaddrinfo call was dispatched to the thread
@@ -8594,7 +8722,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.JobQueueTime_LOWEST" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the time the HostResolverImpl::Job was created and the
     time the Job was started (a getaddrinfo call was dispatched to the thread
@@ -8603,7 +8731,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.JobQueueTime_MEDIUM" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the time the HostResolverImpl::Job was created and the
     time the Job was started (a getaddrinfo call was dispatched to the thread
@@ -8612,7 +8740,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.JobQueueTimeAfterChange" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the last time the priority of a HostResolverImpl::Job
     changed (when a Request was attached or detached) and the time the Job was
@@ -8621,7 +8749,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.JobQueueTimeAfterChange_HIGHEST" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the last time the priority of a HostResolverImpl::Job
     changed (when a Request was attached or detached) and the time the Job was
@@ -8631,7 +8759,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.JobQueueTimeAfterChange_IDLE" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the last time the priority of a HostResolverImpl::Job
     changed (when a Request was attached or detached) and the time the Job was
@@ -8641,7 +8769,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.JobQueueTimeAfterChange_LOW" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the last time the priority of a HostResolverImpl::Job
     changed (when a Request was attached or detached) and the time the Job was
@@ -8651,7 +8779,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.JobQueueTimeAfterChange_LOWEST" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the last time the priority of a HostResolverImpl::Job
     changed (when a Request was attached or detached) and the time the Job was
@@ -8661,7 +8789,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.JobQueueTimeAfterChange_MEDIUM" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Time elapsed between the last time the priority of a HostResolverImpl::Job
     changed (when a Request was attached or detached) and the time the Job was
@@ -8671,7 +8799,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.PrefetchCacheEviction" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The duration of time used (most recently) to pre-resolve a hostname, when
     the prefetched resolution was apparently evicted from the cache.  The
@@ -8681,7 +8809,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.PrefetchCacheEvictionL" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The duration of time used (most recently) to pre-resolve a hostname, when
     the prefetched resolution was apparently evicted from the cache.  The
@@ -8691,12 +8819,12 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.PrefetchFoundName">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>Replaced by DNS.PrefetchFoundNameL.</summary>
 </histogram>
 
 <histogram name="DNS.PrefetchFoundNameL" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <obsolete>
     Deprecated 2/2010, and replaced by DNS.PrefetchResolution
   </obsolete>
@@ -8713,12 +8841,12 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.PrefetchNegativeHit">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>Replaced by DNS.PrefetchNegativeHitL.</summary>
 </histogram>
 
 <histogram name="DNS.PrefetchNegativeHitL" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The duration of time saved due to DNS pre-resolving in the &quot;name not
     found&quot; case.  Time &quot;savings&quot; shown in the histogram are
@@ -8736,12 +8864,12 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.PrefetchPositiveHit">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>Replaced by DNS.PrefetchPositiveHitL.</summary>
 </histogram>
 
 <histogram name="DNS.PrefetchPositiveHitL" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The duration of time saved due to DNS pre-resolving in the &quot;name was
     found&quot; case, and induced by either a page scan for a link or an omnibox
@@ -8757,7 +8885,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.PrefetchQueue" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The duration of time spent by a proposed resolution waiting in the queue to
     be resolved.  This number is in addition to any DNS resolution time that may
@@ -8766,7 +8894,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.PrefetchReferredPositiveHit" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The duration of time saved due to DNS pre-resolving in the &quot;name was
     found&quot; case, and induced by predicting (using referrer lists) that a
@@ -8782,7 +8910,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.PrefetchResolution" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The duration of time used by the DNS pre-resolving threads to resolve a host
     name via the network.  Any resolutions that are faster than 15ms are
@@ -8796,7 +8924,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.QueueRecycledDeltaOver2">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     When, due to congestion avoidance, a queued pre-resolution is abandoned
     (recycled) without actually being resolved, this histograms records the age
@@ -8806,7 +8934,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.QueueRecycledUnder2">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     When, due to congestion avoidance, a queued pre-resolution is abandoned
     (recycled) without actually being resolved, this histograms records the age
@@ -8816,14 +8944,14 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.ResolveCategory" enum="ResolutionCategory">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Counts of successes and failures of OS resolutions in various categories.
   </summary>
 </histogram>
 
 <histogram name="DNS.ResolveFail" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time taken in OS resolutions for actual navigations.  Note that
     cached OS resolutions may provide low (0ms?) resolution times.
@@ -8831,22 +8959,22 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.ResolveFail_FAMILY_IPV4" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>Same as DNS.ResolveFail, but limited to pure IPv4 lookups.</summary>
 </histogram>
 
 <histogram name="DNS.ResolveFail_FAMILY_IPV6" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>Same as DNS.ResolveFail, but limited to pure IPv6 lookups.</summary>
 </histogram>
 
 <histogram name="DNS.ResolveFail_FAMILY_UNSPEC" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>Same as DNS.ResolveFail, but limited to IPv4/IPv6 lookups.</summary>
 </histogram>
 
 <histogram name="DNS.ResolveSpeculativeFail" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time taken in speculative OS resolutions.  Note that cached OS
     resolutions may provide low (0ms?) resolution times.
@@ -8854,7 +8982,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.ResolveSpeculativeSuccess" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time taken in speculative OS resolution that succeeded.  Note
     that cached resolutions may provide low (0ms?) resolution times.
@@ -8862,7 +8990,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.ResolveSuccess" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time taken in OS resolutions that succeeded and were requested
     for actual navigations.  Note that cached resolutions may provide low (0ms?)
@@ -8871,28 +8999,28 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.ResolveSuccess_FAMILY_IPV4" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Same as DNS.ResolveSuccess, but limited to pure IPv4 lookups.
   </summary>
 </histogram>
 
 <histogram name="DNS.ResolveSuccess_FAMILY_IPV6" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Same as DNS.ResolveSuccess, but limited to pure IPv6 lookups.
   </summary>
 </histogram>
 
 <histogram name="DNS.ResolveSuccess_FAMILY_UNSPEC" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Same as DNS.ResolveSuccess, but limited to IPv4/IPv6 lookups.
   </summary>
 </histogram>
 
 <histogram name="DNS.ResolveUnspecWaste" enum="ResolutionUnspecWasteCategory">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <obsolete>
     Deprecated as of 5/2013.
   </obsolete>
@@ -8904,7 +9032,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.TotalTime" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time since a HostResolverImpl::Resolve request to the time a
     result is posted. Excludes canceled, evicted, and aborted requests. Includes
@@ -8913,7 +9041,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.TotalTime_speculative" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Duration of time since a HostResolverImpl::Resolve request to the time a
     result is posted. Excludes canceled, evicted, and aborted requests. Includes
@@ -8922,7 +9050,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.UnexpectedResolution">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     In some cases, such as when content arrives with embedded references to
     other servers, the prefetch system can't (or doesn't) attempt to pre-resolve
@@ -8940,7 +9068,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DNS.UnexpectedResolutionL">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     In some cases, such as when content arrives with embedded references to
     other servers, or when a page (such as one in SSL) preclude scanning and
@@ -8959,12 +9087,12 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DnsProbe.ErrorPageUpdateStatus" enum="DnsProbe.ProbeStatus">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>Status of DNS probe updates sent to a DNS error page.</summary>
 </histogram>
 
 <histogram name="DnsProbe.Probe.Elapsed" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <obsolete>
     Renamed 7/2013 to DnsProbe.ProbeDuration.
   </obsolete>
@@ -8972,7 +9100,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DnsProbe.Probe.NcnOffline.Elapsed" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <obsolete>
     Removed 7/2013.
   </obsolete>
@@ -8983,7 +9111,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 
 <histogram name="DnsProbe.Probe.NcnOffline.Result"
     enum="DnsProbe.ObsoleteProbeResult">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <obsolete>
     Removed 7/2013.
   </obsolete>
@@ -8993,7 +9121,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DnsProbe.Probe.NcnOnline.Elapsed" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <obsolete>
     Removed 7/2013.
   </obsolete>
@@ -9004,7 +9132,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 
 <histogram name="DnsProbe.Probe.NcnOnline.Result"
     enum="DnsProbe.ObsoleteProbeResult">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <obsolete>
     Removed 7/2013.
   </obsolete>
@@ -9014,7 +9142,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DnsProbe.Probe.Result" enum="DnsProbe.ObsoleteProbeResult">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <obsolete>
     Renamed 7/2013 to DnsProbe.ProbeResult.  (Also switched to the full
     DnsProbe.ProbeStatus enum.)
@@ -9023,7 +9151,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DnsProbe.Probe.ResultBadConfig.Elapsed" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <obsolete>
     Removed 7/2013.
   </obsolete>
@@ -9032,7 +9160,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 
 <histogram name="DnsProbe.Probe.ResultBadConfig.SystemIsLocalhost"
     enum="DnsProbe.SystemIsLocalhost">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <obsolete>
     Removed 7/2013.
   </obsolete>
@@ -9044,7 +9172,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 
 <histogram name="DnsProbe.Probe.ResultBadConfig.SystemJobResult"
     enum="DnsProbe.JobResult">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <obsolete>
     Removed 7/2013.
   </obsolete>
@@ -9055,7 +9183,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DnsProbe.Probe.ResultBadConfig.SystemNameserverCount">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <obsolete>
     Removed 7/2013.
   </obsolete>
@@ -9066,7 +9194,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DnsProbe.Probe.ResultNoInternet.Elapsed" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <obsolete>
     Removed 7/2013.
   </obsolete>
@@ -9074,7 +9202,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DnsProbe.Probe.ResultNxdomain.Elapsed" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <obsolete>
     Removed 7/2013.
   </obsolete>
@@ -9082,7 +9210,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DnsProbe.Probe.ResultUnknown.Elapsed" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <obsolete>
     Removed 7/2013.
   </obsolete>
@@ -9090,12 +9218,12 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DnsProbe.ProbeDuration" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>Time between starting and finishing DNS probe.</summary>
 </histogram>
 
 <histogram name="DnsProbe.ProbeResult" enum="DnsProbe.ProbeStatus">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>Result of DNS probes sent by the probe service.</summary>
 </histogram>
 
@@ -9205,7 +9333,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DomainReliability.BeaconReported" enum="BooleanReported">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Whether a beacon added to a Domain Reliability context was saved to be
     uploaded to the collector.
@@ -9213,7 +9341,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DomainReliability.OnBeaconDidEvict" enum="BooleanDidEvict">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Whether adding a beacon to a Domain Reliability context caused it to evict
     an older beacon to stay within memory limits.
@@ -9221,7 +9349,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DomainReliability.ReportedBeaconError" enum="NetErrorCodes">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The Chrome error code included in a beacon saved to be uploaded to the
     collector.
@@ -9230,7 +9358,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 
 <histogram name="DomainReliability.ReportedBeaconError_HasServerIP"
     enum="NetErrorCodes">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The Chrome error code included in a beacon with a non-empty server_ip field
     saved to be uploaded to the collector.
@@ -9238,7 +9366,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DomainReliability.UploadCollectorIndex">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The index of the collector that a Domain Reliability upload was sent to.
     (Later collectors are only used when earlier collectors have failed.)
@@ -9246,7 +9374,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DomainReliability.UploadCollectorRetryDelay" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     After an upload to a collector finishes (successfully or not), the delay
     before the scheduler can send another upload to that collector. (If recent
@@ -9256,7 +9384,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DomainReliability.UploadDuration" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The elapsed time between starting and finishing a Domain Reliability upload.
   </summary>
@@ -9264,7 +9392,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 
 <histogram name="DomainReliability.UploadFailover"
     enum="DomainReliability.BooleanFailover">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <obsolete>
     Deprecated 11/2014; see UploadCollectorIndex
   </obsolete>
@@ -9276,7 +9404,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DomainReliability.UploadInterval" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The time between successive Domain Reliability uploads being started in the
     same context. (Can be arbitrarily long if no beacons are reported in a
@@ -9285,7 +9413,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DomainReliability.UploadLatency" units="ms">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The time from the first beacon in a Domain Reliability upload being recorded
     and that upload completing successfully. (Note that if some beacons are
@@ -9295,7 +9423,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DomainReliability.UploadNetError" enum="NetErrorCodes">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The network error code (or OK if none) returned by the URLFetcher when a
     Domain Reliability report is uploaded.
@@ -9303,7 +9431,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DomainReliability.UploadResponseCode" enum="HttpResponseCode">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     The HTTP response code returned by the Domain Reliability collector when a
     report is uploaded.
@@ -9311,7 +9439,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="DomainReliability.UploadSuccess" enum="BooleanSuccess">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>Whether a Domain Reliability upload succeeded.</summary>
 </histogram>
 
@@ -12372,7 +12500,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 
 <histogram name="ExtensionBlacklist.BlacklistInstalled"
     enum="ExtensionLocation">
-  <owner>Please list the metric's owners. Add more owner tags as needed.</owner>
+  <owner>nparker@chromium.org</owner>
   <summary>
     The number of extensions that were blacklisted when already installed,
     grouped by Extension::Location. Logged when ExtensionService blackists and
@@ -12381,7 +12509,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="ExtensionBlacklist.BlockCRX" enum="ExtensionLocation">
-  <owner>Please list the metric's owners. Add more owner tags as needed.</owner>
+  <owner>nparker@chromium.org</owner>
   <summary>
     The number of extensions that have been blocked from installing grouped by
     Extension::Location. Logged when ExtensionService refuses to install a
@@ -12390,7 +12518,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="ExtensionBlacklist.SilentInstall" enum="ExtensionLocation">
-  <owner>Please list the metric's owners. Add more owner tags as needed.</owner>
+  <owner>nparker@chromium.org</owner>
   <summary>
     The number of extensions that have been silently installed in a blacklisted
     state, grouped by Extension::Location. Logged when ExtensionService installs
@@ -12402,7 +12530,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 
 <histogram name="ExtensionBlacklist.UnblacklistInstalled"
     enum="ExtensionLocation">
-  <owner>Please list the metric's owners. Add more owner tags as needed.</owner>
+  <owner>nparker@chromium.org</owner>
   <summary>
     The number of extensions that were unblacklisted when installed, grouped by
     Extension::Location. Logged when ExtensionService unblacklists and loads a
@@ -13096,6 +13224,10 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="Extensions.EnhancedBookmarksManagerNumEventListeners">
+  <obsolete>
+    Obsolete since the enhanced bookmarks manager is no longer using an event
+    page.
+  </obsolete>
   <owner>wittman@chromium.org</owner>
   <summary>
     The number of event listeners the Enhanced Bookmarks Manager has, measured
@@ -19656,6 +19788,15 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   </summary>
 </histogram>
 
+<histogram name="Media.Audio.InputRestartAttemptsMac">
+  <owner>henrika@chromium.org</owner>
+  <summary>
+    Counts the total number of times an attempt to restart input audio has been
+    done. The value is stored once when a stream is closed and updated when it
+    has been detected that input audio callbacks are not generated as expected.
+  </summary>
+</histogram>
+
 <histogram name="Media.Audio.InputStartupSuccessMac" enum="BooleanSuccess">
   <owner>henrika@chromium.org</owner>
   <summary>
@@ -21800,6 +21941,9 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="Memory.Plugin" units="KB">
+  <obsolete>
+    Deprecated due to NPAPI removal.
+  </obsolete>
   <owner>hajimehoshi@chromium.org</owner>
   <owner>kenjibaheux@google.com</owner>
   <owner>kouhei@chromium.org</owner>
@@ -21810,6 +21954,9 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="Memory.PluginProcessCount">
+  <obsolete>
+    Deprecated due to NPAPI removal.
+  </obsolete>
   <owner>hajimehoshi@chromium.org</owner>
   <owner>kenjibaheux@google.com</owner>
   <owner>kouhei@chromium.org</owner>
@@ -22212,6 +22359,9 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="Memory.Swap.Plugin" units="KB">
+  <obsolete>
+    Deprecated due to NPAPI removal.
+  </obsolete>
   <owner>hajimehoshi@chromium.org</owner>
   <owner>kenjibaheux@google.com</owner>
   <owner>kouhei@chromium.org</owner>
@@ -22441,11 +22591,25 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   </summary>
 </histogram>
 
+<histogram name="MobileDownload.BytesDownloaded" units="KB">
+  <owner>qinmin@chromium.org</owner>
+  <summary>
+    Android: Records the total data downloaded by completion status.
+  </summary>
+</histogram>
+
 <histogram name="MobileDownload.DownloadResumption"
     enum="MobileDownloadResumption">
   <owner>qinmin@chromium.org</owner>
   <summary>
     Android: Records user interaction on the download resumption button.
+  </summary>
+</histogram>
+
+<histogram name="MobileDownload.DownloadTime" units="ms">
+  <owner>qinmin@chromium.org</owner>
+  <summary>
+    Android: Records the total time for a download by completion status.
   </summary>
 </histogram>
 
@@ -22455,6 +22619,14 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <summary>
     Android: Records the reason that Chrome fails to intercept a download and
     pass it to the Android DownloadManager.
+  </summary>
+</histogram>
+
+<histogram name="MobileDownload.InterruptionsCount">
+  <owner>qinmin@chromium.org</owner>
+  <summary>
+    Android: Records the total interruptions for a download by completion
+    status.
   </summary>
 </histogram>
 
@@ -23487,6 +23659,24 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <summary>
     Total length of the redirect URL strings in navigation entry. Logged when
     entry is committed.
+  </summary>
+</histogram>
+
+<histogram name="Navigation.SchemePerUniqueOrigin" enum="NavigationScheme">
+  <owner>palmer@chromium.org</owner>
+  <owner>felt@chromium.org</owner>
+  <summary>
+    The scheme of the URL for the first main-frame navigation per origin per
+    non-OffTheRecord session.
+  </summary>
+</histogram>
+
+<histogram name="Navigation.SchemePerUniqueOriginOTR" enum="NavigationScheme">
+  <owner>palmer@chromium.org</owner>
+  <owner>felt@chromium.org</owner>
+  <summary>
+    The scheme of the URL for the first main-frame navigation per origin per
+    OffTheRecord session.
   </summary>
 </histogram>
 
@@ -26040,28 +26230,28 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="Net.HttpAuthCacheAddEvicted" enum="BooleanDidEvict">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Whether adding an entry to the HTTP auth cache evicted another entry.
   </summary>
 </histogram>
 
 <histogram name="Net.HttpAuthCacheAddEvictedCreation">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     When an HTTP auth cache entry is evicted, the time since it was created.
   </summary>
 </histogram>
 
 <histogram name="Net.HttpAuthCacheAddEvictedLastUse">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     When an HTTP auth cache entry is evicted, the time since it was last used.
   </summary>
 </histogram>
 
 <histogram name="Net.HttpAuthCacheAddPathEvicted" enum="BooleanDidEvict">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Whether adding a path to an entry in the HTTP auth cache evicted another
     path.
@@ -26069,7 +26259,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="Net.HttpAuthCacheLookupByPathPosition">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     When looking up an HTTP auth cache entry by path, the position (1-indexed)
     of the entry on a hit, or 0 on a miss.
@@ -26077,7 +26267,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="Net.HttpAuthCacheLookupPosition">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     When looking up an HTTP auth cache entry by realm, the position (1-indexed)
     of the entry on a hit, or 0 on a miss.
@@ -28012,6 +28202,24 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   </summary>
 </histogram>
 
+<histogram name="Net.QuicSession.StreamCloseErrorCodeClient.HandshakeConfirmed"
+    enum="QuicErrorCodes">
+  <owner>rch@chromium.org</owner>
+  <summary>
+    The QUIC error code which resulted in the stream (and connection) being
+    closed by the client after the handshake was confirmed.
+  </summary>
+</histogram>
+
+<histogram name="Net.QuicSession.StreamCloseErrorCodeServer.HandshakeConfirmed"
+    enum="QuicErrorCodes">
+  <owner>rch@chromium.org</owner>
+  <summary>
+    The QUIC error code which resulted in the stream (and connection) being
+    closed by the client after the handshake was confirmed.
+  </summary>
+</histogram>
+
 <histogram name="Net.QuicSession.StreamFlowControlBlocked"
     enum="BooleanBlocked">
   <owner>rtenneti@chromium.org</owner>
@@ -28327,7 +28535,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="Net.ResponseSizeByProcess.Browser" units="KB">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Count of (post-SSL/proxy, pre-filter) kilobytes received per request made by
     the browser process.
@@ -28335,7 +28543,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="Net.ResponseSizeByProcess.Renderer" units="KB">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Count of (post-SSL/proxy, pre-filter) kilobytes received per request made by
     a renderer process.
@@ -28343,7 +28551,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="Net.ResponseSizeByProcess.Unknown" units="KB">
-  <owner>ttuttle@chromium.org</owner>
+  <owner>juliatuttle@chromium.org</owner>
   <summary>
     Count of (post-SSL/proxy, pre-filter) kilobytes received per request made by
     a process not covered by one of the other ResponseSizeByProcess histograms.
@@ -33371,6 +33579,34 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   </summary>
 </histogram>
 
+<histogram name="OfflinePages.Wakeup.BatteryPercentage" units="%">
+  <owner>petewil@chromium.org</owner>
+  <owner>jianli@chromium.org</owner>
+  <summary>
+    Percentage of battery remaining when the offline page background loading
+    task wakes up to check for work.
+  </summary>
+</histogram>
+
+<histogram name="OfflinePages.Wakeup.ConnectedToPower" enum="BooleanConnected">
+  <owner>petewil@chromium.org</owner>
+  <owner>jianli@chromium.org</owner>
+  <summary>
+    Whether the device is plugged in when the offline page background load task
+    wakes up to check or work.
+  </summary>
+</histogram>
+
+<histogram name="OfflinePages.Wakeup.NetworkAvailable"
+    enum="NetworkConnectionType">
+  <owner>petewil@chromium.org</owner>
+  <owner>jianli@chromium.org</owner>
+  <summary>
+    Which network is available (if any) when the offling page background loading
+    task wakes up to check for work.
+  </summary>
+</histogram>
+
 <histogram name="OfflinePolicy.SuccessfulResourceLoadPercentage" units="%">
   <owner>Please list the metric's owners. Add more owner tags as needed.</owner>
   <summary>
@@ -34626,6 +34862,15 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   </summary>
 </histogram>
 
+<histogram name="PageLoad.Timing2.ParseStartToFirstContentfulPaint" units="ms">
+  <owner>bmcquade@chromium.org</owner>
+  <owner>csharrison@chromium.org</owner>
+  <summary>
+    Measures the time from when the HTML parser started, to when the page first
+    paints content.
+  </summary>
+</histogram>
+
 <histogram name="PartitionAlloc.CommittedSize" units="MB">
   <owner>haraken@chromium.org</owner>
   <summary>
@@ -34954,6 +35199,12 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   </summary>
 </histogram>
 
+<histogram name="PasswordManager.ExportedPasswordsPerUserInCSV">
+  <owner>xunlu@chromium.org</owner>
+  <owner>vabr@chromium.org</owner>
+  <summary>The number of passwords exported in CSV format per user.</summary>
+</histogram>
+
 <histogram name="PasswordManager.FilledCredentialWasFromAndroidApp"
     enum="PasswordManagerFilledAndroidCredentials">
   <owner>msramek@chromium.org</owner>
@@ -34992,6 +35243,22 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <summary>
     When the generation state of a password was changed, records whether an
     existing form corresponding to the password was found.
+  </summary>
+</histogram>
+
+<histogram name="PasswordManager.ImportedPasswordsPerUserInCSV">
+  <owner>xunlu@chromium.org</owner>
+  <owner>vabr@chromium.org</owner>
+  <summary>The number of passwords imported in CSV format per user</summary>
+</histogram>
+
+<histogram name="PasswordManager.ImportPasswordFromCSVResult"
+    enum="PasswordImportFromCSVResult">
+  <owner>xunlu@chromium.org</owner>
+  <owner>vabr@chromium.org</owner>
+  <summary>
+    The response code of successful or failed password import attempt from a CSV
+    file.
   </summary>
 </histogram>
 
@@ -35226,6 +35493,16 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   </summary>
 </histogram>
 
+<histogram name="PasswordManager.StorePasswordImportedFromCSVResult"
+    enum="BooleanSuccess">
+  <owner>xunlu@chromium.org</owner>
+  <owner>vabr@chromium.org</owner>
+  <summary>
+    Whether password manager stored passwords imported from CSV file
+    successfully.
+  </summary>
+</histogram>
+
 <histogram name="PasswordManager.StoreReadyWhenWiping" enum="Boolean">
   <owner>vabr@chromium.org</owner>
   <summary>
@@ -35444,6 +35721,14 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <summary>
     Tracks whether a permission was granted, rejected, etc on a secure origin.
     The suffix of the histogram indicates which particular permission.
+  </summary>
+</histogram>
+
+<histogram name="Permissions.Prompt.Shown" enum="PermissionBubbleType">
+  <owner>benwells@chromium.org</owner>
+  <owner>tsergeant@chromium.org</owner>
+  <summary>
+    Tracks how many times permission prompts are shown to users.
   </summary>
 </histogram>
 
@@ -38369,6 +38654,9 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 
 <histogram name="Plugin.NpapiRemovalInfobar.Removed.PluginGroup"
     enum="PluginGroup">
+  <obsolete>
+    Deprecated due to NPAPI removal.
+  </obsolete>
   <owner>wfh@chromium.org</owner>
   <summary>
     The plugin group of an NPAPI plugin that is no longer supported. Recorded
@@ -38379,6 +38667,9 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 
 <histogram name="Plugin.NpapiRemovalInfobar.RemovedSoon.PluginGroup"
     enum="PluginGroup">
+  <obsolete>
+    Deprecated due to NPAPI removal.
+  </obsolete>
   <owner>wfh@chromium.org</owner>
   <summary>
     The plugin group of an NPAPI plugin that will be unsupported soon. Recorded
@@ -38388,6 +38679,9 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="Plugin.NPAPIStatus" enum="NPAPIPluginStatus">
+  <obsolete>
+    Deprecated due to NPAPI removal.
+  </obsolete>
   <owner>wfh@chromium.org</owner>
   <summary>
     Records whether NPAPI plugins are supported by the platform, and if so,
@@ -38462,6 +38756,9 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="Plugin.SyncMessageTime" units="ms">
+  <obsolete>
+    Deprecated due to NPAPI removal.
+  </obsolete>
   <owner>gab@chromium.org</owner>
   <summary>
     Roundtrip times for synchronous IPC calls from the renderer to NPAPI plugin
@@ -46090,6 +46387,26 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   </summary>
 </histogram>
 
+<histogram name="Search.ContextualSearchBarOverlap"
+    enum="ContextualSearchTapSuppression">
+  <owner>donnd@chromium.org</owner>
+  <owner>twellington@chromium.org</owner>
+  <summary>
+    Whether a Tap was suppressed because the Bar overlapped the selection area.
+    Implemented for Android.
+  </summary>
+</histogram>
+
+<histogram name="Search.ContextualSearchBarOverlapSeen"
+    enum="ContextualSearchBarOverlapSeen">
+  <owner>donnd@chromium.org</owner>
+  <owner>twellington@chromium.org</owner>
+  <summary>
+    Whether the Bar overlapped the selection area and whether the results were
+    seen. Recorded when the UX is hidden. Implemented for Android.
+  </summary>
+</histogram>
+
 <histogram name="Search.ContextualSearchBasePageProtocol"
     enum="ContextualSearchBasePageProtocol">
   <owner>donnd@chromium.org</owner>
@@ -46460,6 +46777,44 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   </summary>
 </histogram>
 
+<histogram name="Search.ContextualSearchQuickAnswerSeen"
+    enum="ContextualSearchQuickAnswerSeen">
+  <owner>donnd@chromium.org</owner>
+  <owner>twellington@chromium.org</owner>
+  <summary>
+    Whether a Quick Answer was activated, considered an answer, and seen.
+    Implemented for Android.
+  </summary>
+</histogram>
+
+<histogram name="Search.ContextualSearchRecentScrollNotSeen" units="ms">
+  <owner>donnd@chromium.org</owner>
+  <owner>twellington@chromium.org</owner>
+  <summary>
+    The duration since a recent scroll when the results were not seen. Recorded
+    when the UX is hidden. Implemented for Android.
+  </summary>
+</histogram>
+
+<histogram name="Search.ContextualSearchRecentScrollSeen" units="ms">
+  <owner>donnd@chromium.org</owner>
+  <owner>twellington@chromium.org</owner>
+  <summary>
+    The duration since a recent scroll when the results were seen. Recorded when
+    the UX is hidden. Implemented for Android.
+  </summary>
+</histogram>
+
+<histogram name="Search.ContextualSearchRecentScrollSuppression"
+    enum="ContextualSearchTapSuppression">
+  <owner>donnd@chromium.org</owner>
+  <owner>twellington@chromium.org</owner>
+  <summary>
+    Whether showing the Tap to Search UX in response to a Tap was suppressed by
+    a recent scroll. Implemented for Android.
+  </summary>
+</histogram>
+
 <histogram name="Search.ContextualSearchResolutionDuration" units="ms">
   <owner>donnd@chromium.org</owner>
   <owner>twellington@chromium.org</owner>
@@ -46522,6 +46877,16 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   </summary>
 </histogram>
 
+<histogram name="Search.ContextualSearchScreenTopSuppressed"
+    enum="ContextualSearchTapSuppression">
+  <owner>donnd@chromium.org</owner>
+  <owner>twellington@chromium.org</owner>
+  <summary>
+    Whether Taps near the top of the screen was suppressed. Implemented for
+    Android.
+  </summary>
+</histogram>
+
 <histogram name="Search.ContextualSearchSelectionValid"
     enum="ContextualSearchSelectionValid">
   <owner>donnd@chromium.org</owner>
@@ -46575,6 +46940,23 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <summary>
     The time between tapping on a word and performing a search. Implemented for
     Android.
+  </summary>
+</histogram>
+
+<histogram name="Search.ContextualSearchTopLocationNotSeen" units="dps">
+  <owner>donnd@chromium.org</owner>
+  <owner>twellington@chromium.org</owner>
+  <summary>
+    The DPs count histogram for Taps that were not seen. Implemented for
+    Android.
+  </summary>
+</histogram>
+
+<histogram name="Search.ContextualSearchTopLocationSeen" units="dps">
+  <owner>donnd@chromium.org</owner>
+  <owner>twellington@chromium.org</owner>
+  <summary>
+    The DPs count histogram for Taps that were seen. Implemented for Android.
   </summary>
 </histogram>
 
@@ -46812,6 +47194,15 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   </summary>
 </histogram>
 
+<histogram name="ServiceWorker.ExtendableMessageEvent.Time" units="ms">
+  <owner>nhiroki@chromium.org</owner>
+  <summary>
+    The time taken between dispatching an ExtendableMessageEvent to a Service
+    Worker and receiving a message that it finished handling the event. Includes
+    the time for the waitUntil() promise to settle.
+  </summary>
+</histogram>
+
 <histogram name="ServiceWorker.FetchEvent.Fallback.Time" units="ms">
   <owner>jeremyarcher@chromium.org</owner>
   <summary>
@@ -46918,6 +47309,9 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 
 <histogram name="ServiceWorker.MessageEvent.Time" units="ms">
   <owner>shimazu@chromium.org</owner>
+  <obsolete>
+    Deprecated 2016-04 in favor of ServiceWorker.ExtendableMessageEvent.Time.
+  </obsolete>
   <summary>Execution time of ServiceWorkerGlobalScope.onmessage.</summary>
 </histogram>
 
@@ -47065,6 +47459,32 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
     script execution). This may include script download time. The metric is not
     recorded if DevTools was ever attached to the Service Worker during startup.
     See also ServiceWorker.StartWorker.Time for installed workers.
+  </summary>
+</histogram>
+
+<histogram name="ServiceWorker.StartWorker.AfterFailureStreak"
+    enum="ServiceWorkerStatusCode">
+  <owner>falken@chromium.org</owner>
+  <summary>
+    The result of trying to start a service worker after it has failed
+    consecutively. Recorded only for installed workers.
+  </summary>
+</histogram>
+
+<histogram name="ServiceWorker.StartWorker.FailureStreak" units="count">
+  <owner>falken@chromium.org</owner>
+  <summary>
+    The number of consecutive startup failures of a service worker. Recorded
+    each time the service worker failed (so there is double counting: failing
+    twice results in 1 and 2 being logged). Only for installed workers.
+  </summary>
+</histogram>
+
+<histogram name="ServiceWorker.StartWorker.FailureStreakEnded" units="count">
+  <owner>falken@chromium.org</owner>
+  <summary>
+    When a worker startup succeeded after failing, the number of times the
+    worker had consecutively failed. Recorded only for installed workers.
   </summary>
 </histogram>
 
@@ -51189,7 +51609,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   </summary>
 </histogram>
 
-<histogram name="Storage.Blob.Broken" units="BooleanBroken">
+<histogram name="Storage.Blob.Broken" enum="BooleanBroken">
   <owner>dmurph@chromium.org</owner>
   <summary>
     If a newly constructed blob is broken. See Storage.Blob.BrokenReason for a
@@ -51197,7 +51617,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   </summary>
 </histogram>
 
-<histogram name="Storage.Blob.BrokenReason" units="BlobBrokenReason">
+<histogram name="Storage.Blob.BrokenReason" enum="BlobBrokenReason">
   <owner>dmurph@chromium.org</owner>
   <summary>
     The reason a blob is broken, reported only for broken blobs upon
@@ -54906,6 +55326,9 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="UMA.LogLoadComplete called">
+  <obsolete>
+    No longer tracked.
+  </obsolete>
   <owner>asvitkine@chromium.org</owner>
   <summary>
     Simple counter of the number of times LogLoadComplete was called (bug
@@ -54921,7 +55344,20 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   </summary>
 </histogram>
 
+<histogram name="UMA.LogUpload.Canceled.CellularConstraint">
+  <owner>asvitkine@chromium.org</owner>
+  <owner>gayane@chromium.org</owner>
+  <summary>
+    Logs whether a log was not uploaded due to cellular log throttling logic.
+    Android only.
+  </summary>
+</histogram>
+
 <histogram name="UMA.LogUpload.ConnetionType" enum="NetworkConnectionType">
+  <obsolete>
+    Used for analyzing UMA log uploads on cellular connection, but necessary
+    after the analysis is finished.
+  </obsolete>
   <owner>asvitkine@chromium.org</owner>
   <owner>gayane@chromium.org</owner>
   <summary>
@@ -55118,6 +55554,14 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   </details>
 </histogram>
 
+<histogram name="UMA.UnsentLogs.Dropped">
+  <owner>asvitkine@chromium.org</owner>
+  <owner>gayane@chromium.org</owner>
+  <summary>
+    Counter for number of UMA unsent logs removed from persistent storage.
+  </summary>
+</histogram>
+
 <histogram name="UMA.UploadCreation" enum="BooleanSuccess">
   <obsolete>
     Deprecated as of August 2015.  This failure case no longer exists.
@@ -55152,6 +55596,9 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="UMA.UsedResetVariationsFlag" enum="BooleanUsage">
+  <obsolete>
+    No longer tracked.
+  </obsolete>
   <owner>asvitkine@chromium.org</owner>
   <summary>
     Log whether the --reset-variation-state flag was set before the low entropy
@@ -57225,6 +57672,16 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   </details>
 </histogram>
 
+<histogram name="WebCore.Framebust" enum="FramebustPermissions">
+  <owner>japhet@chromium.org</owner>
+  <summary>
+    Records instances of child frames navigating the top frame. Includes whether
+    or not the navigation would have been permitted if not for our special case
+    for 'framebusting', the practice of ensuring a given document is never
+    displayed in a frame.
+  </summary>
+</histogram>
+
 <histogram name="WebCore.IndexedDB.BackingStore.ConsistencyError"
     enum="IDBLevelDBBackingStoreInternalErrorType">
   <owner>dgrogan@chromium.org</owner>
@@ -57616,6 +58073,9 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </histogram>
 
 <histogram name="WebCore.PreloadDelayMs" units="ms">
+  <obsolete>
+    Removed in April 2016, due to lack of use.
+  </obsolete>
   <owner>Please list the metric's owners. Add more owner tags as needed.</owner>
   <summary>
     The delay between when the preload scanner discovers a resource on the
@@ -61422,7 +61882,11 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <int value="114" label="RFH_INVALID_ORIGIN_ON_COMMIT"/>
   <int value="115" label="BDH_UUID_REGISTERED"/>
   <int value="116" label="BDH_CONSTRUCTION_FAILED"/>
-  <int value="117" label="BDH_INVALID_OPERATION"/>
+  <int value="117" label="BDH_INVALID_REFCOUNT_OPERATION"/>
+  <int value="118" label="BDH_INVALID_URL_OPERATION"/>
+  <int value="119" label="IDBDH_INVALID_ORIGIN"/>
+  <int value="120" label="RFH_FAIL_PROVISIONAL_LOAD_NO_HANDLE"/>
+  <int value="121" label="RFH_FAIL_PROVISIONAL_LOAD_NO_ERROR"/>
 </enum>
 
 <enum name="BadMessageReasonExtensions" type="int">
@@ -61454,6 +61918,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <int value="4" label="CPMD_BAD_ORIGIN_FOCUSED_PASSWORD_FORM_FOUND"/>
   <int value="5" label="CPMD_BAD_ORIGIN_IN_PAGE_NAVIGATION"/>
   <int value="6" label="CPMD_BAD_ORIGIN_PASSWORD_NO_LONGER_GENERATED"/>
+  <int value="7" label="CPMD_BAD_ORIGIN_PRESAVE_GENERATED_PASSWORD"/>
 </enum>
 
 <enum name="BadSyncDataReason" type="int">
@@ -61703,6 +62168,11 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 <enum name="BooleanCompleted" type="int">
   <int value="0" label="Not Completed"/>
   <int value="1" label="Completed"/>
+</enum>
+
+<enum name="BooleanConnected" type="int">
+  <int value="0" label="Not Connected"/>
+  <int value="1" label="Connected"/>
 </enum>
 
 <enum name="BooleanContainedMeCard" type="int">
@@ -63334,6 +63804,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <int value="-402" label="CACHE_WRITE_FAILURE"/>
   <int value="-401" label="CACHE_READ_FAILURE"/>
   <int value="-400" label="CACHE_MISS"/>
+  <int value="-369" label="TEMPORARY_BACKOFF"/>
   <int value="-368" label="ALTERNATIVE_CERT_NOT_VALID_FOR_ORIGIN"/>
   <int value="-367" label="PAC_SCRIPT_TERMINATED"/>
   <int value="-366" label="PROXY_HTTP_1_1_REQUIRED"/>
@@ -63402,6 +63873,11 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <int value="-202" label="CERT_AUTHORITY_INVALID"/>
   <int value="-201" label="CERT_DATE_INVALID"/>
   <int value="-200" label="CERT_COMMON_NAME_INVALID"/>
+  <int value="-171" label="CT_CONSISTENCY_PROOF_PARSING_FAILED"/>
+  <int value="-170" label="UNABLE_TO_REUSE_CONNECTION_FOR_PROXY_AUTH"/>
+  <int value="-169" label="CT_STH_INCOMPLETE"/>
+  <int value="-168" label="CT_STH_PARSING_FAILED"/>
+  <int value="-167" label="SSL_SERVER_CERT_BAD_FORMAT"/>
   <int value="-166" label="ICANN_NAME_COLLISION"/>
   <int value="-165" label="SSL_FALLBACK_BEYOND_MINIMUM_VERSION"/>
   <int value="-164" label="SSL_CLIENT_AUTH_CERT_BAD_FORMAT"/>
@@ -63885,6 +64361,17 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <int value="1" label="Released"/>
 </enum>
 
+<enum name="ContextualSearchBarOverlapSeen" type="int">
+  <int value="0" label="Overlap seen from Tap"/>
+  <int value="1" label="Overlap not seen from Tap"/>
+  <int value="2" label="No overlap seen from Tap"/>
+  <int value="3" label="No overlap not seen from Tap"/>
+  <int value="4" label="Overlap seen from Longpress"/>
+  <int value="5" label="Overlap not seen from Longpress"/>
+  <int value="6" label="No overlap seen from Longpress"/>
+  <int value="7" label="No overlap not seen from Longpress"/>
+</enum>
+
 <enum name="ContextualSearchBasePageProtocol" type="int">
   <int value="0" label="Is HTTP"/>
   <int value="1" label="Not HTTP"/>
@@ -64045,6 +64532,15 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <int value="2" label="Not prefetched"/>
 </enum>
 
+<enum name="ContextualSearchQuickAnswerSeen" type="int">
+  <int value="0" label="Activated, answered and seen"/>
+  <int value="1" label="Activated and answered but not seen"/>
+  <int value="2" label="Activated, not answered but seen"/>
+  <int value="3" label="Activated, not answered nor seen"/>
+  <int value="4" label="Not activated but seen"/>
+  <int value="5" label="Not activated nor seen"/>
+</enum>
+
 <enum name="ContextualSearchResolvedTermWords" type="int">
   <int value="0" label="Single Word"/>
   <int value="1" label="Multi Word"/>
@@ -64078,6 +64574,11 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   </summary>
   <int value="0" label="Did force a translation"/>
   <int value="1" label="Would force a translation (if not disabled)"/>
+</enum>
+
+<enum name="ContextualSearchTapSuppression" type="int">
+  <int value="0" label="Tap suppressed"/>
+  <int value="1" label="Tap not suppressed"/>
 </enum>
 
 <enum name="CookieDeleteEquivalent" type="int">
@@ -64792,13 +65293,13 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 </enum>
 
 <enum name="DefaultBrowserInfoBarUserInteraction" type="int">
-  <int value="0" label="Start set as default">
+  <int value="0" label="Accept">
     The user clicked the &quot;Set as default&quot; button.
   </int>
-  <int value="1" label="Don't ask again">
-    The user doesn't want to be reminded again.
+  <int value="1" label="Cancel">
+    The user clicked the &quot;Don't ask again&quot; button.
   </int>
-  <int value="2" label="Ignore info bar">
+  <int value="2" label="Ignore">
     The user did not interact with the info bar.
   </int>
 </enum>
@@ -65015,9 +65516,8 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 
 <enum name="DirectWriteFontLoaderType" type="int">
   <int value="0" label="File: system font directory"/>
-  <int value="1" label="File: sandbox whitelisted"/>
-  <int value="2" label="File: outside sandbox whitelist"/>
-  <int value="3" label="Other"/>
+  <int value="1" label="File: outside sandbox whitelist"/>
+  <int value="2" label="Non-file loader"/>
 </enum>
 
 <enum name="DirectWriteLoadFamilyResult" type="int">
@@ -65548,6 +66048,21 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <int value="244" label="zip"/>
   <int value="245" label="zipx"/>
   <int value="246" label="zpaq"/>
+  <int value="247" label="cdr"/>
+  <int value="248" label="dart"/>
+  <int value="249" label="dc42"/>
+  <int value="250" label="diskcopy42"/>
+  <int value="251" label="dmg"/>
+  <int value="252" label="dmgpart"/>
+  <int value="253" label="dvdr"/>
+  <int value="254" label="img"/>
+  <int value="255" label="imgpart"/>
+  <int value="256" label="ndif"/>
+  <int value="257" label="smi"/>
+  <int value="258" label="sparsebundle"/>
+  <int value="259" label="sparseimage"/>
+  <int value="260" label="toast"/>
+  <int value="261" label="udif"/>
 </enum>
 
 <enum name="DownloadItem.DangerType" type="int">
@@ -66680,7 +67195,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <int value="316"
       label="Configure the required domain name for remote access clients"/>
   <int value="317" label="ARC Enabled"/>
-  <int value="318" label="Configure ARC apps"/>
+  <int value="318" label="Configure ARC"/>
   <int value="319"
       label="Allow the auto launched with zero delay kiosk app to control
              ChromeOS version"/>
@@ -66691,6 +67206,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <int value="324" label="Suppress the unsupported OS warning"/>
   <int value="325" label="Enable queries to Quirks Server"/>
   <int value="326" label="Configure the automatic timezone detection method"/>
+  <int value="327" label="Enable ending processes in Task Manager"/>
 </enum>
 
 <enum name="EnterprisePolicyInvalidations" type="int">
@@ -66971,6 +67487,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <int value="2" label="Suppressed"/>
   <int value="3" label="Cancelable and not canceled"/>
   <int value="4" label="Cancelable and canceled"/>
+  <int value="5" label="Forced Non-Blocking"/>
 </enum>
 
 <enum name="EVWhitelistStatus" type="int">
@@ -68610,6 +69127,9 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <int value="1112" label="INPUT_IME_HIDEWINDOW"/>
   <int value="1113" label="INPUTMETHODPRIVATE_SHOWINPUTVIEW"/>
   <int value="1114" label="WALLPAPERPRIVATE_RECORDWALLPAPERUMA"/>
+  <int value="1115" label="AUTOTESTPRIVATE_GETVISIBLENOTIFICATIONS"/>
+  <int value="1116" label="WEBRTCLOGGINGPRIVATE_STARTRTCEVENTLOGGING"/>
+  <int value="1117" label="WEBRTCLOGGINGPRIVATE_STOPRTCEVENTLOGGING"/>
 </enum>
 
 <enum name="ExtensionInstallCause" type="int">
@@ -70535,6 +71055,19 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <int value="1294" label="FormValidationShowedMessage"/>
   <int value="1295" label="WebAnimationsEasingAsFunctionLinear"/>
   <int value="1296" label="WebAnimationsEasingAsFunctionOther"/>
+  <int value="1297" label="V8Document_Images_AttributeGetter"/>
+  <int value="1298" label="V8Document_Embeds_AttributeGetter"/>
+  <int value="1299" label="V8Document_Plugins_AttributeGetter"/>
+  <int value="1300" label="V8Document_Links_AttributeGetter"/>
+  <int value="1301" label="V8Document_Forms_AttributeGetter"/>
+  <int value="1302" label="V8Document_Scripts_AttributeGetter"/>
+  <int value="1303" label="V8Document_Anchors_AttributeGetter"/>
+  <int value="1304" label="V8Document_Applets_AttributeGetter"/>
+  <int value="1305" label="XMLHttpRequestCrossOriginWithCredentials"/>
+  <int value="1306" label="MediaStreamTrackRemote"/>
+  <int value="1307" label="V8Node_IsConnected_AttributeGetter"/>
+  <int value="1308" label="ShadowRootDelegatesFocus"/>
+  <int value="1309" label="MixedShadowRootV0AndV1"/>
 </enum>
 
 <enum name="FetchRequestMode" type="int">
@@ -71465,6 +71998,13 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <int value="5" label="GNOME failure"/>
 </enum>
 
+<enum name="FramebustPermissions" type="int">
+  <int value="0" label="Only permitted for framebusting, no user gesture"/>
+  <int value="1" label="Only permitted for framebusting, user gesture"/>
+  <int value="2" label="Allowed navigation, no user gesture"/>
+  <int value="3" label="Allowed navigation, user gesture"/>
+</enum>
+
 <enum name="FtpDataConnectionError" type="int">
   <int value="0">Data connection successful</int>
   <int value="1">Local firewall blocked the connection</int>
@@ -71544,6 +72084,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <int value="162705488" label="manufacturer_name_string"/>
   <int value="164418508" label="weight_measurement"/>
   <int value="177223896" label="report_map"/>
+  <int value="203846063" label="ff0c"/>
   <int value="205016416" label="body_composition_measurement"/>
   <int value="235785246" label="irradiance"/>
   <int value="248349383" label="csc_measurement"/>
@@ -71567,6 +72108,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <int value="405569435" label="boot_keyboard_output_report"/>
   <int value="409618715" label="cycling_power_vector"/>
   <int value="419477741" label="body_composition_feature"/>
+  <int value="469191968" label="Playbulb Candle Color; fffc"/>
   <int value="486368335" label="location_name"/>
   <int value="512543326" label="date_of_threshold_assessment"/>
   <int value="531135021" label="cgm_specific_ops_control_point"/>
@@ -71599,6 +72141,8 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <int value="868892960" label="heat_index"/>
   <int value="873660243" label="body_sensor_location"/>
   <int value="893588698" label="scan_interval_window"/>
+  <int value="910416910"
+      label="nRF UART RX; 6e400003-b5a3-f393-e0a9-e50e24dcca9e"/>
   <int value="917477908" label="software_revision_string"/>
   <int value="918961501" label="plx_spot_check_measurement"/>
   <int value="922434244" label="ln_feature"/>
@@ -71609,6 +72153,8 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <int value="987658962" label="glucose_measurement"/>
   <int value="1002619180" label="exact_time_256"/>
   <int value="1025676359" label="dst_offset"/>
+  <int value="1050948662"
+      label="nRF UART TX; 6e400002-b5a3-f393-e0a9-e50e24dcca9e"/>
   <int value="1061486494" label="anaerobic_heart_rate_upper_limit"/>
   <int value="1072163984" label="gap.reconnection_address"/>
   <int value="1100640868" label="day_of_week"/>
@@ -71616,6 +72162,7 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
   <int value="1134538374" label="hip_circumference"/>
   <int value="1136624215" label="maximum_recommended_heart_rate"/>
   <int value="1136682523" label="date_time"/>
+  <int value="1161713439" label="Playbulb Candle Effect; fffb"/>
   <int value="1167525145" label="alert_status"/>
   <int value="1183399370" label="magnetic_flux_density_3D"/>
   <int value="1193066711" label="uv_index"/>
@@ -71698,37 +72245,316 @@ http://cs/file:chrome/histograms.xml - but prefer this file for new entries.
 
 <enum name="GATTServiceHash" type="int">
   <int value="7464675" label="pulse_oximeter"/>
+  <int value="26695985" label="fe20"/>
+  <int value="35226455" label="fe44"/>
+  <int value="35347197" label="fe26"/>
+  <int value="41430862" label="fea8"/>
+  <int value="44208286" label="fe29"/>
+  <int value="46512116" label="fe03"/>
+  <int value="47251880" label="fe8c"/>
+  <int value="48328546" label="febf"/>
+  <int value="56938056" label="feb9"/>
+  <int value="62669585" label="feff"/>
+  <int value="70653353" label="fe37"/>
   <int value="81094401" label="link_loss"/>
+  <int value="85709298" label="fe38"/>
+  <int value="91953454" label="fe7b"/>
+  <int value="109066436" label="Printer; 18f0"/>
+  <int value="117033282" label="fe1e"/>
+  <int value="119232939" label="fe16"/>
+  <int value="126220948" label="fec4"/>
+  <int value="130754956" label="fe0d"/>
+  <int value="134110769" label="fecf"/>
+  <int value="141942246" label="fe1d"/>
+  <int value="152492105" label="fe5f"/>
+  <int value="169501939" label="fe4d"/>
+  <int value="199936534" label="fe3c"/>
+  <int value="214038522" label="fed3"/>
   <int value="217781951" label="human_interface_device"/>
+  <int value="219286671" label="fe04"/>
+  <int value="221983129" label="fe66"/>
+  <int value="228594985" label="fe21"/>
+  <int value="229725863"
+      label="Juggglow; 624e957f-cb42-4cd6-bacc-84aeb898f69b"/>
+  <int value="239745754" label="fe22"/>
+  <int value="252638028" label="fe9c"/>
+  <int value="253001319" label="fe84"/>
+  <int value="267848299" label="fe3e"/>
+  <int value="270670950" label="fe62"/>
   <int value="272218751" label="automation_io"/>
+  <int value="273356483" label="fe68"/>
+  <int value="278860884" label="fe5c"/>
+  <int value="289754407" label="fe01"/>
+  <int value="291870040" label="fe6d"/>
+  <int value="295205583" label="fe27"/>
+  <int value="310654399" label="fe54"/>
+  <int value="314884784" label="fe65"/>
+  <int value="315044617" label="fea9"/>
+  <int value="321399472" label="fe86"/>
+  <int value="335078161" label="DOTTI; fff0"/>
+  <int value="336095190" label="fe1c"/>
+  <int value="337129282" label="fe73"/>
+  <int value="347254994" label="feb6"/>
+  <int value="350589357" label="fe8e"/>
+  <int value="353919198" label="fe41"/>
+  <int value="367801999" label="fe19"/>
   <int value="381944619" label="continuous_glucose_monitoring"/>
+  <int value="393442080" label="fe47"/>
+  <int value="404751265" label="fe34"/>
+  <int value="406443827" label="fe08"/>
+  <int value="406667138" label="fe1b"/>
+  <int value="408422717" label="fe12"/>
+  <int value="411422080" label="feaf"/>
+  <int value="428955508" label="fed8"/>
+  <int value="436040838" label="fe49"/>
+  <int value="442258066" label="fec6"/>
+  <int value="448479874" label="fe13"/>
+  <int value="452749537" label="fe6f"/>
+  <int value="486403409" label="fe7e"/>
+  <int value="493187195"
+      label="Insight cards; 13630000-aeb9-10cf-ef69-81e145a91113"/>
+  <int value="499379297" label="fe0c"/>
+  <int value="517314925" label="fe0e"/>
+  <int value="534472233" label="feea"/>
+  <int value="535574137" label="feb1"/>
+  <int value="547028880" label="fed0"/>
+  <int value="547391938" label="feee"/>
+  <int value="563178896" label="fec8"/>
+  <int value="572734315"
+      label="Sphero Robot; 22bb746f-2bb0-7554-2d6f-726568705327"/>
+  <int value="587509991" label="feba"/>
+  <int value="593291030" label="fe80"/>
+  <int value="593725623" label="fef8"/>
   <int value="594122172" label="health_thermometer"/>
+  <int value="598801180" label="fe64"/>
+  <int value="599398840" label="feb4"/>
+  <int value="601952480"
+      label="PowerUp RC plane; 75b64e51-f181-4ed1-921a-476090d80ba7"/>
+  <int value="603143198" label="fef5"/>
+  <int value="604112254" label="fee4"/>
+  <int value="617434027" label="fe59"/>
+  <int value="621358948" label="fec7"/>
+  <int value="633977000" label="fedf"/>
+  <int value="642914459" label="fe3d"/>
+  <int value="643543662" label="fefe"/>
+  <int value="675211143" label="fe4a"/>
+  <int value="677930586" label="fe11"/>
+  <int value="683753134" label="fe82"/>
+  <int value="684646659" label="febb"/>
+  <int value="687580695" label="fe7a"/>
+  <int value="687720133" label="fe91"/>
+  <int value="688383299" label="fe1f"/>
   <int value="690691504" label="bond_management"/>
+  <int value="695100933" label="fed4"/>
+  <int value="702341883" label="fed5"/>
+  <int value="703883979" label="fe87"/>
+  <int value="706159123" label="fe32"/>
+  <int value="712814660"
+      label="Eddystone-URL Beacon Configuration;
+             ee0c2080-8786-40ba-ab96-99b91ac981d8"/>
+  <int value="739317418" label="fe05"/>
+  <int value="741183887" label="fe78"/>
+  <int value="749323131" label="fece"/>
+  <int value="762562796" label="fe5e"/>
+  <int value="775377708" label="fe2b"/>
+  <int value="780195705" label="fead"/>
+  <int value="786171562" label="fe0a"/>
+  <int value="803680658" label="fea3"/>
   <int value="805645044" label="glucose"/>
+  <int value="807272540" label="fe1a"/>
+  <int value="817497010" label="fe18"/>
   <int value="836214784" label="cycling_power"/>
+  <int value="841972234" label="feeb"/>
   <int value="869059214" label="next_dst_change"/>
+  <int value="869682406" label="fe60"/>
   <int value="876407493" label="location_and_navigation"/>
+  <int value="878416856" label="fe85"/>
+  <int value="882315332" label="fe55"/>
+  <int value="889111031" label="fecd"/>
   <int value="890629650" label="running_speed_and_cadence"/>
+  <int value="901700952" label="fedd"/>
+  <int value="902817086" label="fea2"/>
+  <int value="918911989" label="fed1"/>
+  <int value="931929648" label="Mi Band; fee0"/>
+  <int value="935427983" label="fed7"/>
+  <int value="936179325" label="feb5"/>
+  <int value="939739701" label="fe8f"/>
+  <int value="939958322" label="febc"/>
+  <int value="940942235" label="feef"/>
+  <int value="953202155" label="fe8d"/>
+  <int value="960854785" label="fe53"/>
+  <int value="961193127" label="feb8"/>
+  <int value="963656436" label="fe77"/>
+  <int value="1001310815" label="fe75"/>
+  <int value="1024550252" label="feda"/>
   <int value="1029767622" label="internet_protocol_support"/>
+  <int value="1035129135" label="fe74"/>
+  <int value="1044298649" label="fe99"/>
+  <int value="1047979067" label="fe17"/>
+  <int value="1054370387" label="fef9"/>
+  <int value="1061554458" label="feaa"/>
+  <int value="1067649821" label="fe3f"/>
+  <int value="1079263879" label="fe06"/>
+  <int value="1085187782" label="feae"/>
+  <int value="1088150526" label="feb2"/>
+  <int value="1091337779" label="fefb"/>
+  <int value="1096286291" label="fed6"/>
+  <int value="1102290958" label="fe56"/>
+  <int value="1103440256" label="fee9"/>
   <int value="1107293675" label="cycling_speed_and_cadence"/>
+  <int value="1107743017" label="fe00"/>
+  <int value="1108163795" label="fec0"/>
+  <int value="1108885324" label="fe48"/>
+  <int value="1122138707" label="fed2"/>
+  <int value="1122276223" label="fe67"/>
+  <int value="1122861451" label="Playbulb Candle; ff02"/>
+  <int value="1132318862" label="fe6a"/>
+  <int value="1133574029" label="fede"/>
+  <int value="1134418737" label="fed9"/>
+  <int value="1146291045" label="fe2e"/>
+  <int value="1155522736" label="fea0"/>
+  <int value="1181418959" label="feca"/>
+  <int value="1185484517" label="fe02"/>
   <int value="1188875912" label="phone_alert_status"/>
+  <int value="1204532270" label="fea1"/>
+  <int value="1205730714" label="fe81"/>
+  <int value="1213218283" label="feb7"/>
   <int value="1219993345" label="device_information"/>
+  <int value="1225001939" label="fe6c"/>
+  <int value="1235220658" label="fe6e"/>
+  <int value="1236903028" label="fe9d"/>
   <int value="1239202871" label="generic_attribute"/>
+  <int value="1244946418" label="fe61"/>
+  <int value="1250531601" label="fe15"/>
+  <int value="1257014053" label="fe33"/>
+  <int value="1262008705" label="fef2"/>
   <int value="1265172773" label="indoor_positioning"/>
+  <int value="1265779630" label="fe7d"/>
+  <int value="1275725183" label="febe"/>
+  <int value="1276692887" label="fe09"/>
   <int value="1280998251" label="blood_pressure"/>
+  <int value="1289827687" label="fe7c"/>
+  <int value="1293391247" label="fea4"/>
+  <int value="1295501517" label="fef3"/>
+  <int value="1300474367" label="fe70"/>
+  <int value="1300496660" label="fe23"/>
+  <int value="1327498374"
+      label="nRF UART; 6e400001-b5a3-f393-e0a9-e50e24dcca9e"/>
+  <int value="1344502489" label="fe92"/>
+  <int value="1352591424" label="fe2d"/>
+  <int value="1357782294" label="fe90"/>
+  <int value="1357850359" label="fefc"/>
+  <int value="1362860533" label="fe9a"/>
+  <int value="1366014117" label="fe2c"/>
   <int value="1369789354" label="current_time"/>
+  <int value="1376579922" label="fef0"/>
+  <int value="1377872916" label="fe51"/>
+  <int value="1380007534" label="fe96"/>
+  <int value="1382767841" label="fe93"/>
+  <int value="1394327958" label="fe24"/>
   <int value="1398099241" label="user_data"/>
+  <int value="1402127045" label="fef4"/>
   <int value="1415105941" label="scan_parameters"/>
+  <int value="1416866355" label="fe3b"/>
+  <int value="1422100109"
+      label="Sphero Robot; 22bb746f-2ba0-7554-2d6f-726568705327"/>
   <int value="1424865940" label="alert_notification"/>
+  <int value="1432421356" label="fe14"/>
+  <int value="1433847022" label="fefa"/>
+  <int value="1465794357" label="feb0"/>
+  <int value="1484296385" label="fe30"/>
+  <int value="1513113754" label="fe39"/>
+  <int value="1515793787" label="fef1"/>
+  <int value="1548928839" label="fec5"/>
+  <int value="1553614739" label="fe6b"/>
+  <int value="1563543855" label="fe72"/>
   <int value="1569655226" label="generic_access"/>
+  <int value="1573199922" label="fe71"/>
+  <int value="1594426590" label="fe4e"/>
+  <int value="1600490722" label="fe46"/>
+  <int value="1604724337" label="fe88"/>
+  <int value="1606985074" label="feed"/>
+  <int value="1607594729" label="fe0f"/>
+  <int value="1618872680" label="fe9b"/>
+  <int value="1631386264" label="fefd"/>
+  <int value="1635890706" label="fe9e"/>
+  <int value="1637021391" label="fe95"/>
+  <int value="1638012344" label="fe97"/>
+  <int value="1648320092" label="fe7f"/>
+  <int value="1651126525" label="fe25"/>
+  <int value="1651610232" label="fe52"/>
   <int value="1660904097" label="immediate_alert"/>
   <int value="1663141542" label="battery_service"/>
+  <int value="1671670551" label="fe5a"/>
+  <int value="1673238799" label="fee3"/>
+  <int value="1680929515" label="fe79"/>
+  <int value="1681595304" label="fe4b"/>
+  <int value="1682716946" label="fe45"/>
+  <int value="1694516494" label="fe31"/>
   <int value="1696287138" label="weight_scale"/>
+  <int value="1701893879" label="feac"/>
+  <int value="1706666451" label="fea7"/>
+  <int value="1714031075" label="fe10"/>
+  <int value="1724509641" label="fe8b"/>
+  <int value="1729966097"
+      label="Anki OVERDRIVE cars; be15beef-6186-407e-8381-0bd89c4d8df4"/>
   <int value="1753170093" label="environmental_sensing"/>
+  <int value="1763555668" label="fe76"/>
+  <int value="1779377938" label="fe5d"/>
+  <int value="1784351685" label="feab"/>
+  <int value="1788143374" label="feb3"/>
+  <int value="1788905945" label="fedb"/>
+  <int value="1789684919" label="fe36"/>
+  <int value="1805849785" label="fe98"/>
+  <int value="1808789304" label="fe3a"/>
+  <int value="1821803686" label="TI SensorTag Simple Keys; ffe0"/>
   <int value="1823176820" label="body_composition"/>
+  <int value="1826466999" label="fee1"/>
+  <int value="1829698279" label="fe0b"/>
+  <int value="1833458622" label="fe42"/>
+  <int value="1844072312" label="fe40"/>
+  <int value="1849709266" label="fec3"/>
+  <int value="1855849484"
+      label="iHealth Edge; 636f6d2e-6a69-7561-6e2e-414d56313100"/>
+  <int value="1891274929" label="fee2"/>
+  <int value="1891804450" label="fe58"/>
+  <int value="1905398969" label="fee6"/>
+  <int value="1915568448" label="fe89"/>
+  <int value="1922068523" label="fef6"/>
+  <int value="1922152740" label="fe8a"/>
+  <int value="1922853101" label="fe28"/>
+  <int value="1925022679" label="fe57"/>
+  <int value="1940012814" label="fe2a"/>
+  <int value="1946977319" label="fec1"/>
+  <int value="1953707948" label="fe9f"/>
+  <int value="1960388103" label="fecb"/>
+  <int value="1969478137" label="fe63"/>
   <int value="1970234661" label="reference_time_update"/>
+  <int value="1971997463" label="fe07"/>
+  <int value="1976176123" label="fe4c"/>
+  <int value="1983035069" label="fec9"/>
+  <int value="1984351068" label="fea6"/>
+  <int value="2016025023" label="febd"/>
+  <int value="2017827114" label="fe4f"/>
+  <int value="2022676622" label="fe35"/>
+  <int value="2051635436" label="fe50"/>
+  <int value="2055825405" label="fedc"/>
+  <int value="2058080782" label="fecc"/>
+  <int value="2061595680" label="fea5"/>
+  <int value="2069612985" label="fee5"/>
+  <int value="2070392722" label="fec2"/>
   <int value="2075745564" label="heart_rate"/>
+  <int value="2081534039" label="fe83"/>
   <int value="2086529225" label="tx_power"/>
+  <int value="2097896377" label="fee8"/>
+  <int value="2100033855" label="fef7"/>
+  <int value="2107223399" label="fee7"/>
+  <int value="2108894990" label="fe2f"/>
+  <int value="2110412550" label="fe43"/>
+  <int value="2113887919" label="fe5b"/>
+  <int value="2115271248" label="fe94"/>
+  <int value="2132514937" label="feec"/>
+  <int value="2136716957" label="fe69"/>
 </enum>
 
 <enum name="GCMCheckinRequestStatus" type="int">
@@ -74759,6 +75585,7 @@ To add a new entry, add it with any value and run test to compute valid value.
   <int value="-1172204005" label="enable-offline-auto-reload-visible-only"/>
   <int value="-1160026273" label="enable-web-notification-custom-layouts"/>
   <int value="-1159563774" label="enable-accessibility-script-injection"/>
+  <int value="-1151766565" label="enable-fullscreen-tab-detaching"/>
   <int value="-1137442543" label="enable-slimming-paint"/>
   <int value="-1136627751" label="ignore-autocomplete-off-autofill"/>
   <int value="-1136509631" label="ssl-interstitial-v1"/>
@@ -74859,6 +75686,7 @@ To add a new entry, add it with any value and run test to compute valid value.
   <int value="-384589459" label="disable-supervised-user-safesites"/>
   <int value="-378180863" label="disable-panels"/>
   <int value="-378033324" label="disable-win32k-renderer-lockdown"/>
+  <int value="-362022976" label="disable-quirks-client"/>
   <int value="-360038744" label="invert-viewport-scroll-order"/>
   <int value="-351552989" label="disable-hosted-apps-in-windows"/>
   <int value="-351127770" label="enable-offline-pages-as-bookmarks"/>
@@ -75406,6 +76234,7 @@ To add a new entry, add it with any value and run test to compute valid value.
   <int value="12" label="Non-invertible transform"/>
   <int value="13" label="Page based scrolling"/>
   <int value="14" label="Animating scroll on main thread"/>
+  <int value="15" label="Has sticky position objects"/>
 </enum>
 
 <enum name="MakeChromeDefaultResult" type="int">
@@ -75983,6 +76812,8 @@ To add a new entry, add it with any value and run test to compute valid value.
   <int value="529" label="column-span"/>
   <int value="530" label="column-width"/>
   <int value="531" label="columns"/>
+  <int value="532" label="apply-at-rule"/>
+  <int value="533" label="font-variant-caps"/>
 </enum>
 
 <enum name="MappedEditingCommands" type="int">
@@ -76321,6 +77152,7 @@ To add a new entry, add it with any value and run test to compute valid value.
   <int value="13" label="RegisterMediaRouteProvider"/>
   <int value="14" label="ConnectRouteByRouteId"/>
   <int value="15" label="EnableMdnsDiscovery"/>
+  <int value="16" label="UpdateMediaSinks"/>
 </enum>
 
 <enum name="MediaRouteProviderWakeup" type="int">
@@ -77044,6 +77876,11 @@ To add a new entry, add it with any value and run test to compute valid value.
   <int value="164" label="SSL_CLIENT_AUTH_CERT_BAD_FORMAT"/>
   <int value="165" label="SSL_FALLBACK_BEYOND_MINIMUM_VERSION"/>
   <int value="166" label="ICANN_NAME_COLLISION"/>
+  <int value="167" label="SSL_SERVER_CERT_BAD_FORMAT"/>
+  <int value="168" label="CT_STH_PARSING_FAILED"/>
+  <int value="169" label="CT_STH_INCOMPLETE"/>
+  <int value="170" label="UNABLE_TO_REUSE_CONNECTION_FOR_PROXY_AUTH"/>
+  <int value="171" label="CT_CONSISTENCY_PROOF_PARSING_FAILED"/>
   <int value="200" label="CERT_COMMON_NAME_INVALID"/>
   <int value="201" label="CERT_DATE_INVALID"/>
   <int value="202" label="CERT_AUTHORITY_INVALID"/>
@@ -77114,6 +77951,7 @@ To add a new entry, add it with any value and run test to compute valid value.
   <int value="366" label="PROXY_HTTP_1_1_REQUIRED"/>
   <int value="367" label="PAC_SCRIPT_TERMINATED"/>
   <int value="368" label="ALTERNATIVE_CERT_NOT_VALID_FOR_ORIGIN"/>
+  <int value="369" label="TEMPORARY_BACKOFF"/>
   <int value="400" label="CACHE_MISS"/>
   <int value="401" label="CACHE_READ_FAILURE"/>
   <int value="402" label="CACHE_WRITE_FAILURE"/>
@@ -77696,6 +78534,11 @@ To add a new entry, add it with any value and run test to compute valid value.
   <int value="11" label="Clicked on a tile."/>
   <int value="12" label="Clicked to other NTP pane."/>
   <int value="13" label="Other action"/>
+</enum>
+
+<enum name="NTPImpressionType" type="int">
+  <int value="0" label="regular NTP impression"/>
+  <int value="1" label="potential NTP impression - no open tab"/>
 </enum>
 
 <enum name="NtpMostVisitedScheme" type="int">
@@ -78529,6 +79372,14 @@ To add a new entry, add it with any value and run test to compute valid value.
   <int value="12" label="Generation triggered by autocomplete attributes"/>
 </enum>
 
+<enum name="PasswordImportFromCSVResult" type="int">
+  <int value="0" label="Password import succeeded"/>
+  <int value="1" label="Password import failed due to IO error"/>
+  <int value="2" label="Password import failed due to malformed CSV"/>
+  <int value="3" label="Password import failed due to missing content"/>
+  <int value="4" label="Boundary value"/>
+</enum>
+
 <enum name="PasswordManagerActionsTaken" type="int">
   <obsolete>
     Deprecated as of Chrome 32. See PasswordManagerActionsTakenWithPsl
@@ -79302,6 +80153,16 @@ To add a new entry, add it with any value and run test to compute valid value.
   <int value="4" label="REVOKED"/>
 </enum>
 
+<enum name="PermissionBubbleType" type="int">
+  <int value="0" label="PERMISSION_BUBBLE_UNKNOWN"/>
+  <int value="1" label="PERMISSION_BUBBLE_MULTIPLE"/>
+  <int value="2" label="PERMISSION_BUBBLE_PERMISSION"/>
+  <int value="3" label="PERMISSION_BUBBLE_QUOTA"/>
+  <int value="4" label="PERMISSION_BUBBLE_DOWNLOAD"/>
+  <int value="5" label="PERMISSION_BUBBLE_MEDIA_STREAM"/>
+  <int value="6" label="PERMISSION_BUBBLE_REGISTER_PROTOCOL_HANDLER"/>
+</enum>
+
 <enum name="PermissionStatus" type="int">
   <int value="0" label="PERMISSION_STATUS_GRANTED"/>
   <int value="1" label="PERMISSION_STATUS_DENIED"/>
@@ -79309,7 +80170,7 @@ To add a new entry, add it with any value and run test to compute valid value.
 </enum>
 
 <enum name="PermissionType" type="int">
-  <int value="0" label="PERMISSION_UNKONWN"/>
+  <int value="0" label="PERMISSION_UNKNOWN"/>
   <int value="1" label="PERMISSION_MIDI_SYSEX"/>
   <int value="2" label="PERMISSION_PUSH_MESSAGING"/>
   <int value="3" label="PERMISSION_NOTIFICATIONS"/>
@@ -80932,7 +81793,10 @@ To add a new entry, add it with any value and run test to compute valid value.
   <int value="82" label="CONNECTION_MIGRATION_TOO_MANY_CHANGES"/>
   <int value="83" label="CONNECTION_MIGRATION_NO_NEW_NETWORK"/>
   <int value="84" label="CONNECTION_MIGRATION_NON_MIGRATABLE_STREAM"/>
-  <int value="85" label="CONNECTION_MIGRATION_DISABLED"/>
+  <int value="85" label="QUIC_TOO_MANY_RTOS"/>
+  <int value="86" label="QUIC_ERROR_MIGRATING_PORT"/>
+  <int value="87" label="QUIC_OVERLAPPING_STREAM_DATA"/>
+  <int value="88" label="QUIC_ATTEMPT_TO_SEND_UNENCRYPTED_STREAM_DATA"/>
 </enum>
 
 <enum name="QuicHandshakeFailureReason" type="int">
@@ -81994,6 +82858,18 @@ To add a new entry, add it with any value and run test to compute valid value.
   <int value="246" label="SEARCH_MS"/>
   <int value="247" label="IMG"/>
   <int value="248" label="SMI"/>
+  <int value="249" label="SPARSEBUNDLE"/>
+  <int value="250" label="SPARSEIMAGE"/>
+  <int value="251" label="CDR"/>
+  <int value="252" label="DMGPART"/>
+  <int value="253" label="DVDR"/>
+  <int value="254" label="DART"/>
+  <int value="255" label="DC42"/>
+  <int value="256" label="DISKCOPY42"/>
+  <int value="257" label="IMGPART"/>
+  <int value="258" label="NDIF"/>
+  <int value="259" label="UDIF"/>
+  <int value="260" label="TOAST"/>
 </enum>
 
 <enum name="SBClientDownloadIsSignedBinary" type="int">
@@ -82586,6 +83462,15 @@ To add a new entry, add it with any value and run test to compute valid value.
   </int>
 </enum>
 
+<enum name="SettingsInteractionConcludeReason" type="int">
+  <int value="0" label="Registry watcher">
+    A change to the protocol registry key was detected.
+  </int>
+  <int value="1" label="Timeout">
+    The timer fired before a change to the protocol registry key was detected.
+  </int>
+</enum>
+
 <enum name="SettingsSections" type="int">
   <summary>
     A collection of sections from chrome://settings. Used for metrics about
@@ -83119,6 +84004,7 @@ To add a new entry, add it with any value and run test to compute valid value.
   <int value="0" label="Snippets were shown to the user"/>
   <int value="1" label="User scrolled through the snippets"/>
   <int value="2" label="User clicked on a snippet into the host website"/>
+  <int value="3" label="User swiped a snippet away"/>
 </enum>
 
 <enum name="SocketStreamConnectionType" type="int">
@@ -83236,6 +84122,7 @@ To add a new entry, add it with any value and run test to compute valid value.
 <!-- More SpdyFramer::SpdyErrors -->
 
   <int value="37" label="Invalid control frame size."/>
+  <int value="38" label="Invalid stream ID."/>
 </enum>
 
 <enum name="SpdyProtocolVersion" type="int">
@@ -87064,6 +87951,12 @@ To add a new entry, add it with any value and run test to compute valid value.
       label="Showing cache patterns only for non-main-frame HTML resources."/>
   <suffix name="Image"
       label="Showing cache patterns only for image resources."/>
+  <suffix name="TinyImage"
+      label="Showing cache patterns only for image resources with
+             content-length less than 100 bytes."/>
+  <suffix name="NonTinyImage"
+      label="Showing cache patterns only for image resources with
+             content-length &gt;= 100 bytes."/>
   <suffix name="Font" label="Showing cache patterns only for font resources."/>
   <affected-histogram name="HttpCache.Pattern"/>
 </histogram_suffixes>
@@ -87477,19 +88370,6 @@ To add a new entry, add it with any value and run test to compute valid value.
   <affected-histogram name="PLT.LoadType"/>
 </histogram_suffixes>
 
-<histogram_suffixes name="ContentSettingsTypes">
-  <suffix name="MidiSysEx" label="Midi SysEx permsision actions"/>
-  <suffix name="PushMessaging" label="Push messaging permission actions"/>
-  <suffix name="Notifications" label="Notification permission actions"/>
-  <suffix name="Geolocation" label="Geolocation permission actions"/>
-  <suffix name="ProtectedMedia" label="Protected media permission actions"/>
-  <suffix name="DurableStorage" label="Durable Storage permission actions"/>
-  <affected-histogram name="ContentSettings.PermissionActions"/>
-  <affected-histogram name="ContentSettings.PermissionActionsInsecureOrigin"/>
-  <affected-histogram name="ContentSettings.PermissionActionsSecureOrigin"/>
-  <affected-histogram name="Permissions.Requested.CrossOrigin"/>
-</histogram_suffixes>
-
 <histogram_suffixes name="ContextMenuType" separator=".">
   <suffix name="Link"
       label="The context menu was shown for a (non-image) link"/>
@@ -87586,6 +88466,18 @@ To add a new entry, add it with any value and run test to compute valid value.
   <affected-histogram name="PLT.PT_StartToFinish"/>
 </histogram_suffixes>
 
+<histogram_suffixes
+    name="DataReductionProxy.LoFi.Accuracy.DifferentRecordingIntervals"
+    separator=".">
+  <suffix name="15"
+      label="Recorded approximately 15 seconds after navigation start"/>
+  <suffix name="30"
+      label="Recorded approximately 30 seconds after navigation start"/>
+  <suffix name="60"
+      label="Recorded approximately 60 seconds after navigation start"/>
+  <affected-histogram name="DataReductionProxy.LoFi.Accuracy"/>
+</histogram_suffixes>
+
 <histogram_suffixes name="DataReductionProxy.MimeType">
   <suffix name="Application" label="Application mime-type"/>
   <suffix name="Unknown"
@@ -87595,6 +88487,10 @@ To add a new entry, add it with any value and run test to compute valid value.
   <affected-histogram name="Net.DailyContentLength"/>
   <affected-histogram name="Net.DailyContentLength_DataReductionProxyEnabled"/>
   <affected-histogram name="Net.DailyContentLength_ViaDataReductionProxy"/>
+  <affected-histogram
+      name="Net.DailyContentSavingPercent_DataReductionProxyEnabled"/>
+  <affected-histogram
+      name="Net.DailyContentSavingPercent_ViaDataReductionProxy"/>
   <affected-histogram name="Net.DailyOriginalContentLength"/>
   <affected-histogram
       name="Net.DailyOriginalContentLength_DataReductionProxyEnabled"/>
@@ -87612,7 +88508,13 @@ To add a new entry, add it with any value and run test to compute valid value.
   <suffix name="None" label="With no detected network"/>
   <suffix name="Bluetooth" label="On Bluetooth network"/>
   <affected-histogram name="DataReductionProxy.AutoLoFiAccuracy"/>
+  <obsolete>
+    Replaced by DataReductionProxy.LoFi.Accuracy.
+  </obsolete>
   <affected-histogram name="DataReductionProxy.AutoLoFiRequestHeaderState"/>
+  <affected-histogram name="DataReductionProxy.LoFi.Accuracy.15"/>
+  <affected-histogram name="DataReductionProxy.LoFi.Accuracy.30"/>
+  <affected-histogram name="DataReductionProxy.LoFi.Accuracy.60"/>
   <affected-histogram name="DataReductionProxy.LoFi.ImplicitOptOutAction"/>
 </histogram_suffixes>
 
@@ -88978,6 +89880,30 @@ To add a new entry, add it with any value and run test to compute valid value.
              capabilities, between EnumerateDevices() and
              OnDevicesInfoEnumerated()."/>
   <affected-histogram name="Media.VideoCaptureManager"/>
+</histogram_suffixes>
+
+<histogram_suffixes name="MobileDownloadBytesDownloadedTypes" separator=".">
+  <suffix name="ChromeNetworkStack.Failure"/>
+  <suffix name="ChromeNetworkStack.Success"/>
+  <suffix name="DownloadManager.Failure"/>
+  <suffix name="DownloadManager.Success"/>
+  <affected-histogram name="MobileDownload.BytesDownloaded"/>
+</histogram_suffixes>
+
+<histogram_suffixes name="MobileDownloadDownloadTimeTypes" separator=".">
+  <suffix name="ChromeNetworkStack.Cancel"/>
+  <suffix name="ChromeNetworkStack.Failure"/>
+  <suffix name="ChromeNetworkStack.Success"/>
+  <suffix name="DownloadManager.Failure"/>
+  <suffix name="DownloadManager.Success"/>
+  <affected-histogram name="MobileDownload.DownloadTime"/>
+</histogram_suffixes>
+
+<histogram_suffixes name="MobileDownloadInterruptionsCountTypes" separator=".">
+  <suffix name="ChromeNetworkStack.Cancel"/>
+  <suffix name="ChromeNetworkStack.Failure"/>
+  <suffix name="ChromeNetworkStack.Success"/>
+  <affected-histogram name="MobileDownload.InterruptionsCount"/>
 </histogram_suffixes>
 
 <histogram_suffixes name="MobileFreSignInChoiceEntryType" separator=".">
@@ -90510,6 +91436,14 @@ To add a new entry, add it with any value and run test to compute valid value.
 </histogram_suffixes>
 
 <histogram_suffixes name="PageLoadBackgrounded2" separator=".">
+  <affected-histogram
+      name="PageLoad.Clients.DocWrite.Evaluator.Timing2.NavigationToFirstContentfulPaint"/>
+  <affected-histogram
+      name="PageLoad.Clients.DocWrite.Evaluator.Timing2.ParseBlockedOnScriptLoad"/>
+  <affected-histogram
+      name="PageLoad.Clients.DocWrite.Evaluator.Timing2.ParseBlockedOnScriptLoadFromDocumentWrite"/>
+  <affected-histogram
+      name="PageLoad.Clients.DocWrite.Evaluator.Timing2.ParseDuration"/>
   <suffix name="Background"
       label="The page was backgrounded at least once from navigation start to
              this event."/>
@@ -90552,7 +91486,17 @@ To add a new entry, add it with any value and run test to compute valid value.
     ordering="prefix">
   <suffix name="Clients.FromGWS"
       label="PageLoadMetrics that are a result of a navigation from a Google
+             web search">
+    <obsolete>
+      Deprecated in favor of Clients.FromGWS2.
+    </obsolete>
+  </suffix>
+  <suffix name="Clients.FromGWS2"
+      label="PageLoadMetrics that are a result of a navigation from a Google
              web search"/>
+  <suffix name="Clients.DocWrite.Evaluator"
+      label="PageLoadMetrics from a page that could have been evaluated by
+             the DocumentWriteEvaluator"/>
   <affected-histogram
       name="PageLoad.Timing2.DOMLoadingToDOMContentLoadedEventFired"/>
   <affected-histogram name="PageLoad.Timing2.DOMLoadingToFirstContentfulPaint"/>
@@ -90564,6 +91508,15 @@ To add a new entry, add it with any value and run test to compute valid value.
   <affected-histogram name="PageLoad.Timing2.NavigationToFirstPaint"/>
   <affected-histogram name="PageLoad.Timing2.NavigationToFirstTextPaint"/>
   <affected-histogram name="PageLoad.Timing2.NavigationToLoadEventFired"/>
+  <affected-histogram name="PageLoad.Timing2.ParseBlockedOnScriptLoad"/>
+  <affected-histogram
+      name="PageLoad.Timing2.ParseBlockedOnScriptLoad.ParseComplete"/>
+  <affected-histogram
+      name="PageLoad.Timing2.ParseBlockedOnScriptLoadFromDocumentWrite"/>
+  <affected-histogram
+      name="PageLoad.Timing2.ParseBlockedOnScriptLoadFromDocumentWrite.ParseComplete"/>
+  <affected-histogram name="PageLoad.Timing2.ParseDuration"/>
+  <affected-histogram name="PageLoad.Timing2.ParseStartToFirstContentfulPaint"/>
 </histogram_suffixes>
 
 <histogram_suffixes name="PageLoadType">
@@ -90761,9 +91714,13 @@ To add a new entry, add it with any value and run test to compute valid value.
   <suffix name="DurableStorage" label="Durable Storage permission actions"/>
   <suffix name="AudioCapture" label="Microphone permission actions"/>
   <suffix name="VideoCapture" label="Camera permission actions"/>
+  <affected-histogram name="ContentSettings.PermissionActions"/>
+  <affected-histogram name="ContentSettings.PermissionActionsInsecureOrigin"/>
+  <affected-histogram name="ContentSettings.PermissionActionsSecureOrigin"/>
   <affected-histogram name="Permissions.Action"/>
   <affected-histogram name="Permissions.Action.InsecureOrigin"/>
   <affected-histogram name="Permissions.Action.SecureOrigin"/>
+  <affected-histogram name="Permissions.Requested.CrossOrigin"/>
 </histogram_suffixes>
 
 <histogram_suffixes name="PhysicalWebDebugActions" separator=".">
@@ -91783,6 +92740,13 @@ To add a new entry, add it with any value and run test to compute valid value.
   <affected-histogram name="interstitial.interaction"/>
 </histogram_suffixes>
 
+<histogram_suffixes name="ServiceWorker.FailureStreak">
+  <affected-histogram name="ServiceWorker.StartWorker.AfterFailureStreak"/>
+  <suffix name="1" label="Failed one time."/>
+  <suffix name="2" label="Failed two times."/>
+  <suffix name="3" label="Failed three times."/>
+</histogram_suffixes>
+
 <histogram_suffixes name="ServiceWorker.StartSituation">
   <affected-histogram name="EmbeddedWorkerInstance.Start.TimeToEvaluateScript"/>
   <affected-histogram name="EmbeddedWorkerInstance.Start.TimeToLoad.HttpCache"/>
@@ -92380,6 +93344,14 @@ To add a new entry, add it with any value and run test to compute valid value.
       label="Video codec: VP8. QP range: 0-127. Spatial index 1."/>
   <suffix name="Vp8.S2"
       label="Video codec: VP8. QP range: 0-127. Spatial index 2."/>
+  <suffix name="Vp9"
+      label="Video codec: VP9. QP range: 0-255. No spatial layers."/>
+  <suffix name="Vp9.S0"
+      label="Video codec: VP9. QP range: 0-255. Spatial layer 0."/>
+  <suffix name="Vp9.S1"
+      label="Video codec: VP9. QP range: 0-255. Spatial layer 1."/>
+  <suffix name="Vp9.S2"
+      label="Video codec: VP9. QP range: 0-255. Spatial layer 2."/>
   <affected-histogram name="WebRTC.Video.Encoded.Qp"/>
 </histogram_suffixes>
 

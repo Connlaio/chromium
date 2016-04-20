@@ -44,7 +44,7 @@ DOMWindow::~DOMWindow()
 v8::Local<v8::Object> DOMWindow::wrap(v8::Isolate*, v8::Local<v8::Object> creationContext)
 {
     // DOMWindow must never be wrapped with wrap method.  The wrappers must be
-    // created at WindowProxy::installDOMWindow().
+    // created at WindowProxy::createContext() and setupWindowPrototypeChain().
     RELEASE_NOTREACHED();
     return v8::Local<v8::Object>();
 }
@@ -168,7 +168,7 @@ bool DOMWindow::isSecureContext() const
     return document()->isSecureContext(ExecutionContext::StandardSecureContextCheck);
 }
 
-void DOMWindow::postMessage(PassRefPtr<SerializedScriptValue> message, const MessagePortArray* ports, const String& targetOrigin, LocalDOMWindow* source, ExceptionState& exceptionState)
+void DOMWindow::postMessage(PassRefPtr<SerializedScriptValue> message, const MessagePortArray& ports, const String& targetOrigin, LocalDOMWindow* source, ExceptionState& exceptionState)
 {
     if (!isCurrentlyDisplayedInFrame())
         return;
@@ -226,7 +226,7 @@ void DOMWindow::postMessage(PassRefPtr<SerializedScriptValue> message, const Mes
     if (InspectorInstrumentation::consoleAgentEnabled(sourceDocument))
         stackTrace = ScriptCallStack::capture();
 
-    toLocalDOMWindow(this)->schedulePostMessage(event, target.get(), stackTrace.release());
+    blink::toLocalDOMWindow(this)->schedulePostMessage(event, target.get(), stackTrace.release());
 }
 
 // FIXME: Once we're throwing exceptions for cross-origin access violations, we will always sanitize the target
@@ -263,7 +263,10 @@ String DOMWindow::crossDomainAccessErrorMessage(const LocalDOMWindow* callingWin
     // FIXME: This message, and other console messages, have extra newlines. Should remove them.
     const SecurityOrigin* activeOrigin = callingWindow->document()->getSecurityOrigin();
     const SecurityOrigin* targetOrigin = frame()->securityContext()->getSecurityOrigin();
-    ASSERT(!activeOrigin->canAccessCheckSuborigins(targetOrigin));
+    // It's possible for a remote frame to be same origin with respect to a
+    // local frame, but it must still be treated as a disallowed cross-domain
+    // access. See https://crbug.com/601629.
+    ASSERT(frame()->isRemoteFrame() || !activeOrigin->canAccessCheckSuborigins(targetOrigin));
 
     String message = "Blocked a frame with origin \"" + activeOrigin->toString() + "\" from accessing a frame with origin \"" + targetOrigin->toString() + "\". ";
 

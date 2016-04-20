@@ -8,7 +8,7 @@
 #include "media/mojo/interfaces/content_decryption_module.mojom.h"
 #include "media/mojo/interfaces/renderer.mojom.h"
 #include "mojo/public/cpp/bindings/interface_request.h"
-#include "mojo/shell/public/cpp/connect.h"
+#include "services/shell/public/cpp/connect.h"
 
 namespace content {
 
@@ -48,9 +48,9 @@ MediaInterfaceProvider::GetMediaServiceFactory() {
   DCHECK(thread_checker_.CalledOnValidThread());
 
   if (!media_service_factory_) {
-    mojo::shell::mojom::InterfaceProviderPtr interface_provider =
+    shell::mojom::InterfaceProviderPtr interface_provider =
         connect_to_app_cb_.Run(GURL("mojo:media"));
-    mojo::GetInterface(interface_provider.get(), &media_service_factory_);
+    shell::GetInterface(interface_provider.get(), &media_service_factory_);
     media_service_factory_.set_connection_error_handler(base::Bind(
         &MediaInterfaceProvider::OnConnectionError, base::Unretained(this)));
   }

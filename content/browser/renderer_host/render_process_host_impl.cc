@@ -35,6 +35,7 @@
 #include "base/single_thread_task_runner.h"
 #include "base/stl_util.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/strings/stringprintf.h"
 #include "base/supports_user_data.h"
 #include "base/sys_info.h"
 #include "base/threading/thread.h"
@@ -84,6 +85,7 @@
 #include "content/browser/memory/memory_message_filter.h"
 #include "content/browser/message_port_message_filter.h"
 #include "content/browser/mime_registry_message_filter.h"
+#include "content/browser/mojo/constants.h"
 #include "content/browser/mojo/mojo_application_host.h"
 #include "content/browser/mojo/mojo_child_connection.h"
 #include "content/browser/notifications/notification_message_filter.h"
@@ -126,8 +128,6 @@
 #include "content/common/frame_messages.h"
 #include "content/common/gpu_host_messages.h"
 #include "content/common/in_process_child_thread_params.h"
-#include "content/common/mojo/channel_init.h"
-#include "content/common/mojo/mojo_messages.h"
 #include "content/common/mojo/mojo_shell_connection_impl.h"
 #include "content/common/render_process_messages.h"
 #include "content/common/resource_messages.h"
@@ -170,9 +170,9 @@
 #include "ipc/mojo/ipc_channel_mojo.h"
 #include "media/base/media_switches.h"
 #include "mojo/edk/embedder/embedder.h"
-#include "mojo/shell/runner/common/switches.h"
 #include "net/url_request/url_request_context_getter.h"
 #include "ppapi/shared_impl/ppapi_switches.h"
+#include "services/shell/runner/common/switches.h"
 #include "storage/browser/fileapi/sandbox_file_system_backend.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/base/ui_base_switches.h"
@@ -197,7 +197,7 @@
 #include "content/common/font_cache_dispatcher_win.h"
 #include "content/common/sandbox_win.h"
 #include "sandbox/win/src/sandbox_policy.h"
-#include "ui/gfx/win/dpi.h"
+#include "ui/display/win/dpi.h"
 #endif
 
 #if defined(OS_MACOSX)
@@ -696,7 +696,9 @@ bool RenderProcessHostImpl::Init() {
   if (channel_)
     return true;
 
-  shell_pipe_token_ = MojoConnectToChild(id_, instance_id_++, this);
+  mojo_child_connection_.reset(new MojoChildConnection(
+      kRendererMojoApplicationName,
+      base::StringPrintf("%d_%d", id_, instance_id_++)));
 
   base::CommandLine::StringType renderer_prefix;
   // A command prefix is something prepended to the command line of the spawned
@@ -732,9 +734,6 @@ bool RenderProcessHostImpl::Init() {
       content::BrowserThread::IO));
 #endif
 
-  // Setup the Mojo channel.
-  mojo_application_host_->Init();
-
   // Call the embedder first so that their IPC filters have priority.
   GetContentClient()->browser()->RenderProcessWillLaunch(this);
 
@@ -754,7 +753,7 @@ bool RenderProcessHostImpl::Init() {
             channel_id,
             BrowserThread::UnsafeGetMessageLoopForThread(BrowserThread::IO)
                 ->task_runner(),
-            in_process_renderer_handle_.release())));
+            mojo_channel_token_, mojo_application_host_->GetToken())));
 
     base::Thread::Options options;
 #if defined(OS_WIN) && !defined(OS_MACOSX)
@@ -807,30 +806,22 @@ bool RenderProcessHostImpl::Init() {
   return true;
 }
 
-scoped_ptr<IPC::ChannelProxy> RenderProcessHostImpl::CreateChannelProxy(
+std::unique_ptr<IPC::ChannelProxy> RenderProcessHostImpl::CreateChannelProxy(
     const std::string& channel_id) {
   scoped_refptr<base::SingleThreadTaskRunner> runner =
       BrowserThread::GetMessageLoopProxyForThread(BrowserThread::IO);
   if (ShouldUseMojoChannel()) {
     VLOG(1) << "Mojo Channel is enabled on host";
-    mojo::ScopedMessagePipeHandle handle;
-
-    if (run_renderer_in_process()) {
-      mojo::MessagePipe pipe;
-      handle = std::move(pipe.handle0);
-      in_process_renderer_handle_ = std::move(pipe.handle1);
-    } else {
-      mojo_channel_token_ = mojo::edk::GenerateRandomToken();
-      handle = mojo::edk::CreateParentMessagePipe(mojo_channel_token_);
-    }
+    mojo_channel_token_ = mojo::edk::GenerateRandomToken();
+    mojo::ScopedMessagePipeHandle handle =
+        mojo::edk::CreateParentMessagePipe(mojo_channel_token_);
 
     // Do NOT expand ifdef or run time condition checks here! Synchronous
     // IPCs from browser process are banned. It is only narrowly allowed
     // for Android WebView to maintain backward compatibility.
     // See crbug.com/526842 for details.
 #if defined(OS_ANDROID)
-    if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-            switches::kIPCSyncCompositing)) {
+    if (GetContentClient()->UsingSynchronousCompositing()) {
       return IPC::SyncChannel::Create(
           IPC::ChannelMojo::CreateServerFactory(std::move(handle)), this,
           runner.get(), true, &never_signaled_);
@@ -844,8 +835,7 @@ scoped_ptr<IPC::ChannelProxy> RenderProcessHostImpl::CreateChannelProxy(
 
     // Do NOT expand ifdef or run time condition checks here! See comment above.
 #if defined(OS_ANDROID)
-  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-          switches::kIPCSyncCompositing)) {
+  if (GetContentClient()->UsingSynchronousCompositing()) {
     return IPC::SyncChannel::Create(channel_id, IPC::Channel::MODE_SERVER, this,
                                     runner.get(), true, &never_signaled_);
   }
@@ -892,7 +882,7 @@ void RenderProcessHostImpl::CreateMessageFilters() {
   ResourceContext* resource_context = browser_context->GetResourceContext();
 
   scoped_refptr<net::URLRequestContextGetter> media_request_context(
-      browser_context->GetMediaRequestContextForRenderProcess(GetID()));
+      GetStoragePartition()->GetMediaURLRequestContext());
 
   ResourceMessageFilter::GetContextsCallback get_contexts_callback(
       base::Bind(&GetContexts, browser_context->GetResourceContext(),
@@ -931,7 +921,7 @@ void RenderProcessHostImpl::CreateMessageFilters() {
   AddFilter(new VideoCaptureHost(media_stream_manager));
   AddFilter(new AppCacheDispatcherHost(
       storage_partition_impl_->GetAppCacheService(), GetID()));
-  AddFilter(new ClipboardMessageFilter);
+  AddFilter(new ClipboardMessageFilter(blob_storage_context));
   AddFilter(new DOMStorageMessageFilter(
       storage_partition_impl_->GetDOMStorageContext()));
   AddFilter(new IndexedDBDispatcherHost(
@@ -1123,7 +1113,12 @@ ServiceRegistry* RenderProcessHostImpl::GetServiceRegistry() {
   return mojo_application_host_->service_registry();
 }
 
-scoped_ptr<base::SharedPersistentMemoryAllocator>
+shell::Connection* RenderProcessHostImpl::GetChildConnection() {
+  DCHECK(mojo_child_connection_);
+  return mojo_child_connection_->connection();
+}
+
+std::unique_ptr<base::SharedPersistentMemoryAllocator>
 RenderProcessHostImpl::TakeMetricsAllocator() {
   return std::move(metrics_allocator_);
 }
@@ -1371,8 +1366,9 @@ void RenderProcessHostImpl::AppendRendererCommandLine(
     command_line->AppendSwitch(switches::kEnablePinch);
 
 #if defined(OS_WIN)
-  command_line->AppendSwitchASCII(switches::kDeviceScaleFactor,
-                                  base::DoubleToString(gfx::GetDPIScale()));
+  command_line->AppendSwitchASCII(
+      switches::kDeviceScaleFactor,
+      base::DoubleToString(display::win::GetDPIScale()));
 #endif
 
   AppendCompositorCommandLineFlags(command_line);
@@ -1381,6 +1377,8 @@ void RenderProcessHostImpl::AppendRendererCommandLine(
     command_line->AppendSwitchASCII(switches::kMojoChannelToken,
                                     mojo_channel_token_);
   }
+  command_line->AppendSwitchASCII(switches::kMojoApplicationChannelToken,
+                                  mojo_application_host_->GetToken());
 }
 
 void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
@@ -1390,6 +1388,7 @@ void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
   // with any associated values) if present in the browser command line.
   static const char* const kSwitchNames[] = {
     switches::kAgcStartupMinVolume,
+    switches::kAecRefinedAdaptiveFilter,
     switches::kAllowLoopbackInPeerConnection,
     switches::kAndroidFontsPath,
     switches::kAudioBufferSize,
@@ -1460,7 +1459,6 @@ void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
     switches::kEnableLogging,
     switches::kEnableMemoryBenchmarking,
     switches::kEnableNetworkInformation,
-    switches::kEnableNotificationActionIcons,
     switches::kEnableOverlayScrollbar,
     switches::kEnablePinch,
     switches::kEnablePluginPlaceholderTesting,
@@ -1534,6 +1532,7 @@ void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
     cc::switches::kDisableThreadedAnimation,
     cc::switches::kEnableBeginFrameScheduling,
     cc::switches::kEnableGpuBenchmarking,
+    cc::switches::kEnableLayerLists,
     cc::switches::kEnableMainFrameBeforeActivation,
     cc::switches::kEnableTileCompression,
     cc::switches::kShowCompositedLayerBorders,
@@ -1566,7 +1565,6 @@ void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
     switches::kDisableLowEndDeviceMode,
 #if defined(OS_ANDROID)
     switches::kDisableUnifiedMediaPipeline,
-    switches::kIPCSyncCompositing,
     switches::kRendererWaitForJavaDebugger,
 #endif
 #if defined(OS_MACOSX)
@@ -1628,10 +1626,9 @@ void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
     }
   }
 
-  if (!shell_pipe_token_.empty()) {
-    renderer_cmd->AppendSwitchASCII(switches::kPrimordialPipeToken,
-                                    shell_pipe_token_);
-  }
+  DCHECK(mojo_child_connection_);
+  renderer_cmd->AppendSwitchASCII(switches::kPrimordialPipeToken,
+                                  mojo_child_connection_->shell_client_token());
 
 #if defined(OS_WIN) && !defined(OFFICIAL_BUILD)
   // Needed because we can't show the dialog from the sandbox. Don't pass
@@ -2388,7 +2385,7 @@ void RenderProcessHostImpl::CreateSharedRendererHistogramAllocator() {
     return;
 
   // TODO(bcwhite): Update this with the correct memory size.
-  scoped_ptr<base::SharedMemory> shm(new base::SharedMemory());
+  std::unique_ptr<base::SharedMemory> shm(new base::SharedMemory());
   shm->CreateAndMapAnonymous(2 << 20);  // 2 MiB
   metrics_allocator_.reset(new base::SharedPersistentMemoryAllocator(
       std::move(shm), GetID(), "RendererMetrics", /*readonly=*/false));
@@ -2484,7 +2481,7 @@ void RenderProcessHostImpl::ProcessDied(bool already_dead,
 
 size_t RenderProcessHost::GetActiveViewCount() {
   size_t num_active_views = 0;
-  scoped_ptr<RenderWidgetHostIterator> widgets(
+  std::unique_ptr<RenderWidgetHostIterator> widgets(
       RenderWidgetHost::GetRenderWidgetHosts());
   while (RenderWidgetHost* widget = widgets->GetNextHost()) {
     // Count only RenderWidgetHosts in this process.
@@ -2587,6 +2584,11 @@ void RenderProcessHostImpl::OnProcessLaunched() {
     DCHECK(child_process_launcher_->GetProcess().IsValid());
     DCHECK(!is_process_backgrounded_);
 
+    if (mojo_child_connection_) {
+      mojo_child_connection_->SetProcessHandle(
+          child_process_launcher_->GetProcess().Handle());
+    }
+
     // Not all platforms launch processes in the same backgrounded state. Make
     // sure |is_process_backgrounded_| reflects this platform's initial process
     // state.
@@ -2616,11 +2618,6 @@ void RenderProcessHostImpl::OnProcessLaunched() {
   NotificationService::current()->Notify(NOTIFICATION_RENDERER_PROCESS_CREATED,
                                          Source<RenderProcessHost>(this),
                                          NotificationService::NoDetails());
-
-  // Allow Mojo to be setup before the renderer sees any Chrome IPC messages.
-  // This way, Mojo can be safely used from the renderer in response to any
-  // Chrome IPC message.
-  mojo_application_host_->Activate(this, GetHandle());
 
   while (!queued_messages_.empty()) {
     Send(queued_messages_.front());
@@ -2819,7 +2816,7 @@ BluetoothDispatcherHost* RenderProcessHostImpl::GetBluetoothDispatcherHost() {
 
 void RenderProcessHostImpl::RecomputeAndUpdateWebKitPreferences() {
   // We are updating all widgets including swapped out ones.
-  scoped_ptr<RenderWidgetHostIterator> widgets(
+  std::unique_ptr<RenderWidgetHostIterator> widgets(
       RenderWidgetHostImpl::GetAllRenderWidgetHosts());
   while (RenderWidgetHost* widget = widgets->GetNextHost()) {
     RenderViewHost* rvh = RenderViewHost::From(widget);

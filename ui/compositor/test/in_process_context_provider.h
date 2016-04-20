@@ -7,10 +7,10 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 
 #include "base/macros.h"
-#include "base/memory/scoped_ptr.h"
 #include "base/synchronization/lock.h"
 #include "base/threading/thread_checker.h"
 #include "cc/output/context_provider.h"
@@ -22,6 +22,10 @@ namespace gpu {
 class GLInProcessContext;
 class GpuMemoryBufferManager;
 class ImageFactory;
+}
+
+namespace skia_bindings {
+class GrContextForGLES2Interface;
 }
 
 namespace ui {
@@ -45,7 +49,7 @@ class InProcessContextProvider : public cc::ContextProvider {
   // cc::ContextProvider:
   bool BindToCurrentThread() override;
   void DetachFromThread() override;
-  Capabilities ContextCapabilities() override;
+  gpu::Capabilities ContextCapabilities() override;
   gpu::gles2::GLES2Interface* ContextGL() override;
   gpu::ContextSupport* ContextSupport() override;
   class GrContext* GrContext() override;
@@ -69,8 +73,8 @@ class InProcessContextProvider : public cc::ContextProvider {
   base::ThreadChecker main_thread_checker_;
   base::ThreadChecker context_thread_checker_;
 
-  scoped_ptr<gpu::GLInProcessContext> context_;
-  skia::RefPtr<class GrContext> gr_context_;
+  std::unique_ptr<gpu::GLInProcessContext> context_;
+  std::unique_ptr<skia_bindings::GrContextForGLES2Interface> gr_context_;
 
   gpu::gles2::ContextCreationAttribHelper attribs_;
   InProcessContextProvider* shared_context_;
@@ -78,7 +82,6 @@ class InProcessContextProvider : public cc::ContextProvider {
   gpu::ImageFactory* image_factory_;
   gfx::AcceleratedWidget window_;
   std::string debug_name_;
-  cc::ContextProvider::Capabilities capabilities_;
 
   base::Lock context_lock_;
 

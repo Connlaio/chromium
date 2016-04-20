@@ -35,6 +35,7 @@
 #include "platform/v8_inspector/DebuggerScript.h"
 #include "platform/v8_inspector/InspectedContext.h"
 #include "platform/v8_inspector/ScriptBreakpoint.h"
+#include "platform/v8_inspector/V8Compat.h"
 #include "platform/v8_inspector/V8DebuggerAgentImpl.h"
 #include "platform/v8_inspector/V8InspectorSessionImpl.h"
 #include "platform/v8_inspector/V8RuntimeAgentImpl.h"
@@ -273,11 +274,6 @@ void V8DebuggerImpl::setPauseOnNextStatement(bool pause)
         v8::Debug::CancelDebugBreak(m_isolate);
 }
 
-bool V8DebuggerImpl::pausingOnNextStatement()
-{
-    return v8::Debug::CheckDebugBreak(m_isolate);
-}
-
 bool V8DebuggerImpl::canBreakProgram()
 {
     if (!m_breakpointsActivated)
@@ -409,7 +405,7 @@ bool V8DebuggerImpl::setScriptSource(const String16& sourceID, const String16& n
             *stackChanged = resultTuple->Get(1)->BooleanValue();
             // Call stack may have changed after if the edited function was on the stack.
             if (!preview && isPaused())
-                *newCallFrames = currentCallFrames();
+                newCallFrames->swap(currentCallFrames());
             return true;
         }
     // Compile error.
@@ -828,6 +824,11 @@ const V8DebuggerImpl::ContextByIdMap* V8DebuggerImpl::contextGroup(int contextGr
     if (!m_contexts.contains(contextGroupId))
         return nullptr;
     return m_contexts.get(contextGroupId);
+}
+
+V8InspectorSessionImpl* V8DebuggerImpl::sessionForContextGroup(int contextGroupId)
+{
+    return contextGroupId ? m_sessions.get(contextGroupId) : nullptr;
 }
 
 } // namespace blink

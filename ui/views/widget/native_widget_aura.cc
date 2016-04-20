@@ -5,6 +5,7 @@
 #include "ui/views/widget/native_widget_aura.h"
 
 #include "base/bind.h"
+#include "base/memory/ptr_util.h"
 #include "base/strings/string_util.h"
 #include "build/build_config.h"
 #include "third_party/skia/include/core/SkRegion.h"
@@ -100,6 +101,7 @@ void NativeWidgetAura::InitNativeWidget(const Widget::InitParams& params) {
   DCHECK(params.parent || params.context);
 
   ownership_ = params.ownership;
+  name_ = params.name;
 
   RegisterNativeWidgetForWindow(this, window_);
   window_->SetType(GetAuraWindowTypeForWidgetType(params.type));
@@ -436,7 +438,7 @@ void NativeWidgetAura::StackBelow(gfx::NativeView native_view) {
 
 void NativeWidgetAura::SetShape(SkRegion* region) {
   if (window_)
-    window_->layer()->SetAlphaShape(make_scoped_ptr(region));
+    window_->layer()->SetAlphaShape(base::WrapUnique(region));
   else
     delete region;
 }
@@ -735,6 +737,10 @@ void NativeWidgetAura::OnSizeConstraintsChanged() {
 
 void NativeWidgetAura::RepostNativeEvent(gfx::NativeEvent native_event) {
   OnEvent(native_event);
+}
+
+std::string NativeWidgetAura::GetName() const {
+  return name_;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

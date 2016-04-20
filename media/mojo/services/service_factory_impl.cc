@@ -7,7 +7,7 @@
 #include "base/logging.h"
 #include "media/base/media_log.h"
 #include "media/mojo/services/mojo_media_client.h"
-#include "mojo/shell/public/interfaces/interface_provider.mojom.h"
+#include "services/shell/public/interfaces/interface_provider.mojom.h"
 
 #if defined(ENABLE_MOJO_AUDIO_DECODER)
 #include "media/mojo/services/mojo_audio_decoder_service.h"
@@ -27,9 +27,9 @@ namespace media {
 
 ServiceFactoryImpl::ServiceFactoryImpl(
     mojo::InterfaceRequest<interfaces::ServiceFactory> request,
-    mojo::shell::mojom::InterfaceProvider* interfaces,
+    shell::mojom::InterfaceProvider* interfaces,
     scoped_refptr<MediaLog> media_log,
-    std::unique_ptr<mojo::MessageLoopRef> parent_app_refcount,
+    std::unique_ptr<shell::MessageLoopRef> parent_app_refcount,
     MojoMediaClient* mojo_media_client)
     : binding_(this, std::move(request)),
       interfaces_(interfaces),

@@ -142,7 +142,7 @@ void TestRenderFrameHost::SimulateNavigationCommit(const GURL& url) {
   params.did_create_new_entry = !is_auto_subframe;
   params.gesture = NavigationGestureUser;
   params.contents_mime_type = contents_mime_type_;
-  params.is_post = false;
+  params.method = "GET";
   params.http_status_code = 200;
   params.socket_address.set_host("2001:db8::1");
   params.socket_address.set_port(80);
@@ -299,12 +299,15 @@ void TestRenderFrameHost::SendNavigateWithParameters(
   params.should_replace_current_entry = should_replace_entry;
   params.gesture = NavigationGestureUser;
   params.contents_mime_type = contents_mime_type_;
-  params.is_post = false;
+  params.method = "GET";
   params.http_status_code = response_code;
   params.socket_address.set_host("2001:db8::1");
   params.socket_address.set_port(80);
   params.history_list_was_cleared = simulate_history_list_was_cleared_;
   params.original_request_url = url_copy;
+
+  // Simulate Blink assigning an item sequence number to the navigation.
+  params.item_sequence_number = base::Time::Now().ToDoubleT() * 1000000;
 
   // In most cases, the origin will match the URL's origin.  Tests that need to
   // check corner cases (like about:blank) should specify the origin param

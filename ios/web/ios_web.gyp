@@ -128,9 +128,6 @@
         'public/block_types.h',
         'public/browser_state.h',
         'public/browser_url_rewriter.h',
-        'public/browsing_data_partition.h',
-        'public/browsing_data_partition_client.cc',
-        'public/browsing_data_partition_client.h',
         'public/cert_policy.h',
         'public/cert_store.h',
         'public/certificate_policy_cache.h',
@@ -162,8 +159,6 @@
         'public/web_capabilities.h',
         'public/web_client.h',
         'public/web_client.mm',
-        'public/web_controller_factory.h',
-        'public/web_controller_factory.mm',
         'public/web_kit_constants.h',
         'public/web_state/credential.h',
         'public/web_state/crw_web_controller_observer.h',
@@ -185,6 +180,8 @@
         'public/web_state/ui/crw_web_view_content_view.h',
         'public/web_state/url_verification_constants.h',
         'public/web_state/web_state.h',
+        'public/web_state/web_state_delegate.h',
+        'public/web_state/web_state_delegate_bridge.h',
         'public/web_state/web_state_observer.h',
         'public/web_state/web_state_observer_bridge.h',
         'public/web_state/web_state_policy_decider.h',
@@ -194,8 +191,6 @@
         'public/web_ui_ios_data_source.h',
         'public/web_view_creation_util.h',
         'string_util.cc',
-        'ui_web_view_util.h',
-        'ui_web_view_util.mm',
         'url_scheme_util.mm',
         'url_util.cc',
         'user_metrics.cc',
@@ -215,8 +210,6 @@
         'web_state/global_web_state_event_tracker.mm',
         'web_state/global_web_state_observer.cc',
         'web_state/js/credential_util.mm',
-        'web_state/js/crw_js_early_script_manager.h',
-        'web_state/js/crw_js_early_script_manager.mm',
         'web_state/js/crw_js_injection_manager.mm',
         'web_state/js/crw_js_injection_receiver.mm',
         'web_state/js/crw_js_invoke_parameter_queue.h',
@@ -256,6 +249,8 @@
         'web_state/web_controller_observer_bridge.h',
         'web_state/web_controller_observer_bridge.mm',
         'web_state/web_state.mm',
+        'web_state/web_state_delegate.mm',
+        'web_state/web_state_delegate_bridge.mm',
         'web_state/web_state_facade_delegate.h',
         'web_state/web_state_impl.h',
         'web_state/web_state_impl.mm',
@@ -364,24 +359,63 @@
       ],
     },
     {
+      # GN version: //ios/web:web_ui_bundle
+      'target_name': 'ios_web_ui_js_bundle',
+      'type': 'none',
+      'variables': {
+        'closure_entry_point': '__crWeb.webUIBundle',
+        'js_bundle_files': [
+          'webui/resources/web_ui_base.js',        
+          'webui/resources/web_ui_bind.js',
+          'webui/resources/web_ui_bundle.js',
+          'webui/resources/web_ui_favicons.js',
+          'webui/resources/web_ui_send.js',
+        ],
+      },
+      'sources': [
+          'webui/resources/web_ui_base.js',        
+          'webui/resources/web_ui_bind.js',
+          'webui/resources/web_ui_bundle.js',
+          'webui/resources/web_ui_favicons.js',
+          'webui/resources/web_ui_send.js',
+      ],
+      '!sources': [
+        # Remove all js files except web_ui_bundle. Those files should not be
+        # copied with the rest of resources, as they just Closure dependencies
+        # for web_ui_bundle.js. Dependencies were added as sources, so they get
+        # indexed by Xcode.
+        'webui/resources/web_ui_base.js',
+        'webui/resources/web_ui_bind.js',
+        'webui/resources/web_ui_favicons.js',
+        'webui/resources/web_ui_send.js',
+      ],
+      'link_settings': {
+        'mac_bundle_resources': [
+          '<(SHARED_INTERMEDIATE_DIR)/web_ui_bundle.js',
+        ],
+      },
+      'includes': [
+        'js_compile_bundle.gypi'
+      ],
+    },
+    {
       # GN version: //ios/web:js_resources
       'target_name': 'js_resources',
       'type': 'none',
       'dependencies': [
         'ios_web_js_bundle',
+        'ios_web_ui_js_bundle',
       ],
       'sources': [
         'web_state/js/resources/post_request.js',
         'web_state/js/resources/plugin_placeholder.js',
         'web_state/js/resources/window_id.js',
-        'webui/resources/web_ui.js',
       ],
       'link_settings': {
         'mac_bundle_resources': [
           '<(SHARED_INTERMEDIATE_DIR)/post_request.js',
           '<(SHARED_INTERMEDIATE_DIR)/plugin_placeholder.js',
           '<(SHARED_INTERMEDIATE_DIR)/window_id.js',
-          '<(SHARED_INTERMEDIATE_DIR)/web_ui.js',
         ],
       },
       'includes': [

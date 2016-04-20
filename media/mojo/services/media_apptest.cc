@@ -21,7 +21,7 @@
 #include "media/mojo/interfaces/renderer.mojom.h"
 #include "media/mojo/interfaces/service_factory.mojom.h"
 #include "media/mojo/services/mojo_demuxer_stream_impl.h"
-#include "mojo/shell/public/cpp/application_test_base.h"
+#include "services/shell/public/cpp/application_test_base.h"
 #include "testing/gmock/include/gmock/gmock.h"
 
 using testing::Exactly;
@@ -52,7 +52,7 @@ class MockRendererClient : public interfaces::RendererClient {
   DISALLOW_COPY_AND_ASSIGN(MockRendererClient);
 };
 
-class MediaAppTest : public mojo::test::ApplicationTestBase {
+class MediaAppTest : public shell::test::ApplicationTestBase {
  public:
   MediaAppTest()
       : renderer_client_binding_(&renderer_client_),
@@ -128,7 +128,7 @@ class MediaAppTest : public mojo::test::ApplicationTestBase {
   StrictMock<MockDemuxerStream> video_demuxer_stream_;
 
  private:
-  std::unique_ptr<mojo::Connection> connection_;
+  std::unique_ptr<shell::Connection> connection_;
 
   DISALLOW_COPY_AND_ASSIGN(MediaAppTest);
 };

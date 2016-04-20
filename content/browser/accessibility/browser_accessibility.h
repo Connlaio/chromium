@@ -91,6 +91,11 @@ class CONTENT_EXPORT BrowserAccessibility {
   // Called when the location changed.
   virtual void OnLocationChanged() {}
 
+  // This is called when the platform-specific attributes for a node need
+  // to be recomputed, which may involve firing native events, due to a
+  // change other than an update from OnAccessibilityEvents.
+  virtual void UpdatePlatformAttributes() {}
+
   // Return true if this object is equal to or a descendant of |ancestor|.
   bool IsDescendantOf(const BrowserAccessibility* ancestor) const;
 
@@ -153,7 +158,7 @@ class CONTENT_EXPORT BrowserAccessibility {
 
   // This is to handle the cases such as ARIA textbox, where the value should
   // be calculated from the object's inner text.
-  base::string16 GetValue() const;
+  virtual base::string16 GetValue() const;
 
   // Searches in the given text and from the given offset until the start of
   // the next or previous word is found and returns its position.

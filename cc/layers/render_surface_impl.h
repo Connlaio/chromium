@@ -7,11 +7,11 @@
 
 #include <stddef.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "base/macros.h"
-#include "base/memory/scoped_ptr.h"
 #include "cc/base/cc_export.h"
 #include "cc/layers/layer_collections.h"
 #include "cc/quads/render_pass.h"
@@ -37,6 +37,11 @@ class CC_EXPORT RenderSurfaceImpl {
   explicit RenderSurfaceImpl(LayerImpl* owning_layer);
   virtual ~RenderSurfaceImpl();
 
+  // Returns the RenderSurfaceImpl that this render surface contributes to. Root
+  // render surface's render_target is itself.
+  RenderSurfaceImpl* render_target();
+  const RenderSurfaceImpl* render_target() const;
+
   gfx::PointF ContentRectCenter() const {
     return gfx::RectF(content_rect()).CenterPoint();
   }
@@ -50,7 +55,7 @@ class CC_EXPORT RenderSurfaceImpl {
   }
   float draw_opacity() const { return draw_properties_.draw_opacity; }
 
-  void SetNearestOcclusionImmuneAncestor(RenderSurfaceImpl* surface) {
+  void SetNearestOcclusionImmuneAncestor(const RenderSurfaceImpl* surface) {
     nearest_occlusion_immune_ancestor_ = surface;
   }
   const RenderSurfaceImpl* nearest_occlusion_immune_ancestor() const {
@@ -112,10 +117,17 @@ class CC_EXPORT RenderSurfaceImpl {
     contributes_to_drawn_surface_ = contributes_to_drawn_surface;
   }
 
-  void SetContentRect(const gfx::Rect& content_rect);
+  void CalculateContentRectFromAccumulatedContentRect(int max_texture_size);
+  void SetContentRectToViewport();
+  void SetContentRectForTesting(const gfx::Rect& rect);
   gfx::Rect content_rect() const { return draw_properties_.content_rect; }
 
-  void SetAccumulatedContentRect(const gfx::Rect& content_rect);
+  void ClearAccumulatedContentRect();
+  void AccumulateContentRectFromContributingLayer(
+      LayerImpl* contributing_layer);
+  void AccumulateContentRectFromContributingRenderSurface(
+      RenderSurfaceImpl* contributing_surface);
+
   gfx::Rect accumulated_content_rect() const {
     return accumulated_content_rect_;
   }
@@ -157,6 +169,9 @@ class CC_EXPORT RenderSurfaceImpl {
   int EffectTreeIndex() const;
 
  private:
+  void SetContentRect(const gfx::Rect& content_rect);
+  gfx::Rect CalculateClippedAccumulatedContentRect();
+
   LayerImpl* owning_layer_;
 
   // Container for properties that render surfaces need to compute before they
@@ -201,9 +216,9 @@ class CC_EXPORT RenderSurfaceImpl {
 
   // The nearest ancestor target surface that will contain the contents of this
   // surface, and that ignores outside occlusion. This can point to itself.
-  RenderSurfaceImpl* nearest_occlusion_immune_ancestor_;
+  const RenderSurfaceImpl* nearest_occlusion_immune_ancestor_;
 
-  scoped_ptr<DamageTracker> damage_tracker_;
+  std::unique_ptr<DamageTracker> damage_tracker_;
 
   // For LayerIteratorActions
   int target_render_surface_layer_index_history_;

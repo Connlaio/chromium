@@ -8,12 +8,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 #include <utility>
 
 #include "base/macros.h"
 #include "base/memory/ref_counted.h"
-#include "base/memory/scoped_ptr.h"
 #include "cc/blink/cc_blink_export.h"
 #include "cc/layers/layer_client.h"
 #include "third_party/WebKit/public/platform/WebColor.h"
@@ -118,11 +118,6 @@ class WebLayerImpl : public blink::WebLayer {
   void setTouchEventHandlerRegion(
       const blink::WebVector<blink::WebRect>& region) override;
   blink::WebVector<blink::WebRect> touchEventHandlerRegion() const override;
-  void setFrameTimingRequests(
-      const blink::WebVector<std::pair<int64_t, blink::WebRect>>& requests)
-      override;
-  blink::WebVector<std::pair<int64_t, blink::WebRect>> frameTimingRequests()
-      const override;
   void setIsContainerForFixedPositionLayers(bool is_container) override;
   bool isContainerForFixedPositionLayers() const override;
   void setPositionConstraint(

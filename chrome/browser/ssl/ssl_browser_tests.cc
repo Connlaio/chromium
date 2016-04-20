@@ -248,7 +248,7 @@ class SSLInterstitialTimerObserver {
   const content::WebContents* web_contents_;
   SSLErrorHandler::TimerStartedCallback callback_;
 
-  scoped_ptr<base::RunLoop> message_loop_runner_;
+  std::unique_ptr<base::RunLoop> message_loop_runner_;
 
   DISALLOW_COPY_AND_ASSIGN(SSLInterstitialTimerObserver);
 };
@@ -479,7 +479,7 @@ class SSLUITest
     CheckAuthenticationBrokenState(tab, net::CERT_STATUS_DATE_INVALID,
                                    AuthState::SHOWING_INTERSTITIAL);
 
-    scoped_ptr<SSLCertReporter> ssl_cert_reporter =
+    std::unique_ptr<SSLCertReporter> ssl_cert_reporter =
         certificate_reporting_test_utils::SetUpMockSSLCertReporter(
             &run_loop, expect_report);
 
@@ -541,7 +541,7 @@ class SSLUITest
     CheckAuthenticationBrokenState(tab, net::CERT_STATUS_DATE_INVALID,
                                    AuthState::SHOWING_INTERSTITIAL);
 
-    scoped_ptr<SSLCertReporter> ssl_cert_reporter =
+    std::unique_ptr<SSLCertReporter> ssl_cert_reporter =
         certificate_reporting_test_utils::SetUpMockSSLCertReporter(
             &run_loop, expect_report);
 
@@ -904,7 +904,8 @@ IN_PROC_BROWSER_TEST_F(SSLUITest, TestHTTPSErrorCausedByClockUsingBuildTime) {
   ASSERT_TRUE(https_server_expired_.Start());
 
   // Set up the build and current clock times to be more than a year apart.
-  scoped_ptr<base::SimpleTestClock> mock_clock(new base::SimpleTestClock());
+  std::unique_ptr<base::SimpleTestClock> mock_clock(
+      new base::SimpleTestClock());
   mock_clock->SetNow(base::Time::NowFromSystemTime());
   mock_clock->Advance(base::TimeDelta::FromDays(367));
   SSLErrorHandler::SetClockForTest(mock_clock.get());
@@ -1213,7 +1214,7 @@ IN_PROC_BROWSER_TEST_F(SSLUITest, MarkBlobAsNonSecure) {
 
   ui_test_utils::NavigateToURL(
       browser(),
-      GURL("blob:chrome%3A//newtab/49a463bb-fac8-476c-97bf-5d7076c3ea1a"));
+      GURL("blob:chrome://newtab/49a463bb-fac8-476c-97bf-5d7076c3ea1a"));
   EXPECT_EQ(security_state::SecurityStateModel::NONE,
             model_client->GetSecurityInfo().security_level);
 }
@@ -1286,7 +1287,7 @@ IN_PROC_BROWSER_TEST_F(SSLUITestWithClientCert, TestWSSClientCert) {
   // cert selection.
   Profile* profile = Profile::FromBrowserContext(tab->GetBrowserContext());
   DCHECK(profile);
-  scoped_ptr<base::DictionaryValue> dict(new base::DictionaryValue());
+  std::unique_ptr<base::DictionaryValue> dict(new base::DictionaryValue());
   dict->SetString("ISSUER.CN", "pywebsocket");
   HostContentSettingsMapFactory::GetForProfile(profile)
       ->SetWebsiteSettingDefaultScope(

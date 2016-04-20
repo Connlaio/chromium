@@ -401,6 +401,7 @@ void DesktopNativeWidgetAura::InitNativeWidget(
     const Widget::InitParams& params) {
   ownership_ = params.ownership;
   widget_type_ = params.type;
+  name_ = params.name;
 
   NativeWidgetAura::RegisterNativeWidgetForWindow(this, content_window_);
   // Animations on TYPE_WINDOW are handled by the OS. Additionally if we animate
@@ -458,7 +459,7 @@ void DesktopNativeWidgetAura::InitNativeWidget(
   }
   if (!cursor_manager_) {
     cursor_manager_ = new wm::CursorManager(
-        scoped_ptr<wm::NativeCursorManager>(native_cursor_manager_));
+        std::unique_ptr<wm::NativeCursorManager>(native_cursor_manager_));
   }
   native_cursor_manager_->AddHost(host());
   aura::client::SetCursorClient(host_->window(), cursor_manager_);
@@ -944,6 +945,10 @@ void DesktopNativeWidgetAura::OnSizeConstraintsChanged() {
 
 void DesktopNativeWidgetAura::RepostNativeEvent(gfx::NativeEvent native_event) {
   OnEvent(native_event);
+}
+
+std::string DesktopNativeWidgetAura::GetName() const {
+  return name_;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -13,6 +13,7 @@
 #include "base/stl_util.h"
 #include "base/thread_task_runner_handle.h"
 #include "base/trace_event/trace_event.h"
+#include "gpu/command_buffer/client/gpu_control_client.h"
 #include "gpu/command_buffer/client/gpu_memory_buffer_manager.h"
 #include "gpu/command_buffer/common/cmd_buffer_common.h"
 #include "gpu/command_buffer/common/command_buffer_id.h"
@@ -41,6 +42,7 @@ CommandBufferProxyImpl::CommandBufferProxyImpl(GpuChannelHost* channel,
                                                int32_t route_id,
                                                int32_t stream_id)
     : lock_(nullptr),
+      gpu_control_client_(nullptr),
       channel_(channel),
       command_buffer_id_(CommandBufferProxyID(channel->channel_id(), route_id)),
       route_id_(route_id),
@@ -67,7 +69,7 @@ CommandBufferProxyImpl::~CommandBufferProxyImpl() {
 }
 
 bool CommandBufferProxyImpl::OnMessageReceived(const IPC::Message& message) {
-  scoped_ptr<base::AutoLock> lock;
+  std::unique_ptr<base::AutoLock> lock;
   if (lock_)
     lock.reset(new base::AutoLock(*lock_));
   bool handled = true;
@@ -90,7 +92,7 @@ bool CommandBufferProxyImpl::OnMessageReceived(const IPC::Message& message) {
 }
 
 void CommandBufferProxyImpl::OnChannelError() {
-  scoped_ptr<base::AutoLock> lock;
+  std::unique_ptr<base::AutoLock> lock;
   if (lock_)
     lock.reset(new base::AutoLock(*lock_));
 
@@ -109,33 +111,31 @@ void CommandBufferProxyImpl::OnChannelError() {
 void CommandBufferProxyImpl::OnDestroyed(gpu::error::ContextLostReason reason,
                                          gpu::error::Error error) {
   CheckLock();
-  // Prevent any further messages from being sent.
-  if (channel_) {
-    channel_->DestroyCommandBuffer(this);
-    channel_ = nullptr;
-  }
 
   // When the client sees that the context is lost, they should delete this
   // CommandBufferProxyImpl and create a new one.
   last_state_.error = error;
   last_state_.context_lost_reason = reason;
 
-  if (!context_lost_callback_.is_null()) {
-    context_lost_callback_.Run();
-    // Avoid calling the error callback more than once.
-    context_lost_callback_.Reset();
+  // Prevent any further messages from being sent, and ensure we only call
+  // the client for lost context a single time.
+  if (channel_) {
+    channel_->DestroyCommandBuffer(this);
+    channel_ = nullptr;
+    if (gpu_control_client_)
+      gpu_control_client_->OnGpuControlLostContext();
   }
 }
 
 void CommandBufferProxyImpl::OnConsoleMessage(
     const GPUCommandBufferConsoleMessage& message) {
-  if (!console_message_callback_.is_null()) {
-    console_message_callback_.Run(message.message, message.id);
-  }
+  if (gpu_control_client_)
+    gpu_control_client_->OnGpuControlErrorMessage(message.message.c_str(),
+                                                  message.id);
 }
 
 void CommandBufferProxyImpl::AddDeletionObserver(DeletionObserver* observer) {
-  scoped_ptr<base::AutoLock> lock;
+  std::unique_ptr<base::AutoLock> lock;
   if (lock_)
     lock.reset(new base::AutoLock(*lock_));
   deletion_observers_.AddObserver(observer);
@@ -143,7 +143,7 @@ void CommandBufferProxyImpl::AddDeletionObserver(DeletionObserver* observer) {
 
 void CommandBufferProxyImpl::RemoveDeletionObserver(
     DeletionObserver* observer) {
-  scoped_ptr<base::AutoLock> lock;
+  std::unique_ptr<base::AutoLock> lock;
   if (lock_)
     lock.reset(new base::AutoLock(*lock_));
   deletion_observers_.RemoveObserver(observer);
@@ -159,12 +159,6 @@ void CommandBufferProxyImpl::OnSignalAck(uint32_t id) {
   base::Closure callback = it->second;
   signal_tasks_.erase(it);
   callback.Run();
-}
-
-void CommandBufferProxyImpl::SetContextLostCallback(
-    const base::Closure& callback) {
-  CheckLock();
-  context_lost_callback_ = callback;
 }
 
 bool CommandBufferProxyImpl::Initialize() {
@@ -352,7 +346,7 @@ scoped_refptr<gpu::Buffer> CommandBufferProxyImpl::CreateTransferBuffer(
 
   int32_t new_id = channel_->ReserveTransferBufferId();
 
-  scoped_ptr<base::SharedMemory> shared_memory(
+  std::unique_ptr<base::SharedMemory> shared_memory(
       channel_->factory()->AllocateSharedMemory(size));
   if (!shared_memory) {
     if (last_state_.error == gpu::error::kNoError)
@@ -392,6 +386,11 @@ void CommandBufferProxyImpl::DestroyTransferBuffer(int32_t id) {
     return;
 
   Send(new GpuCommandBufferMsg_DestroyTransferBuffer(route_id_, id));
+}
+
+void CommandBufferProxyImpl::SetGpuControlClient(GpuControlClient* client) {
+  CheckLock();
+  gpu_control_client_ = client;
 }
 
 gpu::Capabilities CommandBufferProxyImpl::GetCapabilities() {
@@ -476,7 +475,7 @@ int32_t CommandBufferProxyImpl::CreateGpuMemoryBufferImage(
     unsigned internal_format,
     unsigned usage) {
   CheckLock();
-  scoped_ptr<gfx::GpuMemoryBuffer> buffer(
+  std::unique_ptr<gfx::GpuMemoryBuffer> buffer(
       channel_->gpu_memory_buffer_manager()->AllocateGpuMemoryBuffer(
           gfx::Size(width, height),
           gpu::DefaultBufferFormatForImageFormat(internal_format),
@@ -662,12 +661,6 @@ void CommandBufferProxyImpl::OnUpdateState(
     last_state_ = state;
 }
 
-void CommandBufferProxyImpl::SetOnConsoleMessageCallback(
-    const GpuConsoleMessageCallback& callback) {
-  CheckLock();
-  console_message_callback_ = callback;
-}
-
 void CommandBufferProxyImpl::TryUpdateState() {
   if (last_state_.error == gpu::error::kNoError)
     shared_state()->Read(&last_state_);
@@ -726,7 +719,7 @@ void CommandBufferProxyImpl::InvalidGpuReply() {
 }
 
 void CommandBufferProxyImpl::InvalidGpuReplyOnClientThread() {
-  scoped_ptr<base::AutoLock> lock;
+  std::unique_ptr<base::AutoLock> lock;
   if (lock_)
     lock.reset(new base::AutoLock(*lock_));
   OnDestroyed(gpu::error::kInvalidGpuMessage, gpu::error::kLostContext);

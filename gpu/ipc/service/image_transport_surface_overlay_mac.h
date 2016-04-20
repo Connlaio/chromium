@@ -6,6 +6,7 @@
 #define GPU_IPC_SERVICE_IMAGE_TRANSPORT_SURFACE_OVERLAY_MAC_H_
 
 #include <list>
+#include <memory>
 #include <vector>
 
 #import "base/mac/scoped_nsobject.h"
@@ -45,7 +46,6 @@ class ImageTransportSurfaceOverlayMac : public gfx::GLSurface,
   gfx::Size GetSize() override;
   void* GetHandle() override;
   bool OnMakeCurrent(gfx::GLContext* context) override;
-  bool SetBackbufferAllocation(bool allocated) override;
   bool ScheduleOverlayPlane(int z_order,
                             gfx::OverlayTransform transform,
                             gl::GLImage* image,
@@ -60,16 +60,14 @@ class ImageTransportSurfaceOverlayMac : public gfx::GLSurface,
                        bool is_clipped,
                        const gfx::RectF& clip_rect,
                        const gfx::Transform& transform,
-                       int sorting_context_id) override;
+                       int sorting_context_id,
+                       unsigned filter) override;
   bool IsSurfaceless() const override;
 
   // ui::GpuSwitchingObserver implementation.
   void OnGpuSwitched() override;
 
  private:
-  class PendingSwap;
-  class OverlayPlane;
-
   ~ImageTransportSurfaceOverlayMac() override;
 
   void SetLatencyInfo(const std::vector<ui::LatencyInfo>& latency_info);
@@ -84,31 +82,6 @@ class ImageTransportSurfaceOverlayMac : public gfx::GLSurface,
       float scale_factor,
       std::vector<ui::LatencyInfo> latency_info);
   gfx::SwapResult SwapBuffersInternal(const gfx::Rect& pixel_damage_rect);
-
-  // Returns true if the front of |pending_swaps_| has completed, or has timed
-  // out by |now|.
-  bool IsFirstPendingSwapReadyToDisplay(
-    const base::TimeTicks& now);
-  // Sets the CALayer contents to the IOSurface for the front of
-  // |pending_swaps_|, and removes it from the queue.
-  void DisplayFirstPendingSwapImmediately();
-  // Force that all of |pending_swaps_| displayed immediately, and the list be
-  // cleared.
-  void DisplayAndClearAllPendingSwaps();
-  // Callback issued during the next vsync period ofter a SwapBuffers call,
-  // to check if the swap is completed, and display the frame. Note that if
-  // another SwapBuffers happens before this callback, the pending swap will
-  // be tested at that time, too.
-  void CheckPendingSwapsCallback();
-  // Function to post the above callback. The argument |now| is passed as an
-  // argument to avoid redundant calls to base::TimeTicks::Now.
-  void PostCheckPendingSwapsCallbackIfNeeded(const base::TimeTicks& now);
-
-  // Return the time of |interval_fraction| of the way through the next
-  // vsync period that starts after |from|. If the vsync parameters are not
-  // valid then return |from|.
-  base::TimeTicks GetNextVSyncTimeAfter(
-      const base::TimeTicks& from, double interval_fraction);
 
   GpuChannelManager* manager_;
   base::WeakPtr<GpuCommandBufferStub> stub_;
@@ -128,29 +101,17 @@ class ImageTransportSurfaceOverlayMac : public gfx::GLSurface,
 
   // Planes that have been scheduled, but have not had a subsequent SwapBuffers
   // call made yet.
-  scoped_ptr<CALayerPartialDamageTree> pending_partial_damage_tree_;
-  scoped_ptr<CALayerTree> pending_ca_layer_tree_;
-
-  // A queue of all frames that have been created by SwapBuffersInternal but
-  // have not yet been displayed. This queue is checked at the beginning of
-  // every swap and also by a callback.
-  std::deque<linked_ptr<PendingSwap>> pending_swaps_;
+  std::unique_ptr<CALayerPartialDamageTree> pending_partial_damage_tree_;
+  std::unique_ptr<CALayerTree> pending_ca_layer_tree_;
 
   // The planes that are currently being displayed on the screen.
-  scoped_ptr<CALayerPartialDamageTree> current_partial_damage_tree_;
-  scoped_ptr<CALayerTree> current_ca_layer_tree_;
-
-  // The time of the last swap was issued. If this is more than two vsyncs, then
-  // use the simpler non-smooth animation path.
-  base::TimeTicks last_swap_time_;
+  std::unique_ptr<CALayerPartialDamageTree> current_partial_damage_tree_;
+  std::unique_ptr<CALayerTree> current_ca_layer_tree_;
 
   // The vsync information provided by the browser.
   bool vsync_parameters_valid_;
   base::TimeTicks vsync_timebase_;
   base::TimeDelta vsync_interval_;
-
-  base::Timer display_pending_swap_timer_;
-  base::WeakPtrFactory<ImageTransportSurfaceOverlayMac> weak_factory_;
 };
 
 }  // namespace gpu

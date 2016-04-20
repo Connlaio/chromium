@@ -15,6 +15,7 @@
 #include "ash/shell.h"
 #include "ash/wm/mru_window_tracker.h"
 #include "ash/wm/window_state.h"
+#include "ash/wm/window_state_aura.h"
 #include "ash/wm/window_util.h"
 #include "base/command_line.h"
 #include "base/files/file_enumerator.h"
@@ -621,7 +622,7 @@ bool WallpaperPrivateSetCustomWallpaperFunction::RunAsync() {
   account_id_ = user->GetAccountId();
   chromeos::WallpaperManager* wallpaper_manager =
       chromeos::WallpaperManager::Get();
-  wallpaper_files_id_ = wallpaper_manager->GetFilesId(*user);
+  wallpaper_files_id_ = wallpaper_manager->GetFilesId(account_id_);
 
   StartDecode(params->wallpaper);
 
@@ -958,7 +959,7 @@ void WallpaperPrivateGetOfflineWallpaperListFunction::OnComplete(
 }
 
 bool WallpaperPrivateRecordWallpaperUMAFunction::RunSync() {
-  scoped_ptr<record_wallpaper_uma::Params> params(
+  std::unique_ptr<record_wallpaper_uma::Params> params(
       record_wallpaper_uma::Params::Create(*args_));
   EXTENSION_FUNCTION_VALIDATE(params);
 

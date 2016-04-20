@@ -24,7 +24,7 @@ namespace blink {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wglobal-constructors"
 #endif
-{{wrapper_type_info_const}}WrapperTypeInfo {{v8_class}}::wrapperTypeInfo = { gin::kEmbedderBlink, {{dom_template}}, {{v8_class}}::refObject, {{v8_class}}::derefObject, {{v8_class}}::trace, {{to_active_scriptwrappable}}, {{visit_dom_wrapper}}, {{v8_class}}::preparePrototypeAndInterfaceObject, {{v8_class}}::installConditionallyEnabledProperties, "{{interface_name}}", {{parent_wrapper_type_info}}, WrapperTypeInfo::{{wrapper_type_prototype}}, WrapperTypeInfo::{{wrapper_class_id}}, WrapperTypeInfo::{{event_target_inheritance}}, WrapperTypeInfo::{{lifetime}}, WrapperTypeInfo::{{gc_type}} };
+{{wrapper_type_info_const}}WrapperTypeInfo {{v8_class}}::wrapperTypeInfo = { gin::kEmbedderBlink, {{dom_template}}, {{v8_class}}::trace, {{to_active_scriptwrappable}}, {{visit_dom_wrapper}}, {{v8_class}}::preparePrototypeAndInterfaceObject, {{v8_class}}::installConditionallyEnabledProperties, "{{interface_name}}", {{parent_wrapper_type_info}}, WrapperTypeInfo::{{wrapper_type_prototype}}, WrapperTypeInfo::{{wrapper_class_id}}, WrapperTypeInfo::{{event_target_inheritance}}, WrapperTypeInfo::{{lifetime}} };
 #if defined(COMPONENT_BUILD) && defined(WIN32) && COMPILER(CLANG)
 #pragma clang diagnostic pop
 #endif
@@ -91,12 +91,36 @@ static bool {{cpp_class}}CreateDataProperty(v8::Local<v8::Name> name, v8::Local<
 {% endfor %}
 {##############################################################################}
 {% block security_check_functions %}
-{% if has_access_check_callbacks %}
+{% if has_access_check_callbacks and not is_partial %}
 bool securityCheck(v8::Local<v8::Context> accessingContext, v8::Local<v8::Object> accessedObject, v8::Local<v8::Value> data)
 {
+    {% if interface_name == 'Window' %}
+    // TODO(jochen): Take accessingContext into account.
+    v8::Isolate* isolate = v8::Isolate::GetCurrent();
+    v8::Local<v8::Object> window = V8Window::findInstanceInPrototypeChain(accessedObject, isolate);
+    if (window.IsEmpty())
+        return false; // the frame is gone.
+
+    DOMWindow* targetWindow = V8Window::toImpl(window);
+    ASSERT(targetWindow);
+    if (!targetWindow->isLocalDOMWindow())
+        return false;
+
+    LocalFrame* targetFrame = toLocalDOMWindow(targetWindow)->frame();
+    if (!targetFrame)
+        return false;
+
+    // Notify the loader's client if the initial document has been accessed.
+    if (targetFrame->loader().stateMachine()->isDisplayingInitialEmptyDocument())
+        targetFrame->loader().didAccessInitialDocument();
+
+    return BindingSecurity::shouldAllowAccessTo(isolate, callingDOMWindow(isolate), targetWindow, DoNotReportSecurityError);
+    {% else %}{# if interface_name == 'Window' #}
+    {# Not 'Window' means it\'s Location. #}
     // TODO(jochen): Take accessingContext into account.
     {{cpp_class}}* impl = {{v8_class}}::toImpl(accessedObject);
     return BindingSecurity::shouldAllowAccessTo(v8::Isolate::GetCurrent(), callingDOMWindow(v8::Isolate::GetCurrent()), impl, DoNotReportSecurityError);
+    {% endif %}{# if interface_name == 'Window' #}
 }
 
 {% endif %}
@@ -174,6 +198,7 @@ bool securityCheck(v8::Local<v8::Context> accessingContext, v8::Local<v8::Object
 } // namespace {{cpp_class_or_partial}}V8Internal
 
 {% block visit_dom_wrapper %}{% endblock %}
+{% block trace_wrappers %}{% endblock %}
 {##############################################################################}
 {% block install_attributes %}
 {% from 'attributes.cpp' import attribute_configuration with context %}
@@ -238,20 +263,20 @@ const V8DOMConfiguration::MethodConfiguration {{v8_class}}Methods[] = {
 {% from 'attributes.cpp' import attribute_configuration with context %}
 {% from 'constants.cpp' import install_constants with context %}
 {% if has_partial_interface or is_partial %}
-void {{v8_class_or_partial}}::install{{v8_class}}Template(v8::Local<v8::FunctionTemplate> interfaceTemplate, v8::Isolate* isolate)
+void {{v8_class_or_partial}}::install{{v8_class}}Template(v8::Isolate* isolate, const DOMWrapperWorld& world, v8::Local<v8::FunctionTemplate> interfaceTemplate)
 {% else %}
-static void install{{v8_class}}Template(v8::Local<v8::FunctionTemplate> interfaceTemplate, v8::Isolate* isolate)
+static void install{{v8_class}}Template(v8::Isolate* isolate, const DOMWrapperWorld& world, v8::Local<v8::FunctionTemplate> interfaceTemplate)
 {% endif %}
 {
     {% set newline = '' %}
     // Initialize the interface object's template.
     {% if is_partial %}
-    {{v8_class}}::install{{v8_class}}Template(interfaceTemplate, isolate);
+    {{v8_class}}::install{{v8_class}}Template(isolate, world, interfaceTemplate);
     {% else %}
     {% set parent_interface_template =
-           '%s::domTemplateForNamedPropertiesObject(isolate)' % v8_class
+           '%s::domTemplateForNamedPropertiesObject(isolate, world)' % v8_class
            if has_named_properties_object else
-           'V8%s::domTemplate(isolate)' % parent_interface
+           'V8%s::domTemplate(isolate, world)' % parent_interface
            if parent_interface else
            'v8::Local<v8::FunctionTemplate>()' %}
     V8DOMConfiguration::initializeDOMInterfaceTemplate(isolate, interfaceTemplate, {{v8_class}}::wrapperTypeInfo.interfaceName, {{parent_interface_template}}, {{v8_class}}::internalFieldCount);
@@ -267,13 +292,8 @@ static void install{{v8_class}}Template(v8::Local<v8::FunctionTemplate> interfac
     v8::Local<v8::ObjectTemplate> prototypeTemplate = interfaceTemplate->PrototypeTemplate();
     ALLOW_UNUSED_LOCAL(prototypeTemplate);
 
-    {%- if not is_partial %}
-    {% if interface_name == 'Window' %}{{newline}}
+    {%- if interface_name == 'Window' and not is_partial %}{{newline}}
     prototypeTemplate->SetInternalFieldCount(V8Window::internalFieldCount);
-    {% endif %}
-    {% if is_global %}{{newline}}
-    interfaceTemplate->SetHiddenPrototype(true);
-    {% endif %}
     {% endif %}
 
     // Register DOM constants, attributes and operations.
@@ -285,25 +305,25 @@ static void install{{v8_class}}Template(v8::Local<v8::FunctionTemplate> interfac
     {{install_constants() | indent}}
     {% endif %}
     {% if has_attribute_configuration %}
-    V8DOMConfiguration::installAttributes(isolate, instanceTemplate, prototypeTemplate, {{'%sAttributes' % v8_class}}, {{'WTF_ARRAY_LENGTH(%sAttributes)' % v8_class}});
+    V8DOMConfiguration::installAttributes(isolate, world, instanceTemplate, prototypeTemplate, {{'%sAttributes' % v8_class}}, {{'WTF_ARRAY_LENGTH(%sAttributes)' % v8_class}});
     {% endif %}
     {% if has_accessor_configuration %}
-    V8DOMConfiguration::installAccessors(isolate, instanceTemplate, prototypeTemplate, interfaceTemplate, signature, {{'%sAccessors' % v8_class}}, {{'WTF_ARRAY_LENGTH(%sAccessors)' % v8_class}});
+    V8DOMConfiguration::installAccessors(isolate, world, instanceTemplate, prototypeTemplate, interfaceTemplate, signature, {{'%sAccessors' % v8_class}}, {{'WTF_ARRAY_LENGTH(%sAccessors)' % v8_class}});
     {% endif %}
     {% if method_configuration_methods %}
-    V8DOMConfiguration::installMethods(isolate, instanceTemplate, prototypeTemplate, interfaceTemplate, signature, {{'%sMethods' % v8_class}}, {{'WTF_ARRAY_LENGTH(%sMethods)' % v8_class}});
+    V8DOMConfiguration::installMethods(isolate, world, instanceTemplate, prototypeTemplate, interfaceTemplate, signature, {{'%sMethods' % v8_class}}, {{'WTF_ARRAY_LENGTH(%sMethods)' % v8_class}});
     {% endif %}
     {% endfilter %}{{newline}}
     {% if runtime_enabled_function %}
     } // if ({{runtime_enabled_function}}())
     {% endif %}
 
-    {%- if has_access_check_callbacks %}{{newline}}
+    {%- if has_access_check_callbacks and not is_partial %}{{newline}}
     // Cross-origin access check
     instanceTemplate->SetAccessCheckCallback({{cpp_class}}V8Internal::securityCheck, v8::External::New(isolate, const_cast<WrapperTypeInfo*>(&{{v8_class}}::wrapperTypeInfo)));
     {% endif %}
 
-    {%- if has_array_iterator and not is_global %}{{newline}}
+    {%- if has_array_iterator and not is_partial and not is_global %}{{newline}}
     // Array iterator
     prototypeTemplate->SetIntrinsicDataProperty(v8::Symbol::GetIterator(isolate), v8::kArrayProto_values, v8::DontEnum);
     {% endif %}
@@ -326,21 +346,21 @@ static void install{{v8_class}}Template(v8::Local<v8::FunctionTemplate> interfac
         {% if attribute.is_data_type_property %}
         const V8DOMConfiguration::AttributeConfiguration attribute{{attribute.name}}Configuration = \
         {{attribute_configuration(attribute)}};
-        V8DOMConfiguration::installAttribute(isolate, instanceTemplate, prototypeTemplate, attribute{{attribute.name}}Configuration);
+        V8DOMConfiguration::installAttribute(isolate, world, instanceTemplate, prototypeTemplate, attribute{{attribute.name}}Configuration);
         {% else %}
         const V8DOMConfiguration::AccessorConfiguration accessor{{attribute.name}}Configuration = \
         {{attribute_configuration(attribute)}};
-        V8DOMConfiguration::installAccessor(isolate, instanceTemplate, prototypeTemplate, interfaceTemplate, signature, accessor{{attribute.name}}Configuration);
+        V8DOMConfiguration::installAccessor(isolate, world, instanceTemplate, prototypeTemplate, interfaceTemplate, signature, accessor{{attribute.name}}Configuration);
         {% endif %}
         {% endfor %}
     }
     {% endfor %}
 
-    {%- if indexed_property_getter %}{{newline}}
+    {%- if indexed_property_getter and not is_partial %}{{newline}}
     // Indexed properties
     {{install_indexed_property_handler('instanceTemplate') | indent}}
     {% endif %}
-    {% if named_property_getter and not has_named_properties_object %}
+    {% if named_property_getter and not is_partial and not has_named_properties_object %}
     // Named properties
     {{install_named_property_handler('instanceTemplate') | indent}}
     {% endif %}
@@ -350,16 +370,16 @@ static void install{{v8_class}}Template(v8::Local<v8::FunctionTemplate> interfac
     {% filter runtime_enabled(iterator_method.runtime_enabled_function) %}
     // Iterator (@@iterator)
     const V8DOMConfiguration::SymbolKeyedMethodConfiguration symbolKeyedIteratorConfiguration = { v8::Symbol::GetIterator, {{cpp_class_or_partial}}V8Internal::iteratorMethodCallback, 0, v8::DontDelete, V8DOMConfiguration::ExposedToAllScripts, V8DOMConfiguration::OnPrototype };
-    V8DOMConfiguration::installMethod(isolate, prototypeTemplate, signature, symbolKeyedIteratorConfiguration);
+    V8DOMConfiguration::installMethod(isolate, world, prototypeTemplate, signature, symbolKeyedIteratorConfiguration);
     {% endfilter %}
     {% endfilter %}
     {% endif %}
 
-    {%- if has_custom_legacy_call_as_function %}{{newline}}
+    {%- if has_custom_legacy_call_as_function and not is_partial %}{{newline}}
     instanceTemplate->SetCallAsFunctionHandler({{v8_class}}::legacyCallCustom);
     {% endif %}
 
-    {%- if interface_name == 'HTMLAllCollection' %}{{newline}}
+    {%- if interface_name == 'HTMLAllCollection' and not is_partial %}{{newline}}
     // Needed for legacy support of document.all
     instanceTemplate->MarkAsUndetectable();
     {% endif %}
@@ -397,7 +417,6 @@ static void install{{v8_class}}Template(v8::Local<v8::FunctionTemplate> interfac
 {% block prepare_prototype_and_interface_object %}{% endblock %}
 {##############################################################################}
 {% block to_active_scriptwrappable %}{% endblock %}
-{% block ref_object_and_deref_object %}{% endblock %}
 {% for method in methods if method.is_implemented_in_private_script and method.visible %}
 {{method_implemented_in_private_script(method)}}
 {% endfor %}

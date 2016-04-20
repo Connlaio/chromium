@@ -17,6 +17,8 @@ const char kSalientImageUrl[] = "thumbnailUrl";
 const char kSnippet[] = "snippet";
 const char kPublishDate[] = "creationTimestampSec";
 const char kExpiryDate[] = "expiryTimestampSec";
+const char kSourceCorpusInfo[] = "sourceCorpusInfo";
+const char kAmpUrl[] = "ampUrl";
 
 }  // namespace
 
@@ -56,28 +58,26 @@ std::unique_ptr<NTPSnippet> NTPSnippet::CreateFromDictionary(
   std::string snippet_str;
   if (dict.GetString(kSnippet, &snippet_str))
     snippet->set_snippet(snippet_str);
-  // creationTimestampSec is a uint64, which is stored using strings
+  // The creation and expiry timestamps are uint64s which are stored as strings.
   std::string creation_timestamp_str;
-  if (dict.GetString(kPublishDate, &creation_timestamp_str)) {
-    int64_t creation_timestamp = 0;
-    if (!base::StringToInt64(creation_timestamp_str, &creation_timestamp)) {
-      // Even if there's an error in the conversion, some garbage data may still
-      // be written to the output var, so reset it
-      creation_timestamp = 0;
-    }
-    snippet->set_publish_date(base::Time::UnixEpoch() +
-                              base::TimeDelta::FromSeconds(creation_timestamp));
-  }
+  if (dict.GetString(kPublishDate, &creation_timestamp_str))
+    snippet->set_publish_date(TimeFromJsonString(creation_timestamp_str));
   std::string expiry_timestamp_str;
-  if (dict.GetString(kExpiryDate, &expiry_timestamp_str)) {
-    int64_t expiry_timestamp = 0;
-    if (!base::StringToInt64(expiry_timestamp_str, &expiry_timestamp)) {
-      // Even if there's an error in the conversion, some garbage data may still
-      // be written to the output var, so reset it
-      expiry_timestamp = 0;
+  if (dict.GetString(kExpiryDate, &expiry_timestamp_str))
+    snippet->set_expiry_date(TimeFromJsonString(expiry_timestamp_str));
+
+  const base::ListValue* corpus_infos_list = nullptr;
+  if (dict.GetList(kSourceCorpusInfo, &corpus_infos_list)) {
+    for (base::Value* value : *corpus_infos_list) {
+      const base::DictionaryValue* dict_value = nullptr;
+      if (value->GetAsDictionary(&dict_value)) {
+        std::string amp_url;
+        if (dict_value->GetString(kAmpUrl, &amp_url)) {
+          snippet->set_amp_url(GURL(amp_url));
+          break;
+        }
+      }
     }
-    snippet->set_expiry_date(base::Time::UnixEpoch() +
-                             base::TimeDelta::FromSeconds(expiry_timestamp));
   }
 
   return snippet;
@@ -97,18 +97,35 @@ std::unique_ptr<base::DictionaryValue> NTPSnippet::ToDictionary() const {
     dict->SetString(kSalientImageUrl, salient_image_url_.spec());
   if (!snippet_.empty())
     dict->SetString(kSnippet, snippet_);
-  if (!publish_date_.is_null()) {
-    dict->SetString(kPublishDate,
-                    base::Int64ToString(
-                        (publish_date_ - base::Time::UnixEpoch()).InSeconds()));
+  if (!publish_date_.is_null())
+    dict->SetString(kPublishDate, TimeToJsonString(publish_date_));
+  if (!expiry_date_.is_null())
+    dict->SetString(kExpiryDate, TimeToJsonString(expiry_date_));
+  if (amp_url_.is_valid()) {
+    std::unique_ptr<base::ListValue> corpus_infos_list(new base::ListValue);
+    std::unique_ptr<base::DictionaryValue> corpus_info_dict(
+        new base::DictionaryValue);
+    corpus_info_dict->SetString(kAmpUrl, amp_url_.spec());
+    corpus_infos_list->Set(0, std::move(corpus_info_dict));
+    dict->Set(kSourceCorpusInfo, std::move(corpus_infos_list));
   }
-  if (!expiry_date_.is_null()) {
-    dict->SetString(kExpiryDate,
-                    base::Int64ToString(
-                        (expiry_date_ - base::Time::UnixEpoch()).InSeconds()));
-  }
-
   return dict;
+}
+
+// static
+base::Time NTPSnippet::TimeFromJsonString(const std::string& timestamp_str) {
+  int64_t timestamp;
+  if (!base::StringToInt64(timestamp_str, &timestamp)) {
+    // Even if there's an error in the conversion, some garbage data may still
+    // be written to the output var, so reset it.
+    timestamp = 0;
+  }
+  return base::Time::UnixEpoch() + base::TimeDelta::FromSeconds(timestamp);
+}
+
+// static
+std::string NTPSnippet::TimeToJsonString(const base::Time& time) {
+  return base::Int64ToString((time - base::Time::UnixEpoch()).InSeconds());
 }
 
 }  // namespace ntp_snippets

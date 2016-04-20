@@ -4,6 +4,8 @@
 
 #include "content/common/gpu/media/dxva_video_decode_accelerator_win.h"
 
+#include <memory>
+
 #if !defined(OS_WIN)
 #error This file should only be built on Windows.
 #endif   // !defined(OS_WIN)
@@ -26,7 +28,6 @@
 #include "base/files/file_path.h"
 #include "base/logging.h"
 #include "base/macros.h"
-#include "base/memory/scoped_ptr.h"
 #include "base/memory/shared_memory.h"
 #include "base/message_loop/message_loop.h"
 #include "base/path_service.h"
@@ -612,7 +613,7 @@ struct DXVAVideoDecodeAccelerator::DXVAPictureBuffer {
   bool waiting_to_reuse_;
   media::PictureBuffer picture_buffer_;
   EGLSurface decoding_surface_;
-  scoped_ptr<gfx::GLFence> reuse_fence_;
+  std::unique_ptr<gfx::GLFence> reuse_fence_;
 
   HANDLE texture_share_handle_;
   base::win::ScopedComPtr<IDirect3DTexture9> decoding_texture_;
@@ -890,6 +891,9 @@ DXVAVideoDecodeAccelerator::PendingSampleInfo::PendingSampleInfo(
   output_sample.Attach(sample);
 }
 
+DXVAVideoDecodeAccelerator::PendingSampleInfo::PendingSampleInfo(
+    const PendingSampleInfo& other) = default;
+
 DXVAVideoDecodeAccelerator::PendingSampleInfo::~PendingSampleInfo() {}
 
 DXVAVideoDecodeAccelerator::DXVAVideoDecodeAccelerator(
@@ -933,6 +937,11 @@ bool DXVAVideoDecodeAccelerator::Initialize(const Config& config,
 
   if (config.is_encrypted) {
     NOTREACHED() << "Encrypted streams are not supported for this VDA";
+    return false;
+  }
+
+  if (config.output_mode != Config::OutputMode::ALLOCATE) {
+    NOTREACHED() << "Only ALLOCATE OutputMode is supported by this VDA";
     return false;
   }
 
@@ -1032,6 +1041,13 @@ bool DXVAVideoDecodeAccelerator::CreateD3DDevManager() {
   hr = Direct3DCreate9Ex(D3D_SDK_VERSION, d3d9_.Receive());
   RETURN_ON_HR_FAILURE(hr, "Direct3DCreate9Ex failed", false);
 
+  hr = d3d9_->CheckDeviceFormatConversion(
+      D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL,
+      static_cast<D3DFORMAT>(MAKEFOURCC('N', 'V', '1', '2')),
+      D3DFMT_X8R8G8B8);
+  RETURN_ON_HR_FAILURE(hr,
+      "D3D9 driver does not support H/W format conversion", false);
+
   base::win::ScopedComPtr<IDirect3DDevice9> angle_device =
       QueryDeviceObjectFromANGLE<IDirect3DDevice9>(EGL_D3D9_DEVICE_ANGLE);
   if (angle_device.get())
@@ -1059,8 +1075,7 @@ bool DXVAVideoDecodeAccelerator::CreateD3DDevManager() {
                                D3DDEVTYPE_HAL,
                                NULL,
                                D3DCREATE_FPU_PRESERVE |
-                               D3DCREATE_HARDWARE_VERTEXPROCESSING |
-                               D3DCREATE_DISABLE_PSGP_THREADING |
+                               D3DCREATE_MIXED_VERTEXPROCESSING |
                                D3DCREATE_MULTITHREADED,
                                &present_params,
                                NULL,
@@ -1686,7 +1701,7 @@ bool DXVAVideoDecodeAccelerator::InitDecoder(media::VideoCodecProfile profile) {
     // Check version of DLL, version 6.1.7140 is blacklisted due to high crash
     // rates in browsers loading that DLL. If that is the version installed we
     // fall back to software decoding. See crbug/403440.
-    scoped_ptr<FileVersionInfo> version_info(
+    std::unique_ptr<FileVersionInfo> version_info(
         FileVersionInfo::CreateFileVersionInfoForModule(decoder_dll));
     RETURN_ON_FAILURE(version_info,
                       "unable to get version of msmpeg2vdec.dll",

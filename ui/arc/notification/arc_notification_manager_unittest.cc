@@ -27,7 +27,7 @@ class MockMessageCenter : public message_center::FakeMessageCenter {
   }
 
   void AddNotification(
-      scoped_ptr<message_center::Notification> notification) override {
+      std::unique_ptr<message_center::Notification> notification) override {
     visible_notifications_.insert(notification.release());
   }
 
@@ -89,7 +89,7 @@ class ArcNotificationManagerTest : public testing::Test {
   }
 
   std::string CreateNotificationWithKey(const std::string& key) {
-    auto data = ArcNotificationData::New();
+    auto data = mojom::ArcNotificationData::New();
     data->key = key;
     data->title = "TITLE";
     data->message = "MESSAGE";
@@ -104,13 +104,13 @@ class ArcNotificationManagerTest : public testing::Test {
 
  private:
   base::MessageLoop loop_;
-  scoped_ptr<FakeArcBridgeService> service_;
-  scoped_ptr<FakeNotificationsInstance> arc_notifications_instance_;
-  scoped_ptr<ArcNotificationManager> arc_notification_manager_;
-  scoped_ptr<MockMessageCenter> message_center_;
+  std::unique_ptr<FakeArcBridgeService> service_;
+  std::unique_ptr<FakeNotificationsInstance> arc_notifications_instance_;
+  std::unique_ptr<ArcNotificationManager> arc_notification_manager_;
+  std::unique_ptr<MockMessageCenter> message_center_;
 
   void SetUp() override {
-    NotificationsInstancePtr arc_notifications_instance;
+    mojom::NotificationsInstancePtr arc_notifications_instance;
     arc_notifications_instance_.reset(
         new FakeNotificationsInstance(GetProxy(&arc_notifications_instance)));
     service_.reset(new FakeArcBridgeService());
@@ -167,7 +167,7 @@ TEST_F(ArcNotificationManagerTest, NotificationRemovedByChrome) {
 
   ASSERT_EQ(1u, arc_notifications_instance()->events().size());
   EXPECT_EQ(key, arc_notifications_instance()->events().at(0).first);
-  EXPECT_EQ(ArcNotificationEvent::CLOSED,
+  EXPECT_EQ(mojom::ArcNotificationEvent::CLOSED,
             arc_notifications_instance()->events().at(0).second);
 }
 

@@ -4,6 +4,7 @@
 
 #include "chrome/renderer/chrome_content_renderer_client.h"
 
+#include <memory>
 #include <utility>
 
 #include "base/command_line.h"
@@ -34,7 +35,7 @@
 #include "chrome/renderer/banners/app_banner_client.h"
 #include "chrome/renderer/benchmarking_extension.h"
 #include "chrome/renderer/chrome_render_frame_observer.h"
-#include "chrome/renderer/chrome_render_process_observer.h"
+#include "chrome/renderer/chrome_render_thread_observer.h"
 #include "chrome/renderer/chrome_render_view_observer.h"
 #include "chrome/renderer/content_settings_observer.h"
 #include "chrome/renderer/external_extension.h"
@@ -76,7 +77,7 @@
 #include "components/startup_metric_utils/common/startup_metric_messages.h"
 #include "components/version_info/version_info.h"
 #include "components/visitedlink/renderer/visitedlink_slave.h"
-#include "components/web_cache/renderer/web_cache_render_process_observer.h"
+#include "components/web_cache/renderer/web_cache_render_thread_observer.h"
 #include "content/public/common/content_constants.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/common/url_constants.h"
@@ -330,8 +331,8 @@ void ChromeContentRendererClient::RenderThreadStarted() {
   thread->Send(new StartupMetricHostMsg_RecordRendererMainEntryTime(
       main_entry_time_));
 
-  chrome_observer_.reset(new ChromeRenderProcessObserver());
-  web_cache_observer_.reset(new web_cache::WebCacheRenderProcessObserver());
+  chrome_observer_.reset(new ChromeRenderThreadObserver());
+  web_cache_observer_.reset(new web_cache::WebCacheRenderThreadObserver());
 
 #if defined(ENABLE_EXTENSIONS)
   ChromeExtensionsRendererClient::GetInstance()->RenderThreadStarted();
@@ -523,9 +524,8 @@ void ChromeContentRendererClient::RenderViewCreated(
   new PageLoadHistograms(render_view);
 #if defined(ENABLE_PRINTING)
   new printing::PrintWebViewHelper(
-      render_view,
-      scoped_ptr<printing::PrintWebViewHelper::Delegate>(
-          new ChromePrintWebViewHelperDelegate()));
+      render_view, std::unique_ptr<printing::PrintWebViewHelper::Delegate>(
+                       new ChromePrintWebViewHelperDelegate()));
 #endif
 #if defined(ENABLE_SPELLCHECK)
   new SpellCheckProvider(render_view, spellcheck_.get());
@@ -782,7 +782,7 @@ WebPlugin* ChromeContentRendererClient::CreatePlugin(
           break;
         }
 
-        scoped_ptr<content::PluginInstanceThrottler> throttler;
+        std::unique_ptr<content::PluginInstanceThrottler> throttler;
         if (power_saver_info.power_saver_enabled) {
           throttler = PluginInstanceThrottler::Create();
           // PluginPreroller manages its own lifetime.
@@ -1347,10 +1347,10 @@ void ChromeContentRendererClient::RecordRapporURL(const std::string& metric,
   RenderThread::Get()->Send(new ChromeViewHostMsg_RecordRapporURL(metric, url));
 }
 
-scoped_ptr<blink::WebAppBannerClient>
+std::unique_ptr<blink::WebAppBannerClient>
 ChromeContentRendererClient::CreateAppBannerClient(
     content::RenderFrame* render_frame) {
-  return scoped_ptr<blink::WebAppBannerClient>(
+  return std::unique_ptr<blink::WebAppBannerClient>(
       new AppBannerClient(render_frame));
 }
 

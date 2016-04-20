@@ -131,6 +131,7 @@ BrowserAccessibilityManager::BrowserAccessibilityManager(
       osk_state_(OSK_ALLOWED),
       last_focused_node_(nullptr),
       last_focused_manager_(nullptr),
+      connected_to_parent_tree_node_(false),
       ax_tree_id_(AXTreeIDRegistry::kNoAXTreeID),
       parent_node_id_from_parent_tree_(0) {
   tree_->SetDelegate(this);
@@ -345,6 +346,21 @@ void BrowserAccessibilityManager::OnAccessibilityEvents(
     }
   }
 
+  // If the root's parent is in another accessibility tree but it wasn't
+  // previously connected, post the proper notifications on the parent.
+  BrowserAccessibility* parent = GetParentNodeFromParentTree();
+  if (parent) {
+    if (!connected_to_parent_tree_node_) {
+      parent->OnDataChanged();
+      parent->UpdatePlatformAttributes();
+      parent->manager()->NotifyAccessibilityEvent(
+          ui::AX_EVENT_CHILDREN_CHANGED, parent);
+      connected_to_parent_tree_node_ = true;
+    }
+  } else {
+    connected_to_parent_tree_node_ = false;
+  }
+
   // Based on the changes to the tree, first fire focus events if needed.
   // Screen readers might not do the right thing if they're not aware of what
   // has focus, so always try that first. Nothing will be fired if the window
@@ -393,7 +409,16 @@ void BrowserAccessibilityManager::OnLocationChanges(
       continue;
     ui::AXNode* node = obj->node();
     node->SetLocation(params[i].new_location);
-    obj->OnLocationChanged();
+  }
+  SendLocationChangeEvents(params);
+}
+
+void BrowserAccessibilityManager::SendLocationChangeEvents(
+    const std::vector<AccessibilityHostMsg_LocationChangeParams>& params) {
+  for (size_t i = 0; i < params.size(); ++i) {
+    BrowserAccessibility* obj = GetFromID(params[i].id);
+    if (obj)
+      obj->OnLocationChanged();
   }
 }
 
@@ -813,25 +838,26 @@ void BrowserAccessibilityManager::OnAtomicUpdateFinished(
     ax_tree_id_changed = true;
   }
 
-  if (ax_tree_id_changed || root_changed) {
-    BrowserAccessibility* parent = GetParentNodeFromParentTree();
-    if (parent) {
-      parent->OnDataChanged();
-      parent->manager()->NotifyAccessibilityEvent(
-          ui::AX_EVENT_CHILDREN_CHANGED, parent);
-    }
+  // Whenever the tree ID or the root of this tree changes we may need to
+  // fire an event on our parent node in the parent tree to ensure that
+  // we're properly connected.
+  if (ax_tree_id_changed || root_changed)
+    connected_to_parent_tree_node_ = false;
+
+  // When the root changes and this is the root manager, we may need to
+  // fire a new focus event.
+  if (root_changed && last_focused_manager_ == this) {
+    last_focused_node_ = nullptr;
+    last_focused_manager_ = nullptr;
   }
 }
 
 BrowserAccessibilityManager* BrowserAccessibilityManager::GetRootManager() {
-  if (!GetRoot())
-    return nullptr;
-  int parent_tree_id = GetTreeData().parent_tree_id;
-  BrowserAccessibilityManager* parent_manager =
-      BrowserAccessibilityManager::FromID(parent_tree_id);
-  if (parent_manager)
-    return parent_manager->GetRootManager();
-  return this;
+  BrowserAccessibility* parent = GetParentNodeFromParentTree();
+  if (!parent)
+    return this;
+
+  return parent->manager()->GetRootManager();
 }
 
 BrowserAccessibilityDelegate*
@@ -844,10 +870,9 @@ BrowserAccessibilityDelegate*
 
 ui::AXTreeUpdate
 BrowserAccessibilityManager::SnapshotAXTreeForTesting() {
-  scoped_ptr<ui::AXTreeSource<const ui::AXNode*,
-                              ui::AXNodeData,
-                              ui::AXTreeData> > tree_source(
-      tree_->CreateTreeSource());
+  std::unique_ptr<
+      ui::AXTreeSource<const ui::AXNode*, ui::AXNodeData, ui::AXTreeData>>
+      tree_source(tree_->CreateTreeSource());
   ui::AXTreeSerializer<const ui::AXNode*,
                        ui::AXNodeData,
                        ui::AXTreeData> serializer(tree_source.get());

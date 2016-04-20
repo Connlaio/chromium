@@ -177,11 +177,12 @@ public:
     void setFilterQuality(SkFilterQuality);
 
     // Some GraphicsLayers paint only the foreground or the background content
+    GraphicsLayerPaintingPhase paintingPhase() const { return m_paintingPhase; }
     void setPaintingPhase(GraphicsLayerPaintingPhase);
 
     void setNeedsDisplay();
     // Mark the given rect (in layer coords) as needing display. Never goes deep.
-    void setNeedsDisplayInRect(const IntRect&, PaintInvalidationReason);
+    void setNeedsDisplayInRect(const IntRect&, PaintInvalidationReason, const DisplayItemClient&);
 
     void setContentsNeedsDisplay();
 
@@ -210,8 +211,7 @@ public:
     bool isTrackingPaintInvalidations() const { return m_client->isTrackingPaintInvalidations(); }
     void resetTrackedPaintInvalidations();
     bool hasTrackedPaintInvalidations() const;
-    void trackPaintInvalidationRect(const FloatRect&);
-    void trackPaintInvalidationObject(const String&);
+    void trackPaintInvalidation(const DisplayItemClient&, const FloatRect&, PaintInvalidationReason);
 
     void addLinkHighlight(LinkHighlight*);
     void removeLinkHighlight(LinkHighlight*);

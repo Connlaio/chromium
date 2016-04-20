@@ -1271,10 +1271,16 @@ unsigned Internals::scrollEventHandlerCount(Document* document)
     return eventHandlerCount(*document, EventHandlerRegistry::ScrollEvent);
 }
 
-unsigned Internals::touchEventHandlerCount(Document* document)
+unsigned Internals::touchStartOrMoveEventHandlerCount(Document* document)
 {
     ASSERT(document);
-    return eventHandlerCount(*document, EventHandlerRegistry::TouchEventBlocking);
+    return eventHandlerCount(*document, EventHandlerRegistry::TouchStartOrMoveEventBlocking) + eventHandlerCount(*document, EventHandlerRegistry::TouchStartOrMoveEventPassive);
+}
+
+unsigned Internals::touchEndOrCancelEventHandlerCount(Document* document)
+{
+    ASSERT(document);
+    return eventHandlerCount(*document, EventHandlerRegistry::TouchEndOrCancelEventBlocking) + eventHandlerCount(*document, EventHandlerRegistry::TouchEndOrCancelEventPassive);
 }
 
 static PaintLayer* findLayerForGraphicsLayer(PaintLayer* searchRoot, GraphicsLayer* graphicsLayer, IntSize* layerOffset, String* layerType)
@@ -2138,15 +2144,15 @@ bool Internals::cursorUpdatePending() const
     return frame()->eventHandler().cursorUpdatePending();
 }
 
-PassRefPtr<DOMArrayBuffer> Internals::serializeObject(PassRefPtr<SerializedScriptValue> value) const
+DOMArrayBuffer* Internals::serializeObject(PassRefPtr<SerializedScriptValue> value) const
 {
     String stringValue = value->toWireString();
-    RefPtr<DOMArrayBuffer> buffer = DOMArrayBuffer::createUninitialized(stringValue.length(), sizeof(UChar));
+    DOMArrayBuffer* buffer = DOMArrayBuffer::createUninitialized(stringValue.length(), sizeof(UChar));
     stringValue.copyTo(static_cast<UChar*>(buffer->data()), 0, stringValue.length());
-    return buffer.release();
+    return buffer;
 }
 
-PassRefPtr<SerializedScriptValue> Internals::deserializeBuffer(PassRefPtr<DOMArrayBuffer> buffer) const
+PassRefPtr<SerializedScriptValue> Internals::deserializeBuffer(DOMArrayBuffer* buffer) const
 {
     String value(static_cast<const UChar*>(buffer->data()), buffer->byteLength() / sizeof(UChar));
     return SerializedScriptValueFactory::instance().createFromWire(value);

@@ -118,6 +118,7 @@ public:
     void didDisplayContentWithCertificateErrors(const KURL&, const CString& securityInfo, const WebURL& mainResourceUrl, const CString& mainResourceSecurityInfo) override;
     void didRunContentWithCertificateErrors(const KURL&, const CString& securityInfo, const WebURL& mainResourceUrl, const CString& mainResourceSecurityInfo) override;
     void didChangePerformanceTiming() override;
+    void didObserveLoadingBehavior(WebLoadingBehaviorFlag) override;
     void selectorMatchChanged(const Vector<String>& addedSelectors, const Vector<String>& removedSelectors) override;
     DocumentLoader* createDocumentLoader(LocalFrame*, const ResourceRequest&, const SubstituteData&) override;
     WTF::String userAgent() override;
@@ -129,7 +130,7 @@ public:
         HTMLPlugInElement*, const KURL&,
         const Vector<WTF::String>&, const Vector<WTF::String>&,
         const WTF::String&, bool loadManually, DetachedPluginPolicy) override;
-    PassOwnPtr<WebMediaPlayer> createWebMediaPlayer(HTMLMediaElement&, const WebURL&, WebMediaPlayerClient*) override;
+    PassOwnPtr<WebMediaPlayer> createWebMediaPlayer(HTMLMediaElement&, const WebMediaPlayerSource&, WebMediaPlayerClient*) override;
     PassOwnPtr<WebMediaSession> createWebMediaSession() override;
     ObjectContentType getObjectContentType(
         const KURL&, const WTF::String& mimeType, bool shouldPreferPlugInsForImages) override;
@@ -165,8 +166,6 @@ public:
     bool allowWebGL(bool enabledPerSettings) override;
 
     void dispatchWillInsertBody() override;
-
-    v8::Local<v8::Value> createTestInterface(const AtomicString& name) override;
 
     PassOwnPtr<WebServiceWorkerProvider> createServiceWorkerProvider() override;
     bool isControlledByServiceWorker(DocumentLoader&) override;

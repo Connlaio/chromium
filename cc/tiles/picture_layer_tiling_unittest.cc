@@ -2,12 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cc/tiles/picture_layer_tiling.h"
+
 #include <stddef.h>
 
 #include <limits>
 #include <set>
 
 #include "base/macros.h"
+#include "base/memory/ptr_util.h"
 #include "cc/base/math_util.h"
 #include "cc/test/fake_output_surface.h"
 #include "cc/test/fake_output_surface_client.h"
@@ -15,7 +18,6 @@
 #include "cc/test/fake_raster_source.h"
 #include "cc/test/test_context_provider.h"
 #include "cc/test/test_shared_bitmap_manager.h"
-#include "cc/tiles/picture_layer_tiling.h"
 #include "cc/tiles/picture_layer_tiling_set.h"
 #include "cc/trees/layer_tree_settings.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -43,13 +45,13 @@ class TestablePictureLayerTiling : public PictureLayerTiling {
   using PictureLayerTiling::SetLiveTilesRect;
   using PictureLayerTiling::TileAt;
 
-  static scoped_ptr<TestablePictureLayerTiling> Create(
+  static std::unique_ptr<TestablePictureLayerTiling> Create(
       WhichTree tree,
       float contents_scale,
       scoped_refptr<RasterSource> raster_source,
       PictureLayerTilingClient* client,
       const LayerTreeSettings& settings) {
-    return make_scoped_ptr(new TestablePictureLayerTiling(
+    return base::WrapUnique(new TestablePictureLayerTiling(
         tree, contents_scale, raster_source, client,
         settings.tiling_interest_area_padding,
         settings.skewport_target_time_in_seconds,
@@ -197,7 +199,7 @@ class PictureLayerTilingIteratorTest : public testing::Test {
 
  protected:
   FakePictureLayerTilingClient client_;
-  scoped_ptr<TestablePictureLayerTiling> tiling_;
+  std::unique_ptr<TestablePictureLayerTiling> tiling_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(PictureLayerTilingIteratorTest);
@@ -470,6 +472,46 @@ TEST_F(PictureLayerTilingIteratorTest, RemoveOutsideLayerKeepsTiles) {
   EXPECT_TRUE(tiling_->TileAt(0, 0));
 }
 
+TEST_F(PictureLayerTilingIteratorTest, CreateTileJustCoverBorderUp) {
+  float content_scale = 1.2000000476837158f;
+  gfx::Size tile_size(512, 512);
+  gfx::Size layer_size(1440, 4560);
+  FakePictureLayerTilingClient active_client;
+
+  active_client.SetTileSize(tile_size);
+  scoped_refptr<FakeRasterSource> raster_source =
+      FakeRasterSource::CreateFilled(layer_size);
+  std::unique_ptr<TestablePictureLayerTiling> active_tiling =
+      TestablePictureLayerTiling::Create(ACTIVE_TREE, content_scale,
+                                         raster_source, &active_client,
+                                         LayerTreeSettings());
+  active_tiling->set_resolution(HIGH_RESOLUTION);
+
+  gfx::Rect invalid_rect(0, 750, 220, 100);
+  Initialize(tile_size, content_scale, layer_size);
+  client_.set_twin_tiling(active_tiling.get());
+  client_.set_invalidation(invalid_rect);
+  SetLiveRectAndVerifyTiles(gfx::Rect(layer_size));
+  // When it creates a tile in pending tree, verify that tiles are invalidated
+  // even if only their border pixels intersect the invalidation rect
+  EXPECT_TRUE(tiling_->TileAt(0, 1));
+  gfx::Rect scaled_invalid_rect =
+      gfx::ScaleToEnclosingRect(invalid_rect, content_scale);
+  EXPECT_FALSE(scaled_invalid_rect.Intersects(
+      tiling_->TilingDataForTesting().TileBounds(0, 2)));
+  EXPECT_TRUE(scaled_invalid_rect.Intersects(
+      tiling_->TilingDataForTesting().TileBoundsWithBorder(0, 2)));
+  EXPECT_TRUE(tiling_->TileAt(0, 2));
+
+  bool recreate_tiles = false;
+  active_tiling->RemoveTilesInRegion(invalid_rect, recreate_tiles);
+  // Even though a tile just touch border area of invalid region, verify that
+  // RemoveTilesInRegion behaves the same as SetLiveRectAndVerifyTiles with
+  // respect to the tiles that it invalidates
+  EXPECT_FALSE(active_tiling->TileAt(0, 1));
+  EXPECT_FALSE(active_tiling->TileAt(0, 2));
+}
+
 TEST_F(PictureLayerTilingIteratorTest, LiveTilesExactlyCoverLiveTileRect) {
   Initialize(gfx::Size(100, 100), 1.f, gfx::Size(1099, 801));
   SetLiveRectAndVerifyTiles(gfx::Rect(100, 100));
@@ -583,7 +625,7 @@ TEST(PictureLayerTilingTest, SkewportLimits) {
 
   scoped_refptr<FakeRasterSource> raster_source =
       FakeRasterSource::CreateFilled(layer_bounds);
-  scoped_ptr<TestablePictureLayerTiling> tiling =
+  std::unique_ptr<TestablePictureLayerTiling> tiling =
       TestablePictureLayerTiling::Create(ACTIVE_TREE, 1.0f, raster_source,
                                          &client, settings);
 
@@ -667,7 +709,7 @@ TEST(PictureLayerTilingTest, ComputeSkewportExtremeCases) {
   LayerTreeSettings settings;
   scoped_refptr<FakeRasterSource> raster_source =
       FakeRasterSource::CreateFilled(layer_bounds);
-  scoped_ptr<TestablePictureLayerTiling> tiling =
+  std::unique_ptr<TestablePictureLayerTiling> tiling =
       TestablePictureLayerTiling::Create(ACTIVE_TREE, 1.0f, raster_source,
                                          &client, settings);
 
@@ -700,7 +742,7 @@ TEST(PictureLayerTilingTest, ComputeSkewport) {
 
   scoped_refptr<FakeRasterSource> raster_source =
       FakeRasterSource::CreateFilled(layer_bounds);
-  scoped_ptr<TestablePictureLayerTiling> tiling =
+  std::unique_ptr<TestablePictureLayerTiling> tiling =
       TestablePictureLayerTiling::Create(ACTIVE_TREE, 1.0f, raster_source,
                                          &client, LayerTreeSettings());
 
@@ -762,7 +804,7 @@ TEST(PictureLayerTilingTest, SkewportThroughUpdateTilePriorities) {
 
   scoped_refptr<FakeRasterSource> raster_source =
       FakeRasterSource::CreateFilled(layer_bounds);
-  scoped_ptr<TestablePictureLayerTiling> tiling =
+  std::unique_ptr<TestablePictureLayerTiling> tiling =
       TestablePictureLayerTiling::Create(ACTIVE_TREE, 1.0f, raster_source,
                                          &client, LayerTreeSettings());
 
@@ -836,7 +878,7 @@ TEST(PictureLayerTilingTest, ViewportDistanceWithScale) {
   // tiling.
   scoped_refptr<FakeRasterSource> raster_source =
       FakeRasterSource::CreateFilled(layer_bounds);
-  scoped_ptr<TestablePictureLayerTiling> tiling =
+  std::unique_ptr<TestablePictureLayerTiling> tiling =
       TestablePictureLayerTiling::Create(ACTIVE_TREE, 0.25f, raster_source,
                                          &client, settings);
   tiling->set_resolution(HIGH_RESOLUTION);
@@ -1146,7 +1188,7 @@ TEST(ComputeTilePriorityRectsTest, VisibleTiles) {
 
   scoped_refptr<FakeRasterSource> raster_source =
       FakeRasterSource::CreateFilled(current_layer_bounds);
-  scoped_ptr<TestablePictureLayerTiling> tiling =
+  std::unique_ptr<TestablePictureLayerTiling> tiling =
       TestablePictureLayerTiling::Create(ACTIVE_TREE, 1.0f, raster_source,
                                          &client, LayerTreeSettings());
   tiling->set_resolution(HIGH_RESOLUTION);
@@ -1201,7 +1243,7 @@ TEST(ComputeTilePriorityRectsTest, OffscreenTiles) {
 
   scoped_refptr<FakeRasterSource> raster_source =
       FakeRasterSource::CreateFilled(current_layer_bounds);
-  scoped_ptr<TestablePictureLayerTiling> tiling =
+  std::unique_ptr<TestablePictureLayerTiling> tiling =
       TestablePictureLayerTiling::Create(ACTIVE_TREE, 1.0f, raster_source,
                                          &client, LayerTreeSettings());
   tiling->set_resolution(HIGH_RESOLUTION);
@@ -1266,7 +1308,7 @@ TEST(ComputeTilePriorityRectsTest, PartiallyOffscreenLayer) {
 
   scoped_refptr<FakeRasterSource> raster_source =
       FakeRasterSource::CreateFilled(current_layer_bounds);
-  scoped_ptr<TestablePictureLayerTiling> tiling =
+  std::unique_ptr<TestablePictureLayerTiling> tiling =
       TestablePictureLayerTiling::Create(ACTIVE_TREE, 1.0f, raster_source,
                                          &client, LayerTreeSettings());
   tiling->set_resolution(HIGH_RESOLUTION);
@@ -1325,7 +1367,7 @@ TEST(ComputeTilePriorityRectsTest, PartiallyOffscreenRotatedLayer) {
 
   scoped_refptr<FakeRasterSource> raster_source =
       FakeRasterSource::CreateFilled(current_layer_bounds);
-  scoped_ptr<TestablePictureLayerTiling> tiling =
+  std::unique_ptr<TestablePictureLayerTiling> tiling =
       TestablePictureLayerTiling::Create(ACTIVE_TREE, 1.0f, raster_source,
                                          &client, LayerTreeSettings());
   tiling->set_resolution(HIGH_RESOLUTION);
@@ -1409,7 +1451,7 @@ TEST(ComputeTilePriorityRectsTest, PerspectiveLayer) {
 
   scoped_refptr<FakeRasterSource> raster_source =
       FakeRasterSource::CreateFilled(current_layer_bounds);
-  scoped_ptr<TestablePictureLayerTiling> tiling =
+  std::unique_ptr<TestablePictureLayerTiling> tiling =
       TestablePictureLayerTiling::Create(ACTIVE_TREE, 1.0f, raster_source,
                                          &client, LayerTreeSettings());
   tiling->set_resolution(HIGH_RESOLUTION);
@@ -1503,7 +1545,7 @@ TEST(ComputeTilePriorityRectsTest, PerspectiveLayerClippedByW) {
 
   scoped_refptr<FakeRasterSource> raster_source =
       FakeRasterSource::CreateFilled(current_layer_bounds);
-  scoped_ptr<TestablePictureLayerTiling> tiling =
+  std::unique_ptr<TestablePictureLayerTiling> tiling =
       TestablePictureLayerTiling::Create(ACTIVE_TREE, 1.0f, raster_source,
                                          &client, LayerTreeSettings());
   tiling->set_resolution(HIGH_RESOLUTION);
@@ -1567,7 +1609,7 @@ TEST(ComputeTilePriorityRectsTest, BasicMotion) {
 
   scoped_refptr<FakeRasterSource> raster_source =
       FakeRasterSource::CreateFilled(current_layer_bounds);
-  scoped_ptr<TestablePictureLayerTiling> tiling =
+  std::unique_ptr<TestablePictureLayerTiling> tiling =
       TestablePictureLayerTiling::Create(ACTIVE_TREE, 1.0f, raster_source,
                                          &client, settings);
   tiling->set_resolution(HIGH_RESOLUTION);
@@ -1613,7 +1655,7 @@ TEST(ComputeTilePriorityRectsTest, RotationMotion) {
   // layer space and screen space.
 
   FakePictureLayerTilingClient client;
-  scoped_ptr<TestablePictureLayerTiling> tiling;
+  std::unique_ptr<TestablePictureLayerTiling> tiling;
 
   gfx::Size device_viewport(800, 600);
   gfx::Rect visible_layer_rect(0, 0, 0, 0);  // offscren.
@@ -1696,7 +1738,7 @@ TEST(PictureLayerTilingTest, RecycledTilesCleared) {
 
   scoped_refptr<FakeRasterSource> raster_source =
       FakeRasterSource::CreateFilled(gfx::Size(10000, 10000));
-  scoped_ptr<TestablePictureLayerTiling> active_tiling =
+  std::unique_ptr<TestablePictureLayerTiling> active_tiling =
       TestablePictureLayerTiling::Create(ACTIVE_TREE, 1.0f, raster_source,
                                          &active_client, settings);
   active_tiling->set_resolution(HIGH_RESOLUTION);
@@ -1709,7 +1751,7 @@ TEST(PictureLayerTilingTest, RecycledTilesCleared) {
   recycle_client.set_twin_tiling(active_tiling.get());
 
   raster_source = FakeRasterSource::CreateFilled(gfx::Size(10000, 10000));
-  scoped_ptr<TestablePictureLayerTiling> recycle_tiling =
+  std::unique_ptr<TestablePictureLayerTiling> recycle_tiling =
       TestablePictureLayerTiling::Create(PENDING_TREE, 1.0f, raster_source,
                                          &recycle_client, settings);
   recycle_tiling->set_resolution(HIGH_RESOLUTION);
@@ -1747,7 +1789,7 @@ TEST(PictureLayerTilingTest, RecycledTilesClearedOnReset) {
 
   scoped_refptr<FakeRasterSource> raster_source =
       FakeRasterSource::CreateFilled(gfx::Size(100, 100));
-  scoped_ptr<TestablePictureLayerTiling> active_tiling =
+  std::unique_ptr<TestablePictureLayerTiling> active_tiling =
       TestablePictureLayerTiling::Create(ACTIVE_TREE, 1.0f, raster_source,
                                          &active_client, LayerTreeSettings());
   active_tiling->set_resolution(HIGH_RESOLUTION);
@@ -1762,7 +1804,7 @@ TEST(PictureLayerTilingTest, RecycledTilesClearedOnReset) {
   LayerTreeSettings settings;
 
   raster_source = FakeRasterSource::CreateFilled(gfx::Size(100, 100));
-  scoped_ptr<TestablePictureLayerTiling> recycle_tiling =
+  std::unique_ptr<TestablePictureLayerTiling> recycle_tiling =
       TestablePictureLayerTiling::Create(PENDING_TREE, 1.0f, raster_source,
                                          &recycle_client, settings);
   recycle_tiling->set_resolution(HIGH_RESOLUTION);
@@ -1790,7 +1832,7 @@ TEST(PictureLayerTilingTest, InvalidateAfterComputeTilePriorityRects) {
 
   scoped_refptr<FakeRasterSource> raster_source =
       FakeRasterSource::CreateFilled(gfx::Size(100, 100));
-  scoped_ptr<TestablePictureLayerTiling> pending_tiling =
+  std::unique_ptr<TestablePictureLayerTiling> pending_tiling =
       TestablePictureLayerTiling::Create(PENDING_TREE, 1.0f, raster_source,
                                          &pending_client, LayerTreeSettings());
   pending_tiling->set_resolution(HIGH_RESOLUTION);

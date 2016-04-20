@@ -19,7 +19,6 @@
 #include "media/base/video_util.h"
 #include "third_party/webrtc/media/base/videoframe.h"
 #include "third_party/webrtc/media/base/videosinkinterface.h"
-#include "third_party/webrtc/system_wrappers/include/tick_util.h"
 
 namespace content {
 
@@ -71,8 +70,7 @@ MediaStreamRemoteVideoSource::RemoteVideoSourceDelegate::
       // the offset, 2) the rate (i.e., one clock runs faster than the other).
       // See http://crbug/516700
       time_diff_(base::TimeTicks::Now() - base::TimeTicks() -
-                 base::TimeDelta::FromMicroseconds(
-                     webrtc::TickTime::MicrosecondTimestamp())) {}
+                 base::TimeDelta::FromMicroseconds(rtc::TimeMicros())) {}
 
 MediaStreamRemoteVideoSource::
 RemoteVideoSourceDelegate::~RemoteVideoSourceDelegate() {
@@ -103,7 +101,7 @@ void MediaStreamRemoteVideoSource::RemoteVideoSourceDelegate::OnFrame(
     const cricket::VideoFrame* frame =
         incoming_frame.GetCopyWithRotationApplied();
 
-    gfx::Size size(frame->GetWidth(), frame->GetHeight());
+    gfx::Size size(frame->width(), frame->height());
 
     // Make a shallow copy. Both |frame| and |video_frame| will share a single
     // reference counted frame buffer. Const cast and hope no one will overwrite
@@ -140,7 +138,7 @@ RemoteVideoSourceDelegate::DoRenderFrameOnIOThread(
 }
 
 MediaStreamRemoteVideoSource::MediaStreamRemoteVideoSource(
-    scoped_ptr<TrackObserver> observer)
+    std::unique_ptr<TrackObserver> observer)
     : observer_(std::move(observer)) {
   // The callback will be automatically cleared when 'observer_' goes out of
   // scope and no further callbacks will occur.

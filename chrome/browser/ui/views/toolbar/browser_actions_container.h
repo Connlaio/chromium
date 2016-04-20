@@ -7,6 +7,8 @@
 
 #include <stddef.h>
 
+#include <memory>
+
 #include "base/macros.h"
 #include "base/observer_list.h"
 #include "chrome/browser/ui/toolbar/toolbar_actions_bar.h"
@@ -30,7 +32,7 @@ class Extension;
 }
 
 namespace views {
-class BubbleDelegateView;
+class BubbleDialogDelegateView;
 class ResizeArea;
 }
 
@@ -239,15 +241,12 @@ class BrowserActionsContainer : public views::View,
   int GetChevronWidth() const override;
   void ShowToolbarActionBubble(
       std::unique_ptr<ToolbarActionsBarBubbleDelegate> controller) override;
-  void ShowExtensionMessageBubble(
-      std::unique_ptr<extensions::ExtensionMessageBubbleController> controller,
-      ToolbarActionViewController* anchor_action) override;
 
   // views::WidgetObserver:
   void OnWidgetClosing(views::Widget* widget) override;
   void OnWidgetDestroying(views::Widget* widget) override;
 
-  views::BubbleDelegateView* active_bubble() { return active_bubble_; }
+  views::BubbleDialogDelegateView* active_bubble() { return active_bubble_; }
 
   ChevronMenuButton* chevron_for_testing() { return chevron_; }
 
@@ -329,7 +328,7 @@ class BrowserActionsContainer : public views::View,
   std::unique_ptr<DropPosition> drop_position_;
 
   // The extension bubble that is actively showing, if any.
-  views::BubbleDelegateView* active_bubble_;
+  views::BubbleDialogDelegateView* active_bubble_;
 
   DISALLOW_COPY_AND_ASSIGN(BrowserActionsContainer);
 };

@@ -14,6 +14,7 @@
 #include "base/cancelable_callback.h"
 #include "base/location.h"
 #include "base/macros.h"
+#include "base/memory/ptr_util.h"
 #include "base/single_thread_task_runner.h"
 #include "base/thread_task_runner_handle.h"
 #include "cc/base/unique_notifier.h"
@@ -21,9 +22,7 @@
 #include "cc/raster/gpu_rasterizer.h"
 #include "cc/raster/gpu_tile_task_worker_pool.h"
 #include "cc/raster/one_copy_tile_task_worker_pool.h"
-#include "cc/raster/raster_buffer.h"
 #include "cc/raster/synchronous_task_graph_runner.h"
-#include "cc/raster/tile_task_runner.h"
 #include "cc/raster/zero_copy_tile_task_worker_pool.h"
 #include "cc/resources/resource_pool.h"
 #include "cc/resources/resource_provider.h"
@@ -51,14 +50,14 @@ enum TileTaskWorkerPoolType {
   TILE_TASK_WORKER_POOL_TYPE_BITMAP
 };
 
-class TestRasterTaskImpl : public RasterTask {
+class TestRasterTaskImpl : public TileTask {
  public:
   typedef base::Callback<void(bool was_canceled)> Reply;
 
   TestRasterTaskImpl(const Resource* resource,
                      const Reply& reply,
-                     ImageDecodeTask::Vector* dependencies)
-      : RasterTask(dependencies),
+                     TileTask::Vector* dependencies)
+      : TileTask(true, dependencies),
         resource_(resource),
         reply_(reply),
         raster_source_(FakeRasterSource::CreateFilled(gfx::Size(1, 1))) {}
@@ -72,13 +71,13 @@ class TestRasterTaskImpl : public RasterTask {
   }
 
   // Overridden from TileTask:
-  void ScheduleOnOriginThread(TileTaskClient* client) override {
+  void ScheduleOnOriginThread(RasterBufferProvider* provider) override {
     // The raster buffer has no tile ids associated with it for partial update,
     // so doesn't need to provide a valid dirty rect.
-    raster_buffer_ = client->AcquireBufferForRaster(resource_, 0, 0);
+    raster_buffer_ = provider->AcquireBufferForRaster(resource_, 0, 0);
   }
-  void CompleteOnOriginThread(TileTaskClient* client) override {
-    client->ReleaseBufferForRaster(std::move(raster_buffer_));
+  void CompleteOnOriginThread(RasterBufferProvider* provider) override {
+    provider->ReleaseBufferForRaster(std::move(raster_buffer_));
     reply_.Run(!HasFinishedRunning());
   }
 
@@ -88,7 +87,7 @@ class TestRasterTaskImpl : public RasterTask {
  private:
   const Resource* resource_;
   const Reply reply_;
-  scoped_ptr<RasterBuffer> raster_buffer_;
+  std::unique_ptr<RasterBuffer> raster_buffer_;
   scoped_refptr<RasterSource> raster_source_;
 
   DISALLOW_COPY_AND_ASSIGN(TestRasterTaskImpl);
@@ -99,7 +98,7 @@ class BlockingTestRasterTaskImpl : public TestRasterTaskImpl {
   BlockingTestRasterTaskImpl(const Resource* resource,
                              const Reply& reply,
                              base::Lock* lock,
-                             ImageDecodeTask::Vector* dependencies)
+                             TileTask::Vector* dependencies)
       : TestRasterTaskImpl(resource, reply, dependencies), lock_(lock) {}
 
   // Overridden from Task:
@@ -125,7 +124,7 @@ class TileTaskWorkerPoolTest
     bool canceled;
   };
 
-  typedef std::vector<scoped_refptr<RasterTask>> RasterTaskVector;
+  typedef std::vector<scoped_refptr<TileTask>> RasterTaskVector;
 
   enum NamedTaskSet { REQUIRED_FOR_ACTIVATION, REQUIRED_FOR_DRAW, ALL };
 
@@ -175,18 +174,18 @@ class TileTaskWorkerPoolTest
   }
 
   void TearDown() override {
-    tile_task_worker_pool_->AsTileTaskRunner()->Shutdown();
-    tile_task_worker_pool_->AsTileTaskRunner()->CheckForCompletedTasks();
+    tile_task_worker_pool_->Shutdown();
+    tile_task_worker_pool_->CheckForCompletedTasks();
   }
 
   void AllTileTasksFinished() {
-    tile_task_worker_pool_->AsTileTaskRunner()->CheckForCompletedTasks();
+    tile_task_worker_pool_->CheckForCompletedTasks();
     base::MessageLoop::current()->QuitWhenIdle();
   }
 
   void RunMessageLoopUntilAllTasksHaveCompleted() {
     task_graph_runner_.RunUntilIdle();
-    tile_task_worker_pool_->AsTileTaskRunner()->CheckForCompletedTasks();
+    tile_task_worker_pool_->CheckForCompletedTasks();
   }
 
   void ScheduleTasks() {
@@ -200,17 +199,17 @@ class TileTaskWorkerPoolTest
                                 0 /* dependencies */);
     }
 
-    tile_task_worker_pool_->AsTileTaskRunner()->ScheduleTasks(&graph_);
+    tile_task_worker_pool_->ScheduleTasks(&graph_);
   }
 
   void AppendTask(unsigned id, const gfx::Size& size) {
-    scoped_ptr<ScopedResource> resource(
+    std::unique_ptr<ScopedResource> resource(
         ScopedResource::Create(resource_provider_.get()));
     resource->Allocate(size, ResourceProvider::TEXTURE_HINT_IMMUTABLE,
                        RGBA_8888);
     const Resource* const_resource = resource.get();
 
-    ImageDecodeTask::Vector empty;
+    TileTask::Vector empty;
     tasks_.push_back(new TestRasterTaskImpl(
         const_resource,
         base::Bind(&TileTaskWorkerPoolTest::OnTaskCompleted,
@@ -223,13 +222,13 @@ class TileTaskWorkerPoolTest
   void AppendBlockingTask(unsigned id, base::Lock* lock) {
     const gfx::Size size(1, 1);
 
-    scoped_ptr<ScopedResource> resource(
+    std::unique_ptr<ScopedResource> resource(
         ScopedResource::Create(resource_provider_.get()));
     resource->Allocate(size, ResourceProvider::TEXTURE_HINT_IMMUTABLE,
                        RGBA_8888);
     const Resource* const_resource = resource.get();
 
-    ImageDecodeTask::Vector empty;
+    TileTask::Vector empty;
     tasks_.push_back(new BlockingTestRasterTaskImpl(
         const_resource,
         base::Bind(&TileTaskWorkerPoolTest::OnTaskCompleted,
@@ -262,16 +261,15 @@ class TileTaskWorkerPoolTest
 
   void CreateSoftwareOutputSurfaceAndResourceProvider() {
     output_surface_ = FakeOutputSurface::CreateSoftware(
-        make_scoped_ptr(new SoftwareOutputDevice));
+        base::WrapUnique(new SoftwareOutputDevice));
     CHECK(output_surface_->BindToClient(&output_surface_client_));
     resource_provider_ = FakeResourceProvider::Create(
         output_surface_.get(), &shared_bitmap_manager_, nullptr);
   }
 
-  void OnTaskCompleted(
-      scoped_ptr<ScopedResource> resource,
-      unsigned id,
-      bool was_canceled) {
+  void OnTaskCompleted(std::unique_ptr<ScopedResource> resource,
+                       unsigned id,
+                       bool was_canceled) {
     RasterTaskResult result;
     result.id = id;
     result.canceled = was_canceled;
@@ -287,9 +285,9 @@ class TileTaskWorkerPoolTest
   scoped_refptr<TestContextProvider> context_provider_;
   scoped_refptr<TestContextProvider> worker_context_provider_;
   FakeOutputSurfaceClient output_surface_client_;
-  scoped_ptr<FakeOutputSurface> output_surface_;
-  scoped_ptr<ResourceProvider> resource_provider_;
-  scoped_ptr<TileTaskWorkerPool> tile_task_worker_pool_;
+  std::unique_ptr<FakeOutputSurface> output_surface_;
+  std::unique_ptr<ResourceProvider> resource_provider_;
+  std::unique_ptr<TileTaskWorkerPool> tile_task_worker_pool_;
   TestGpuMemoryBufferManager gpu_memory_buffer_manager_;
   TestSharedBitmapManager shared_bitmap_manager_;
   SynchronousTaskGraphRunner task_graph_runner_;

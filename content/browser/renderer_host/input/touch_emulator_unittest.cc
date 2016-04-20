@@ -2,14 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "content/browser/renderer_host/input/touch_emulator.h"
+
 #include <stddef.h>
 
+#include <memory>
 #include <vector>
 
-#include "base/memory/scoped_ptr.h"
 #include "base/message_loop/message_loop.h"
 #include "base/time/time.h"
-#include "content/browser/renderer_host/input/touch_emulator.h"
 #include "content/browser/renderer_host/input/touch_emulator_client.h"
 #include "content/common/input/web_input_event_traits.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -62,8 +63,11 @@ class TouchEmulatorTest : public testing::Test,
     EXPECT_EQ(1U, event.touchesLength);
     EXPECT_EQ(last_mouse_x_, event.touches[0].position.x);
     EXPECT_EQ(last_mouse_y_, event.touches[0].position.y);
-    bool expected_cancelable = event.type != WebInputEvent::TouchCancel;
-    EXPECT_EQ(expected_cancelable, !!event.cancelable);
+    WebInputEvent::DispatchType expected_dispatch_type =
+        event.type == WebInputEvent::TouchCancel
+            ? WebInputEvent::EventNonBlocking
+            : WebInputEvent::Blocking;
+    EXPECT_EQ(expected_dispatch_type, event.dispatchType);
     if (ack_touches_synchronously_) {
       emulator()->HandleTouchEventAck(
           event, INPUT_EVENT_ACK_STATE_NO_CONSUMER_EXISTS);
@@ -234,7 +238,7 @@ class TouchEmulatorTest : public testing::Test,
   void DisableSynchronousTouchAck() { ack_touches_synchronously_ = false; }
 
  private:
-  scoped_ptr<TouchEmulator> emulator_;
+  std::unique_ptr<TouchEmulator> emulator_;
   std::vector<WebInputEvent::Type> forwarded_events_;
   double last_event_time_seconds_;
   double event_time_delta_seconds_;

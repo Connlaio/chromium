@@ -110,7 +110,6 @@ public class PhysicalWeb {
     public static void onChromeStart(ChromeApplication application) {
         // The PhysicalWebUma calls in this method should be called only when the native library is
         // loaded.  This is always the case on chrome startup.
-        PhysicalWebUma.onChromeStart(application);
         if (featureIsEnabled()
                 && (isPhysicalWebPreferenceEnabled(application) || isOnboarding(application))) {
             startPhysicalWeb(application);

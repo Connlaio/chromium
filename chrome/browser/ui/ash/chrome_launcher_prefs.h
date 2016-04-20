@@ -7,6 +7,10 @@
 
 #include <string>
 
+#include "ash/shelf/shelf_types.h"
+
+class PrefService;
+
 namespace base {
 class DictionaryValue;
 }
@@ -36,6 +40,19 @@ void RegisterChromeLauncherUserPrefs(
     user_prefs::PrefRegistrySyncable* registry);
 
 base::DictionaryValue* CreateAppDict(const std::string& app_id);
+
+// Get or set the shelf auto hide behavior preference for a root window.
+ShelfAutoHideBehavior GetShelfAutoHideBehaviorPref(PrefService* prefs,
+                                                   int64_t display_id);
+void SetShelfAutoHideBehaviorPref(PrefService* prefs,
+                                  int64_t display_id,
+                                  ShelfAutoHideBehavior behavior);
+
+// Get or set the shelf alignment preference for a root window.
+ShelfAlignment GetShelfAlignmentPref(PrefService* prefs, int64_t display_id);
+void SetShelfAlignmentPref(PrefService* prefs,
+                           int64_t display_id,
+                           ShelfAlignment alignment);
 
 }  // namespace ash
 

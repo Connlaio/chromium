@@ -11,33 +11,34 @@
 #include "base/macros.h"
 #include "components/font_service/public/interfaces/font_service.mojom.h"
 #include "mojo/public/cpp/bindings/binding_set.h"
-#include "mojo/services/tracing/public/cpp/tracing_impl.h"
-#include "mojo/shell/public/cpp/interface_factory.h"
-#include "mojo/shell/public/cpp/shell_client.h"
+#include "services/shell/public/cpp/interface_factory.h"
+#include "services/shell/public/cpp/shell_client.h"
+#include "services/tracing/public/cpp/tracing_impl.h"
 #include "skia/ext/skia_utils_base.h"
 
 namespace font_service {
 
-class FontServiceApp : public mojo::ShellClient,
-                       public mojo::InterfaceFactory<FontService>,
+class FontServiceApp : public shell::ShellClient,
+                       public shell::InterfaceFactory<FontService>,
                        public FontService {
  public:
   FontServiceApp();
   ~FontServiceApp() override;
 
  private:
-  // mojo::ShellClient:
-  void Initialize(mojo::Connector* connector, const mojo::Identity& identity,
+  // shell::ShellClient:
+  void Initialize(shell::Connector* connector,
+                  const shell::Identity& identity,
                   uint32_t id) override;
-  bool AcceptConnection(mojo::Connection* connection) override;
+  bool AcceptConnection(shell::Connection* connection) override;
 
-  // mojo::InterfaceFactory<FontService>:
-  void Create(mojo::Connection* connection,
+  // shell::InterfaceFactory<FontService>:
+  void Create(shell::Connection* connection,
               mojo::InterfaceRequest<FontService> request) override;
 
   // FontService:
   void MatchFamilyName(const mojo::String& family_name,
-                       TypefaceStyle requested_style,
+                       TypefaceStylePtr requested_style,
                        const MatchFamilyNameCallback& callback) override;
   void OpenStream(uint32_t id_number,
                   const OpenStreamCallback& callback) override;

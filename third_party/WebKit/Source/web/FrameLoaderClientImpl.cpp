@@ -75,6 +75,7 @@
 #include "platform/plugins/PluginData.h"
 #include "public/platform/Platform.h"
 #include "public/platform/WebApplicationCacheHost.h"
+#include "public/platform/WebMediaPlayerSource.h"
 #include "public/platform/WebMimeRegistry.h"
 #include "public/platform/WebRTCPeerConnectionHandler.h"
 #include "public/platform/WebSecurityOrigin.h"
@@ -726,6 +727,12 @@ void FrameLoaderClientImpl::didChangePerformanceTiming()
         m_webFrame->client()->didChangePerformanceTiming();
 }
 
+void FrameLoaderClientImpl::didObserveLoadingBehavior(WebLoadingBehaviorFlag behavior)
+{
+    if (m_webFrame->client())
+        m_webFrame->client()->didObserveLoadingBehavior(behavior);
+}
+
 void FrameLoaderClientImpl::selectorMatchChanged(const Vector<String>& addedSelectors, const Vector<String>& removedSelectors)
 {
     if (WebFrameClient* client = m_webFrame->client())
@@ -820,7 +827,7 @@ Widget* FrameLoaderClientImpl::createPlugin(
 
 PassOwnPtr<WebMediaPlayer> FrameLoaderClientImpl::createWebMediaPlayer(
     HTMLMediaElement& htmlMediaElement,
-    const WebURL& url,
+    const WebMediaPlayerSource& source,
     WebMediaPlayerClient* client)
 {
     WebLocalFrameImpl* webFrame = WebLocalFrameImpl::fromFrame(
@@ -835,7 +842,8 @@ PassOwnPtr<WebMediaPlayer> FrameLoaderClientImpl::createWebMediaPlayer(
 
     HTMLMediaElementEncryptedMedia& encryptedMedia = HTMLMediaElementEncryptedMedia::from(htmlMediaElement);
     WebString sinkId(HTMLMediaElementAudioOutputDevice::sinkId(htmlMediaElement));
-    return adoptPtr(webFrame->client()->createMediaPlayer(url, client, &encryptedMedia,
+    return adoptPtr(webFrame->client()->createMediaPlayer(source,
+        client, &encryptedMedia,
         encryptedMedia.contentDecryptionModule(), sinkId, webMediaSession));
 }
 
@@ -983,11 +991,6 @@ void FrameLoaderClientImpl::dispatchWillInsertBody()
 
     if (m_webFrame->viewImpl())
         m_webFrame->viewImpl()->willInsertMainFrameDocumentBody();
-}
-
-v8::Local<v8::Value> FrameLoaderClientImpl::createTestInterface(const AtomicString& name)
-{
-    return m_webFrame->createTestInterface(name);
 }
 
 PassOwnPtr<WebServiceWorkerProvider> FrameLoaderClientImpl::createServiceWorkerProvider()

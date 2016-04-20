@@ -4,6 +4,8 @@
 
 var Event = require('event_bindings').Event;
 var forEach = require('utils').forEach;
+// Note: Beware sneaky getters/setters when using GetAvailbility(). Use safe/raw
+// variables as arguments.
 var GetAvailability = requireNative('v8_context').GetAvailability;
 var exceptionHandler = require('uncaught_exception_handler');
 var lastError = require('lastError');
@@ -164,6 +166,19 @@ function createCustomType(type) {
   var jsModuleName = type.js_module;
   logging.CHECK(jsModuleName, 'Custom type ' + type.id +
                 ' has no "js_module" property.');
+  // This list contains all types that has a js_module property. It is ugly to
+  // hard-code them here, but the number of APIs that use js_module has not
+  // changed since the introduction of js_modules in crbug.com/222156.
+  // This whitelist serves as an extra line of defence to avoid exposing
+  // arbitrary extension modules when the |type| definition is poisoned.
+  var whitelistedModules = [
+    'ChromeDirectSetting',
+    'ChromeSetting',
+    'ContentSetting',
+    'StorageArea',
+  ];
+  logging.CHECK($Array.indexOf(whitelistedModules, jsModuleName) !== -1,
+                'Module ' + jsModuleName + ' does not define a custom type.');
   var jsModule = require(jsModuleName);
   logging.CHECK(jsModule, 'No module ' + jsModuleName + ' found for ' +
                 type.id + '.');
@@ -176,18 +191,28 @@ function createCustomType(type) {
 
 var platform = getPlatform();
 
-function Binding(schema) {
-  this.schema_ = schema;
-  this.apiFunctions_ = new APIFunctions(schema.namespace);
-  this.customEvent_ = null;
+function Binding(apiName) {
+  this.apiName_ = apiName;
+  this.apiFunctions_ = new APIFunctions(apiName);
   this.customHooks_ = [];
 };
 
 Binding.create = function(apiName) {
-  return new Binding(schemaRegistry.GetSchema(apiName));
+  return new Binding(apiName);
 };
 
 Binding.prototype = {
+  // Sneaky workaround for Object.prototype getters/setters - our prototype
+  // isn't Object.prototype. SafeBuiltins (e.g. $Object.hasOwnProperty())
+  // should still work.
+  __proto__: null,
+
+  // Forward-declare properties.
+  apiName_: undefined,
+  apiFunctions_: undefined,
+  customEvent_: undefined,
+  customHooks_: undefined,
+
   // The API through which the ${api_name}_custom_bindings.js files customize
   // their API bindings beyond what can be generated.
   //
@@ -211,9 +236,9 @@ Binding.prototype = {
   },
 
   // TODO(kalman/cduvall): Refactor this so |runHooks_| is not needed.
-  runHooks_: function(api) {
+  runHooks_: function(api, schema) {
     $Array.forEach(this.customHooks_, function(hook) {
-      if (!isSchemaNodeSupported(this.schema_, platform, manifestVersion))
+      if (!isSchemaNodeSupported(schema, platform, manifestVersion))
         return;
 
       if (!hook)
@@ -221,16 +246,23 @@ Binding.prototype = {
 
       hook({
         apiFunctions: this.apiFunctions_,
-        schema: this.schema_,
+        schema: schema,
         compiledApi: api
       }, extensionId, contextType);
     }, this);
   },
 
-  // Generates the bindings from |this.schema_| and integrates any custom
-  // bindings that might be present.
+  // Generates the bindings from the schema for |this.apiName_| and integrates
+  // any custom bindings that might be present.
   generate: function() {
-    var schema = this.schema_;
+    // NB: It's important to load the schema during generation rather than
+    // setting it beforehand so that we're more confident the schema we're
+    // loading is real, and not one that was injected by a page intercepting
+    // Binding.generate.
+    // Additionally, since the schema is an object returned from a native
+    // handler, its properties don't have the custom getters/setters that a page
+    // may have put on Object.prototype, and the object is frozen by v8.
+    var schema = schemaRegistry.GetSchema(this.apiName_);
 
     function shouldCheckUnprivileged() {
       var shouldCheck = 'unprivileged' in schema;
@@ -359,9 +391,10 @@ Binding.prototype = {
 
         var apiFunction = {};
         apiFunction.definition = functionDef;
-        apiFunction.name = schema.namespace + '.' + functionDef.name;
+        var apiFunctionName = schema.namespace + '.' + functionDef.name;
+        apiFunction.name = apiFunctionName;
 
-        if (!GetAvailability(apiFunction.name).is_available ||
+        if (!GetAvailability(apiFunctionName).is_available ||
             (checkUnprivileged && !isSchemaAccessAllowed(functionDef))) {
           this.apiFunctions_.registerUnavailable(functionDef.name);
           return;
@@ -533,7 +566,7 @@ Binding.prototype = {
       return;
     }
 
-    this.runHooks_(mod);
+    this.runHooks_(mod, schema);
     return mod;
   }
 };

@@ -5,6 +5,8 @@
 #include "content/common/gpu/client/context_provider_command_buffer.h"
 
 #include <stddef.h>
+
+#include <memory>
 #include <set>
 #include <utility>
 #include <vector>
@@ -12,8 +14,8 @@
 #include "base/callback_helpers.h"
 #include "base/strings/stringprintf.h"
 #include "cc/output/managed_memory_policy.h"
-#include "content/common/gpu/client/grcontext_for_gles2_interface.h"
 #include "gpu/command_buffer/client/gles2_implementation.h"
+#include "gpu/skia_bindings/grcontext_for_gles2_interface.h"
 #include "third_party/skia/include/gpu/GrContext.h"
 
 namespace content {
@@ -36,20 +38,12 @@ class ContextProviderCommandBuffer::LostContextCallbackProxy
   ContextProviderCommandBuffer* provider_;
 };
 
-scoped_refptr<ContextProviderCommandBuffer>
-ContextProviderCommandBuffer::Create(
-    scoped_ptr<WebGraphicsContext3DCommandBufferImpl> context3d,
-    CommandBufferContextType type) {
-  if (!context3d)
-    return NULL;
-
-  return new ContextProviderCommandBuffer(std::move(context3d), type);
-}
-
 ContextProviderCommandBuffer::ContextProviderCommandBuffer(
-    scoped_ptr<WebGraphicsContext3DCommandBufferImpl> context3d,
+    std::unique_ptr<WebGraphicsContext3DCommandBufferImpl> context3d,
+    const gpu::SharedMemoryLimits& memory_limits,
     CommandBufferContextType type)
     : context3d_(std::move(context3d)),
+      memory_limits_(memory_limits),
       context_type_(type),
       debug_name_(CommandBufferContextTypeToString(type)) {
   DCHECK(main_thread_checker_.CalledOnValidThread());
@@ -89,10 +83,8 @@ bool ContextProviderCommandBuffer::BindToCurrentThread() {
     return true;
 
   context3d_->SetContextType(context_type_);
-  if (!context3d_->InitializeOnCurrentThread())
+  if (!context3d_->InitializeOnCurrentThread(memory_limits_))
     return false;
-
-  InitializeCapabilities();
 
   std::string unique_context_name =
       base::StringPrintf("%s-%p", debug_name_.c_str(), context3d_.get());
@@ -126,8 +118,8 @@ class GrContext* ContextProviderCommandBuffer::GrContext() {
   if (gr_context_)
     return gr_context_->get();
 
-  gr_context_.reset(
-      new GrContextForGLES2Interface(context3d_->GetGLInterface()));
+  gr_context_.reset(new skia_bindings::GrContextForGLES2Interface(
+      context3d_->GetGLInterface()));
 
   // If GlContext is already lost, also abandon the new GrContext.
   if (gr_context_->get() &&
@@ -141,7 +133,7 @@ void ContextProviderCommandBuffer::InvalidateGrContext(uint32_t state) {
   if (gr_context_) {
     DCHECK(lost_context_callback_proxy_);  // Is bound to thread.
     DCHECK(context_thread_checker_.CalledOnValidThread());
-    gr_context_->get()->resetContext(state);
+    gr_context_->ResetContext(state);
   }
 }
 
@@ -154,12 +146,10 @@ base::Lock* ContextProviderCommandBuffer::GetLock() {
   return &context_lock_;
 }
 
-cc::ContextProvider::Capabilities
-ContextProviderCommandBuffer::ContextCapabilities() {
+gpu::Capabilities ContextProviderCommandBuffer::ContextCapabilities() {
   DCHECK(lost_context_callback_proxy_);  // Is bound to thread.
   DCHECK(context_thread_checker_.CalledOnValidThread());
-
-  return capabilities_;
+  return context3d_->GetImplementation()->capabilities();
 }
 
 void ContextProviderCommandBuffer::DeleteCachedResources() {
@@ -173,21 +163,9 @@ void ContextProviderCommandBuffer::OnLostContext() {
   DCHECK(context_thread_checker_.CalledOnValidThread());
 
   if (!lost_context_callback_.is_null())
-    base::ResetAndReturn(&lost_context_callback_).Run();
+    lost_context_callback_.Run();
   if (gr_context_)
     gr_context_->OnLostContext();
-}
-
-void ContextProviderCommandBuffer::InitializeCapabilities() {
-  Capabilities caps;
-  caps.gpu = context3d_->GetImplementation()->capabilities();
-
-  size_t mapped_memory_limit = context3d_->GetMappedMemoryLimit();
-  caps.max_transfer_buffer_usage_bytes =
-      mapped_memory_limit == WebGraphicsContext3DCommandBufferImpl::kNoLimit
-      ? std::numeric_limits<size_t>::max() : mapped_memory_limit;
-
-  capabilities_ = caps;
 }
 
 void ContextProviderCommandBuffer::SetLostContextCallback(

@@ -155,6 +155,7 @@
 #include "web/ContextFeaturesClientImpl.h"
 #include "web/ContextMenuAllowedScope.h"
 #include "web/DatabaseClientImpl.h"
+#include "web/DedicatedWorkerGlobalScopeProxyProviderImpl.h"
 #include "web/DevToolsEmulator.h"
 #include "web/FullscreenController.h"
 #include "web/InspectorOverlay.h"
@@ -174,7 +175,6 @@
 #include "web/WebPluginContainerImpl.h"
 #include "web/WebRemoteFrameImpl.h"
 #include "web/WebSettingsImpl.h"
-#include "web/WorkerGlobalScopeProxyProviderImpl.h"
 #include "wtf/CurrentTime.h"
 #include "wtf/RefPtr.h"
 #include "wtf/TemporaryChange.h"
@@ -401,7 +401,6 @@ WebViewImpl::WebViewImpl(WebViewClient* client)
     , m_spellCheckClient(nullptr)
     , m_chromeClientImpl(ChromeClientImpl::create(this))
     , m_contextMenuClientImpl(this)
-    , m_dragClientImpl(this)
     , m_editorClientImpl(this)
     , m_spellCheckerClientImpl(this)
     , m_storageClientImpl(this)
@@ -450,7 +449,6 @@ WebViewImpl::WebViewImpl(WebViewClient* client)
     pageClients.chromeClient = m_chromeClientImpl.get();
     pageClients.contextMenuClient = &m_contextMenuClientImpl;
     pageClients.editorClient = &m_editorClientImpl;
-    pageClients.dragClient = &m_dragClientImpl;
     pageClients.spellCheckerClient = &m_spellCheckerClientImpl;
 
     m_page = Page::createOrdinary(pageClients);
@@ -461,7 +459,7 @@ WebViewImpl::WebViewImpl(WebViewClient* client)
 
     provideStorageQuotaClientTo(*m_page, StorageQuotaClientImpl::create());
     m_page->setValidationMessageClient(ValidationMessageClientImpl::create(*this));
-    provideWorkerGlobalScopeProxyProviderTo(*m_page, WorkerGlobalScopeProxyProviderImpl::create());
+    provideDedicatedWorkerGlobalScopeProxyProviderTo(*m_page, DedicatedWorkerGlobalScopeProxyProviderImpl::create());
     StorageNamespaceController::provideStorageNamespaceTo(*m_page, &m_storageClientImpl);
 
     if (m_client) {
@@ -535,8 +533,6 @@ void WebViewImpl::handleMouseDown(LocalFrame& mainFrame, const WebMouseEvent& ev
         hidePopups();
         DCHECK(!m_pagePopup);
     }
-
-    m_lastMouseDownPoint = WebPoint(event.x, event.y);
 
     // Take capture on a mouse down on a plugin so we can send it mouse events.
     // If the hit node is a plugin but a scrollbar is over it don't start mouse
@@ -905,7 +901,7 @@ WebInputEventResult WebViewImpl::handleGestureEvent(const WebGestureEvent& event
         break;
     }
     default:
-        ASSERT_NOT_REACHED();
+        NOTREACHED();
     }
     m_client->didHandleGestureEvent(event, eventCancelled);
     return eventResult;
@@ -2200,7 +2196,7 @@ WebInputEventResult WebViewImpl::handleInputEvent(const WebInputEvent& inputEven
             gestureIndicator = adoptPtr(new UserGestureIndicator(m_mouseCaptureGestureToken.release()));
             break;
         default:
-            ASSERT_NOT_REACHED();
+            NOTREACHED();
         }
 
         node->dispatchMouseEvent(
@@ -2581,7 +2577,7 @@ int WebViewImpl::textInputFlags()
             else if (autocapitalize == sentences)
                 flags |= WebTextInputFlagAutocapitalizeSentences;
             else
-                ASSERT_NOT_REACHED();
+                NOTREACHED();
         }
     }
 
@@ -3434,7 +3430,8 @@ IntSize WebViewImpl::contentsSize() const
 
 WebSize WebViewImpl::contentsPreferredMinimumSize()
 {
-    updateAllLifecyclePhases();
+    if (mainFrameImpl())
+        mainFrameImpl()->frame()->view()->updateLifecycleToCompositingCleanPlusScrolling();
 
     Document* document = m_page->mainFrame()->isLocalFrame() ? m_page->deprecatedLocalMainFrame()->document() : nullptr;
     if (!document || !document->layoutView() || !document->documentElement() || !document->documentElement()->layoutBox())
@@ -3467,7 +3464,6 @@ float WebViewImpl::maximumPageScaleFactor() const
 
 void WebViewImpl::resetScaleStateImmediately()
 {
-    page()->frameHost().visualViewport().setScale(1);
     pageScaleConstraintsSet().setNeedsReset(true);
 }
 
@@ -3514,7 +3510,7 @@ void WebViewImpl::performMediaPlayerAction(const WebMediaPlayerAction& action,
         mediaElement->setBooleanAttribute(HTMLNames::controlsAttr, action.enable);
         break;
     default:
-        ASSERT_NOT_REACHED();
+        NOTREACHED();
     }
 }
 
@@ -3540,7 +3536,7 @@ void WebViewImpl::performPluginAction(const WebPluginAction& action,
                 plugin->plugin()->rotateView(WebPlugin::RotationType90Counterclockwise);
                 break;
             default:
-                ASSERT_NOT_REACHED();
+                NOTREACHED();
             }
         }
     }
@@ -4386,27 +4382,6 @@ void WebViewImpl::applyViewportDeltas(
     }
 }
 
-void WebViewImpl::recordFrameTimingEvent(FrameTimingEventType eventType, int64_t FrameId, const WebVector<WebFrameTimingEvent>& events)
-{
-    Frame* frame = m_page ? m_page->mainFrame() : 0;
-
-    while (frame && frame->frameID() != FrameId) {
-        frame = frame->tree().traverseNext();
-    }
-
-    if (!frame || !frame->domWindow() || !frame->domWindow()->document())
-        return; // Can't find frame, it may have been cleaned up from the DOM.
-
-    blink::DOMWindow* domWindow = frame->domWindow();
-    blink::Performance* performance = DOMWindowPerformance::performance(*domWindow);
-    for (size_t i = 0; i < events.size(); ++i) {
-        if (eventType == CompositeEvent)
-            performance->addCompositeTiming(domWindow->document(), events[i].sourceFrame, events[i].startTime);
-        else if (eventType == RenderEvent)
-            performance->addRenderTiming(domWindow->document(), events[i].sourceFrame, events[i].startTime, events[i].finishTime);
-    }
-}
-
 void WebViewImpl::updateLayerTreeViewport()
 {
     if (!page() || !m_layerTreeView)
@@ -4528,7 +4503,7 @@ void WebViewImpl::pointerLockMouseEvent(const WebInputEvent& event)
         eventType = EventTypeNames::mousemove;
         break;
     default:
-        ASSERT_NOT_REACHED();
+        NOTREACHED();
     }
 
     const WebMouseEvent& mouseEvent = static_cast<const WebMouseEvent&>(event);

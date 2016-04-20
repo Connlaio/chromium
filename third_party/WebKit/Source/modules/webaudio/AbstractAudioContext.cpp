@@ -189,6 +189,14 @@ bool AbstractAudioContext::hasPendingActivity() const
     return !m_isCleared;
 }
 
+AudioDestinationNode* AbstractAudioContext::destination() const
+{
+    // Cannot be called from the audio thread because this method touches objects managed by Oilpan,
+    // and the audio thread is not managed by Oilpan.
+    ASSERT(!isAudioThread());
+    return m_destinationNode.get();
+}
+
 void AbstractAudioContext::throwExceptionForClosedState(ExceptionState& exceptionState)
 {
     exceptionState.throwDOMException(InvalidStateError, "AudioContext has been closed.");
@@ -942,7 +950,7 @@ DEFINE_TRACE(AbstractAudioContext)
     visitor->trace(m_periodicWaveSquare);
     visitor->trace(m_periodicWaveSawtooth);
     visitor->trace(m_periodicWaveTriangle);
-    RefCountedGarbageCollectedEventTargetWithInlineData<AbstractAudioContext>::trace(visitor);
+    EventTargetWithInlineData::trace(visitor);
     ActiveDOMObject::trace(visitor);
 }
 

@@ -33,6 +33,7 @@
 #include "core/editing/PositionWithAffinity.h"
 #include "core/editing/VisiblePosition.h"
 #include "core/editing/VisibleSelection.h"
+#include "core/events/InputEvent.h"
 #include "platform/text/TextDirection.h"
 #include "wtf/Forward.h"
 #include "wtf/text/CharacterNames.h"
@@ -217,6 +218,8 @@ CORE_EXPORT int nextGraphemeBoundaryOf(const Node*, int current);
 // positions don't have common ancestor.
 int comparePositionsInDOMTree(Node* containerA, int offsetA, Node* containerB, int offsetB, bool* disconnected = nullptr);
 int comparePositionsInFlatTree(Node* containerA, int offsetA, Node* containerB, int offsetB, bool* disconnected = nullptr);
+// TODO(yosin): We replace |comparePositions()| by |Position::opeator<()| to
+// utilize |DCHECK_XX()|.
 int comparePositions(const Position&, const Position&);
 int comparePositions(const PositionWithAffinity&, const PositionWithAffinity&);
 
@@ -274,7 +277,7 @@ bool lineBreakExistsAtVisiblePosition(const VisiblePosition&);
 
 int comparePositions(const VisiblePosition&, const VisiblePosition&);
 
-int indexForVisiblePosition(const VisiblePosition&, RawPtr<ContainerNode>& scope);
+int indexForVisiblePosition(const VisiblePosition&, ContainerNode*& scope);
 EphemeralRange makeRange(const VisiblePosition&, const VisiblePosition&);
 EphemeralRange normalizeRange(const EphemeralRange&);
 EphemeralRangeInFlatTree normalizeRange(const EphemeralRangeInFlatTree&);
@@ -286,8 +289,8 @@ VisiblePosition visiblePositionForIndex(int index, ContainerNode* scope);
 
 // Functions returning HTMLElement
 
-RawPtr<HTMLElement> createDefaultParagraphElement(Document&);
-RawPtr<HTMLElement> createHTMLElement(Document&, const QualifiedName&);
+HTMLElement* createDefaultParagraphElement(Document&);
+HTMLElement* createHTMLElement(Document&, const QualifiedName&);
 
 HTMLElement* enclosingList(Node*);
 HTMLElement* outermostEnclosingList(Node*, HTMLElement* rootList = nullptr);
@@ -299,8 +302,8 @@ Node* enclosingListChild(Node*);
 
 // Functions returning Element
 
-RawPtr<HTMLSpanElement> createTabSpanElement(Document&);
-RawPtr<HTMLSpanElement> createTabSpanElement(Document&, const String& tabText);
+HTMLSpanElement* createTabSpanElement(Document&);
+HTMLSpanElement* createTabSpanElement(Document&, const String& tabText);
 
 Element* rootEditableElementOf(const Position&, EditableType = ContentIsEditable);
 Element* rootEditableElementOf(const PositionInFlatTree&, EditableType = ContentIsEditable);
@@ -343,6 +346,15 @@ inline bool isAmbiguousBoundaryCharacter(UChar character)
 
 String stringWithRebalancedWhitespace(const String&, bool startIsStartOfParagraph, bool endIsEndOfParagraph);
 const String& nonBreakingSpaceString();
+
+// -------------------------------------------------------------------------
+// Events
+// -------------------------------------------------------------------------
+
+// Functions dispatch InputEvent
+DispatchEventResult dispatchBeforeInputInsertText(EventTarget*, const String& data);
+DispatchEventResult dispatchBeforeInputFromComposition(EventTarget*, InputEvent::InputType, const String& data);
+DispatchEventResult dispatchBeforeInputEditorCommand(EventTarget*, InputEvent::InputType, const String& data = "");
 
 } // namespace blink
 

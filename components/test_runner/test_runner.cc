@@ -15,7 +15,9 @@
 #include "base/strings/stringprintf.h"
 #include "build/build_config.h"
 #include "components/test_runner/app_banner_client.h"
+#include "components/test_runner/layout_and_paint_async_then.h"
 #include "components/test_runner/layout_dump.h"
+#include "components/test_runner/mock_content_settings_client.h"
 #include "components/test_runner/mock_credential_manager_client.h"
 #include "components/test_runner/mock_screen_orientation_client.h"
 #include "components/test_runner/mock_web_speech_recognizer.h"
@@ -24,7 +26,6 @@
 #include "components/test_runner/spell_check_client.h"
 #include "components/test_runner/test_interfaces.h"
 #include "components/test_runner/test_preferences.h"
-#include "components/test_runner/web_content_settings.h"
 #include "components/test_runner/web_task.h"
 #include "components/test_runner/web_test_delegate.h"
 #include "components/test_runner/web_test_proxy.h"
@@ -190,6 +191,7 @@ class TestRunnerBindings : public gin::Wrappable<TestRunnerBindings> {
   void ResetTestHelperControllers();
   void ResolveBeforeInstallPromptPromise(int request_id,
                                          const std::string& platform);
+  void RunIdleTasks(v8::Local<v8::Function> callback);
   void SendBluetoothManualChooserEvent(const std::string& event,
                                        const std::string& argument);
   void SetAcceptLanguages(const std::string& accept_languages);
@@ -474,6 +476,8 @@ gin::ObjectTemplateBuilder TestRunnerBindings::GetObjectTemplateBuilder(
                  &TestRunnerBindings::ResetTestHelperControllers)
       .SetMethod("resolveBeforeInstallPromptPromise",
                  &TestRunnerBindings::ResolveBeforeInstallPromptPromise)
+      .SetMethod("runIdleTasks",
+                 &TestRunnerBindings::RunIdleTasks)
       .SetMethod("selectionAsMarkup", &TestRunnerBindings::SelectionAsMarkup)
 
       // The Bluetooth functions are specified at
@@ -1462,6 +1466,12 @@ void TestRunnerBindings::ResolveBeforeInstallPromptPromise(
   runner_->ResolveBeforeInstallPromptPromise(request_id, platform);
 }
 
+void TestRunnerBindings::RunIdleTasks(v8::Local<v8::Function> callback) {
+  if (!runner_)
+    return;
+  runner_->RunIdleTasks(callback);
+}
+
 std::string TestRunnerBindings::PlatformName() {
   if (runner_)
     return runner_->platform_name_;
@@ -1482,13 +1492,15 @@ int TestRunnerBindings::WebHistoryItemCount() {
 
 bool TestRunnerBindings::InterceptPostMessage() {
   if (runner_)
-    return runner_->intercept_post_message_;
+    return runner_->shouldInterceptPostMessage();
   return false;
 }
 
 void TestRunnerBindings::SetInterceptPostMessage(bool value) {
-  if (runner_)
-    runner_->intercept_post_message_ = value;
+  if (runner_) {
+    runner_->layout_test_runtime_flags_.set_intercept_post_message(value);
+    runner_->OnLayoutTestRuntimeFlagsChanged();
+  }
 }
 
 void TestRunnerBindings::ForceNextWebGLContextCreationToFail() {
@@ -1561,15 +1573,16 @@ TestRunner::TestRunner(TestInterfaces* interfaces)
       close_remaining_windows_(false),
       work_queue_(this),
       web_history_item_count_(0),
-      intercept_post_message_(false),
       test_interfaces_(interfaces),
       delegate_(nullptr),
       web_view_(nullptr),
-      web_content_settings_(new WebContentSettings()),
+      mock_content_settings_client_(
+          new MockContentSettingsClient(&layout_test_runtime_flags_)),
       credential_manager_client_(new MockCredentialManagerClient),
       mock_screen_orientation_client_(new MockScreenOrientationClient),
       spellcheck_(new SpellCheckClient(this)),
       chooser_count_(0),
+      previously_focused_view_(nullptr),
       weak_factory_(this) {}
 
 TestRunner::~TestRunner() {}
@@ -1580,15 +1593,14 @@ void TestRunner::Install(WebFrame* frame) {
 
 void TestRunner::SetDelegate(WebTestDelegate* delegate) {
   delegate_ = delegate;
-  web_content_settings_->SetDelegate(delegate);
+  mock_content_settings_client_->SetDelegate(delegate);
   spellcheck_->SetDelegate(delegate);
   if (speech_recognizer_)
     speech_recognizer_->SetDelegate(delegate);
 }
 
-void TestRunner::SetWebView(WebView* webView, WebTestProxyBase* proxy) {
+void TestRunner::SetWebView(WebView* webView) {
   web_view_ = webView;
-  proxy_ = proxy;
 }
 
 void TestRunner::Reset() {
@@ -1613,7 +1625,6 @@ void TestRunner::Reset() {
   mock_screen_orientation_client_->ResetData();
   drag_image_.reset();
   views_with_scheduled_animations_.clear();
-  wait_until_external_url_load_ = false;
 
   WebSecurityPolicy::resetOriginAccessWhitelists();
 #if defined(__linux__) || defined(ANDROID)
@@ -1636,26 +1647,15 @@ void TestRunner::Reset() {
     ResetDeviceLight();
   }
 
-  dump_editting_callbacks_ = false;
-  dump_icon_changes_ = false;
   dump_as_audio_ = false;
-  dump_frame_load_callbacks_ = false;
-  dump_ping_loader_callbacks_ = false;
-  dump_user_gesture_in_frame_load_callbacks_ = false;
-  dump_title_changes_ = false;
   dump_create_view_ = false;
   can_open_windows_ = false;
-  dump_resource_load_callbacks_ = false;
-  dump_resource_response_mime_types_ = false;
   dump_window_status_changes_ = false;
   dump_spell_check_callbacks_ = false;
   dump_back_forward_list_ = false;
-  dump_navigation_policy_ = false;
   test_repaint_ = false;
   sweep_horizontally_ = false;
   midi_accessor_result_ = true;
-  should_stay_on_page_after_handling_before_unload_ = false;
-  should_dump_resource_priorities_ = false;
   has_custom_text_output_ = false;
   custom_text_output_.clear();
 
@@ -1664,9 +1664,6 @@ void TestRunner::Reset() {
   platform_name_ = "chromium";
   tooltip_text_ = std::string();
   web_history_item_count_ = 0;
-  intercept_post_message_ = false;
-
-  web_content_settings_->Reset();
 
   SetUseMockTheme(true);
 
@@ -1756,7 +1753,7 @@ base::Closure TestRunner::CreateClosureThatPostsV8Callback(
 }
 
 bool TestRunner::shouldDumpEditingCallbacks() const {
-  return dump_editting_callbacks_;
+  return layout_test_runtime_flags_.dump_editting_callbacks();
 }
 
 void TestRunner::setShouldDumpAsText(bool value) {
@@ -1788,7 +1785,7 @@ bool TestRunner::ShouldGeneratePixelResults() {
 }
 
 bool TestRunner::shouldStayOnPageAfterHandlingBeforeUnload() const {
-  return should_stay_on_page_after_handling_before_unload_;
+  return layout_test_runtime_flags_.stay_on_page_after_handling_before_unload();
 }
 
 
@@ -1836,13 +1833,14 @@ void TestRunner::DumpPixelsAsync(
     return;
   }
 
-  test_runner::DumpPixelsAsync(proxy_->web_view(), layout_test_runtime_flags_,
+  test_runner::DumpPixelsAsync(web_view_, layout_test_runtime_flags_,
                                delegate_->GetDeviceScaleFactorForTest(),
                                callback);
 }
 
 void TestRunner::ReplicateLayoutTestRuntimeFlagsChanges(
     const base::DictionaryValue& changed_values) {
+  DCHECK(test_is_running_);
   layout_test_runtime_flags_.tracked_dictionary().ApplyUntrackedChanges(
       changed_values);
 }
@@ -1857,15 +1855,18 @@ bool TestRunner::HasCustomTextDump(std::string* custom_text_dump) const {
 }
 
 bool TestRunner::shouldDumpFrameLoadCallbacks() const {
-  return test_is_running_ && dump_frame_load_callbacks_;
+  return test_is_running_ &&
+         layout_test_runtime_flags_.dump_frame_load_callbacks();
 }
 
 void TestRunner::setShouldDumpFrameLoadCallbacks(bool value) {
-  dump_frame_load_callbacks_ = value;
+  layout_test_runtime_flags_.set_dump_frame_load_callbacks(value);
+  OnLayoutTestRuntimeFlagsChanged();
 }
 
 bool TestRunner::shouldDumpPingLoaderCallbacks() const {
-  return test_is_running_ && dump_ping_loader_callbacks_;
+  return test_is_running_ &&
+         layout_test_runtime_flags_.dump_ping_loader_callbacks();
 }
 
 void TestRunner::setShouldEnableViewSource(bool value) {
@@ -1873,15 +1874,16 @@ void TestRunner::setShouldEnableViewSource(bool value) {
 }
 
 bool TestRunner::shouldDumpUserGestureInFrameLoadCallbacks() const {
-  return test_is_running_ && dump_user_gesture_in_frame_load_callbacks_;
+  return test_is_running_ &&
+         layout_test_runtime_flags_.dump_user_gesture_in_frame_load_callbacks();
 }
 
 bool TestRunner::shouldDumpTitleChanges() const {
-  return dump_title_changes_;
+  return layout_test_runtime_flags_.dump_title_changes();
 }
 
 bool TestRunner::shouldDumpIconChanges() const {
-  return dump_icon_changes_;
+  return layout_test_runtime_flags_.dump_icon_changes();
 }
 
 bool TestRunner::shouldDumpCreateView() const {
@@ -1893,15 +1895,17 @@ bool TestRunner::canOpenWindows() const {
 }
 
 bool TestRunner::shouldDumpResourceLoadCallbacks() const {
-  return test_is_running_ && dump_resource_load_callbacks_;
+  return test_is_running_ &&
+         layout_test_runtime_flags_.dump_resource_load_callbacks();
 }
 
 bool TestRunner::shouldDumpResourceResponseMIMETypes() const {
-  return test_is_running_ && dump_resource_response_mime_types_;
+  return test_is_running_ &&
+         layout_test_runtime_flags_.dump_resource_response_mime_types();
 }
 
 WebContentSettingsClient* TestRunner::GetWebContentSettings() const {
-  return web_content_settings_.get();
+  return mock_content_settings_client_.get();
 }
 
 void TestRunner::InitializeWebViewWithMocks(blink::WebView* web_view) {
@@ -1926,7 +1930,7 @@ bool TestRunner::isPrinting() const {
 }
 
 bool TestRunner::shouldWaitUntilExternalURLLoad() const {
-  return wait_until_external_url_load_;
+  return layout_test_runtime_flags_.wait_until_external_url_load();
 }
 
 const std::set<std::string>* TestRunner::httpHeadersToClear() const {
@@ -1970,11 +1974,11 @@ bool TestRunner::policyDelegateShouldNotifyDone() const {
 }
 
 bool TestRunner::shouldInterceptPostMessage() const {
-  return intercept_post_message_;
+  return layout_test_runtime_flags_.intercept_post_message();
 }
 
 bool TestRunner::shouldDumpResourcePriorities() const {
-  return should_dump_resource_priorities_;
+  return layout_test_runtime_flags_.dump_resource_priorities();
 }
 
 bool TestRunner::RequestPointerLock() {
@@ -2017,7 +2021,7 @@ void TestRunner::setDragImage(
 }
 
 bool TestRunner::shouldDumpNavigationPolicy() const {
-  return dump_navigation_policy_;
+  return layout_test_runtime_flags_.dump_navigation_policy();
 }
 
 bool TestRunner::midiAccessorResult() {
@@ -2623,7 +2627,7 @@ void TestRunner::SetAcceptLanguages(const std::string& accept_languages) {
 
   layout_test_runtime_flags_.set_accept_languages(accept_languages);
   OnLayoutTestRuntimeFlagsChanged();
-  proxy_->web_view()->acceptLanguagesChanged();
+  web_view_->acceptLanguagesChanged();
 }
 
 void TestRunner::SetPluginsEnabled(bool enabled) {
@@ -2645,7 +2649,8 @@ void TestRunner::OnAnimationBegun(blink::WebView* view) {
 }
 
 void TestRunner::DumpEditingCallbacks() {
-  dump_editting_callbacks_ = true;
+  layout_test_runtime_flags_.set_dump_editting_callbacks(true);
+  OnLayoutTestRuntimeFlagsChanged();
 }
 
 void TestRunner::DumpAsMarkup() {
@@ -2682,7 +2687,8 @@ void TestRunner::DumpChildFramesAsText() {
 }
 
 void TestRunner::DumpIconChanges() {
-  dump_icon_changes_ = true;
+  layout_test_runtime_flags_.set_dump_icon_changes(true);
+  OnLayoutTestRuntimeFlagsChanged();
 }
 
 void TestRunner::SetAudioData(const gin::ArrayBufferView& view) {
@@ -2693,19 +2699,24 @@ void TestRunner::SetAudioData(const gin::ArrayBufferView& view) {
 }
 
 void TestRunner::DumpFrameLoadCallbacks() {
-  dump_frame_load_callbacks_ = true;
+  layout_test_runtime_flags_.set_dump_frame_load_callbacks(true);
+  OnLayoutTestRuntimeFlagsChanged();
 }
 
 void TestRunner::DumpPingLoaderCallbacks() {
-  dump_ping_loader_callbacks_ = true;
+  layout_test_runtime_flags_.set_dump_ping_loader_callbacks(true);
+  OnLayoutTestRuntimeFlagsChanged();
 }
 
 void TestRunner::DumpUserGestureInFrameLoadCallbacks() {
-  dump_user_gesture_in_frame_load_callbacks_ = true;
+  layout_test_runtime_flags_.set_dump_user_gesture_in_frame_load_callbacks(
+      true);
+  OnLayoutTestRuntimeFlagsChanged();
 }
 
 void TestRunner::DumpTitleChanges() {
-  dump_title_changes_ = true;
+  layout_test_runtime_flags_.set_dump_title_changes(true);
+  OnLayoutTestRuntimeFlagsChanged();
 }
 
 void TestRunner::DumpCreateView() {
@@ -2717,43 +2728,54 @@ void TestRunner::SetCanOpenWindows() {
 }
 
 void TestRunner::DumpResourceLoadCallbacks() {
-  dump_resource_load_callbacks_ = true;
+  layout_test_runtime_flags_.set_dump_resource_load_callbacks(true);
+  OnLayoutTestRuntimeFlagsChanged();
 }
 
 void TestRunner::DumpResourceResponseMIMETypes() {
-  dump_resource_response_mime_types_ = true;
+  layout_test_runtime_flags_.set_dump_resource_response_mime_types(true);
+  OnLayoutTestRuntimeFlagsChanged();
 }
 
 void TestRunner::SetImagesAllowed(bool allowed) {
-  web_content_settings_->SetImagesAllowed(allowed);
+  layout_test_runtime_flags_.set_images_allowed(allowed);
+  OnLayoutTestRuntimeFlagsChanged();
 }
 
 void TestRunner::SetMediaAllowed(bool allowed) {
-  web_content_settings_->SetMediaAllowed(allowed);
+  layout_test_runtime_flags_.set_media_allowed(allowed);
+  OnLayoutTestRuntimeFlagsChanged();
 }
 
 void TestRunner::SetScriptsAllowed(bool allowed) {
-  web_content_settings_->SetScriptsAllowed(allowed);
+  layout_test_runtime_flags_.set_scripts_allowed(allowed);
+  OnLayoutTestRuntimeFlagsChanged();
 }
 
 void TestRunner::SetStorageAllowed(bool allowed) {
-  web_content_settings_->SetStorageAllowed(allowed);
+  layout_test_runtime_flags_.set_storage_allowed(allowed);
+  OnLayoutTestRuntimeFlagsChanged();
 }
 
 void TestRunner::SetPluginsAllowed(bool allowed) {
-  web_content_settings_->SetPluginsAllowed(allowed);
+  layout_test_runtime_flags_.set_plugins_allowed(allowed);
+  OnLayoutTestRuntimeFlagsChanged();
 }
 
 void TestRunner::SetAllowDisplayOfInsecureContent(bool allowed) {
-  web_content_settings_->SetDisplayingInsecureContentAllowed(allowed);
+  layout_test_runtime_flags_.set_displaying_insecure_content_allowed(allowed);
+  OnLayoutTestRuntimeFlagsChanged();
 }
 
 void TestRunner::SetAllowRunningOfInsecureContent(bool allowed) {
-  web_content_settings_->SetRunningInsecureContentAllowed(allowed);
+  layout_test_runtime_flags_.set_running_insecure_content_allowed(allowed);
+  OnLayoutTestRuntimeFlagsChanged();
 }
 
 void TestRunner::DumpPermissionClientCallbacks() {
-  web_content_settings_->SetDumpCallbacks(true);
+  layout_test_runtime_flags_.set_dump_web_content_settings_client_callbacks(
+      true);
+  OnLayoutTestRuntimeFlagsChanged();
 }
 
 void TestRunner::DumpWindowStatusChanges() {
@@ -2784,7 +2806,9 @@ void TestRunner::ClearPrinting() {
 }
 
 void TestRunner::SetShouldStayOnPageAfterHandlingBeforeUnload(bool value) {
-  should_stay_on_page_after_handling_before_unload_ = value;
+  layout_test_runtime_flags_.set_stay_on_page_after_handling_before_unload(
+      value);
+  OnLayoutTestRuntimeFlagsChanged();
 }
 
 void TestRunner::SetWillSendRequestClearHeader(const std::string& header) {
@@ -2793,7 +2817,8 @@ void TestRunner::SetWillSendRequestClearHeader(const std::string& header) {
 }
 
 void TestRunner::DumpResourceRequestPriorities() {
-  should_dump_resource_priorities_ = true;
+  layout_test_runtime_flags_.set_dump_resource_priorities(true);
+  OnLayoutTestRuntimeFlagsChanged();
 }
 
 void TestRunner::SetUseMockTheme(bool use) {
@@ -2807,7 +2832,8 @@ void TestRunner::ShowWebInspector(const std::string& str,
 }
 
 void TestRunner::WaitUntilExternalURLLoad() {
-  wait_until_external_url_load_ = true;
+  layout_test_runtime_flags_.set_wait_until_external_url_load(true);
+  OnLayoutTestRuntimeFlagsChanged();
 }
 
 void TestRunner::DumpDragImage() {
@@ -2817,7 +2843,8 @@ void TestRunner::DumpDragImage() {
 }
 
 void TestRunner::DumpNavigationPolicy() {
-  dump_navigation_policy_ = true;
+  layout_test_runtime_flags_.set_dump_navigation_policy(true);
+  OnLayoutTestRuntimeFlagsChanged();
 }
 
 void TestRunner::DumpPageImportanceSignals() {
@@ -2867,7 +2894,22 @@ void TestRunner::SetAlwaysAcceptCookies(bool accept) {
 }
 
 void TestRunner::SetWindowIsKey(bool value) {
-  delegate_->SetFocus(proxy_->web_view(), value);
+  SetFocus(web_view_, value);
+}
+
+void TestRunner::SetFocus(blink::WebView* web_view, bool focus) {
+  if (focus) {
+    if (previously_focused_view_ != web_view) {
+      delegate_->SetFocus(previously_focused_view_, false);
+      delegate_->SetFocus(web_view, true);
+      previously_focused_view_ = web_view;
+    }
+  } else {
+    if (previously_focused_view_ == web_view) {
+      delegate_->SetFocus(web_view, false);
+      previously_focused_view_ = nullptr;
+    }
+  }
 }
 
 std::string TestRunner::PathToLocalResource(const std::string& path) {
@@ -2949,7 +2991,14 @@ void TestRunner::DispatchBeforeInstallPromptEvent(
 void TestRunner::ResolveBeforeInstallPromptPromise(
     int request_id,
     const std::string& platform) {
+  if (!test_interfaces_->GetAppBannerClient())
+    return;
   test_interfaces_->GetAppBannerClient()->ResolvePromise(request_id, platform);
+}
+
+void TestRunner::RunIdleTasks(v8::Local<v8::Function> callback) {
+    delegate_->RunIdleTasks(
+        CreateClosureThatPostsV8Callback(callback));
 }
 
 void TestRunner::SetPOSIXLocale(const std::string& locale) {
@@ -3006,11 +3055,12 @@ void TestRunner::RemoveWebPageOverlay() {
 }
 
 void TestRunner::LayoutAndPaintAsync() {
-  proxy_->LayoutAndPaintAsyncThen(base::Closure());
+  test_runner::LayoutAndPaintAsyncThen(web_view_, base::Closure());
 }
 
 void TestRunner::LayoutAndPaintAsyncThen(v8::Local<v8::Function> callback) {
-  proxy_->LayoutAndPaintAsyncThen(CreateClosureThatPostsV8Callback(callback));
+  test_runner::LayoutAndPaintAsyncThen(
+      web_view_, CreateClosureThatPostsV8Callback(callback));
 }
 
 void TestRunner::GetManifestThen(v8::Local<v8::Function> callback) {
@@ -3040,7 +3090,7 @@ void TestRunner::CapturePixelsAsyncThen(v8::Local<v8::Function> callback) {
   }
 
   DumpPixelsAsync(
-      proxy_->web_view(),
+      web_view_,
       base::Bind(&TestRunner::CapturePixelsCallback, weak_factory_.GetWeakPtr(),
                  base::Passed(std::move(persistent_callback))));
 }
@@ -3075,7 +3125,7 @@ void TestRunner::CopyImageAtAndCapturePixelsAsyncThen(
   }
 
   CopyImageAtAndCapturePixels(
-      proxy_->web_view(), x, y,
+      web_view_, x, y,
       base::Bind(&TestRunner::CapturePixelsCallback, weak_factory_.GetWeakPtr(),
                  base::Passed(std::move(persistent_callback))));
 }

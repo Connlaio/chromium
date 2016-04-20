@@ -136,6 +136,7 @@ TransformNodeData::TransformNodeData()
       source_node_id(-1),
       sorting_context_id(0),
       needs_local_transform_update(true),
+      node_and_ancestors_are_animated_or_invertible(true),
       is_invertible(true),
       ancestors_are_invertible(true),
       is_animated(false),
@@ -174,6 +175,8 @@ bool TransformNodeData::operator==(const TransformNodeData& other) const {
          source_node_id == other.source_node_id &&
          sorting_context_id == other.sorting_context_id &&
          needs_local_transform_update == other.needs_local_transform_update &&
+         node_and_ancestors_are_animated_or_invertible ==
+             other.node_and_ancestors_are_animated_or_invertible &&
          is_invertible == other.is_invertible &&
          ancestors_are_invertible == other.ancestors_are_invertible &&
          is_animated == other.is_animated &&
@@ -256,6 +259,9 @@ void TransformNodeData::ToProtobuf(proto::TreeNode* proto) const {
 
   data->set_needs_local_transform_update(needs_local_transform_update);
 
+  data->set_node_and_ancestors_are_animated_or_invertible(
+      node_and_ancestors_are_animated_or_invertible);
+
   data->set_is_invertible(is_invertible);
   data->set_ancestors_are_invertible(ancestors_are_invertible);
 
@@ -322,6 +328,9 @@ void TransformNodeData::FromProtobuf(const proto::TreeNode& proto) {
   sorting_context_id = data.sorting_context_id();
 
   needs_local_transform_update = data.needs_local_transform_update();
+
+  node_and_ancestors_are_animated_or_invertible =
+      data.node_and_ancestors_are_animated_or_invertible();
 
   is_invertible = data.is_invertible();
   ancestors_are_invertible = data.ancestors_are_invertible();
@@ -438,10 +447,9 @@ EffectNodeData::EffectNodeData()
     : opacity(1.f),
       screen_space_opacity(1.f),
       has_render_surface(false),
+      render_surface(nullptr),
       has_copy_request(false),
       has_background_filters(false),
-      node_or_ancestor_has_background_filters(false),
-      to_screen_opacity_is_animated(false),
       hidden_by_backface_visibility(false),
       double_sided(false),
       is_drawn(true),
@@ -460,9 +468,6 @@ bool EffectNodeData::operator==(const EffectNodeData& other) const {
          has_render_surface == other.has_render_surface &&
          has_copy_request == other.has_copy_request &&
          has_background_filters == other.has_background_filters &&
-         node_or_ancestor_has_background_filters ==
-             other.node_or_ancestor_has_background_filters &&
-         to_screen_opacity_is_animated == other.to_screen_opacity_is_animated &&
          hidden_by_backface_visibility == other.hidden_by_backface_visibility &&
          double_sided == other.double_sided && is_drawn == other.is_drawn &&
          has_animated_opacity == other.has_animated_opacity &&
@@ -480,9 +485,6 @@ void EffectNodeData::ToProtobuf(proto::TreeNode* proto) const {
   data->set_has_render_surface(has_render_surface);
   data->set_has_copy_request(has_copy_request);
   data->set_has_background_filters(has_background_filters);
-  data->set_node_or_ancestor_has_background_filters(
-      node_or_ancestor_has_background_filters);
-  data->set_to_screen_opacity_is_animated(to_screen_opacity_is_animated);
   data->set_hidden_by_backface_visibility(hidden_by_backface_visibility);
   data->set_double_sided(double_sided);
   data->set_is_drawn(is_drawn);
@@ -503,9 +505,6 @@ void EffectNodeData::FromProtobuf(const proto::TreeNode& proto) {
   has_render_surface = data.has_render_surface();
   has_copy_request = data.has_copy_request();
   has_background_filters = data.has_background_filters();
-  node_or_ancestor_has_background_filters =
-      data.node_or_ancestor_has_background_filters();
-  to_screen_opacity_is_animated = data.to_screen_opacity_is_animated();
   hidden_by_backface_visibility = data.hidden_by_backface_visibility();
   double_sided = data.double_sided();
   is_drawn = data.is_drawn();
@@ -529,7 +528,8 @@ ScrollNodeData::ScrollNodeData()
       user_scrollable_horizontal(false),
       user_scrollable_vertical(false),
       element_id(0),
-      transform_id(0) {}
+      transform_id(0),
+      num_drawn_descendants(0) {}
 
 ScrollNodeData::ScrollNodeData(const ScrollNodeData& other) = default;
 
@@ -690,6 +690,7 @@ void TransformTree::UpdateTransforms(int id) {
   UpdateSnapping(node);
   UpdateNodeAndAncestorsHaveIntegerTranslations(node, parent_node);
   UpdateTransformChanged(node, parent_node, source_node);
+  UpdateNodeAndAncestorsAreAnimatedOrInvertible(node, parent_node);
 }
 
 bool TransformTree::IsDescendant(int desc_id, int source_id) const {
@@ -1062,6 +1063,29 @@ void TransformTree::UpdateTransformChanged(TransformNode* node,
     node->data.transform_changed = true;
 }
 
+void TransformTree::UpdateNodeAndAncestorsAreAnimatedOrInvertible(
+    TransformNode* node,
+    TransformNode* parent_node) {
+  if (!parent_node) {
+    node->data.node_and_ancestors_are_animated_or_invertible =
+        node->data.is_animated || node->data.is_invertible;
+    return;
+  }
+  if (!parent_node->data.node_and_ancestors_are_animated_or_invertible) {
+    node->data.node_and_ancestors_are_animated_or_invertible = false;
+    return;
+  }
+  bool is_invertible = node->data.is_invertible;
+  // Even when the current node's transform and the parent's screen space
+  // transform are invertible, the current node's screen space transform can
+  // become uninvertible due to floating-point arithmetic.
+  if (!node->data.ancestors_are_invertible &&
+      parent_node->data.ancestors_are_invertible)
+    is_invertible = false;
+  node->data.node_and_ancestors_are_animated_or_invertible =
+      node->data.is_animated || is_invertible;
+}
+
 void TransformTree::SetDeviceTransform(const gfx::Transform& transform,
                                        gfx::PointF root_position) {
   gfx::Transform root_post_local = transform;
@@ -1210,11 +1234,12 @@ void EffectTree::UpdateIsDrawn(EffectNode* node, EffectNode* parent_node) {
   // 1) Nodes that contribute to copy requests, whether hidden or not, must be
   //    drawn.
   // 2) Nodes that have a background filter.
-  // 3) Nodes with animating screen space opacity are drawn if their parent is
-  //    drawn irrespective of their opacity.
+  // 3) Nodes with animating screen space opacity on main thread or pending tree
+  //    are drawn if their parent is drawn irrespective of their opacity.
   if (node->data.has_copy_request)
     node->data.is_drawn = true;
-  else if (node->data.opacity == 0.f && !node->data.has_animated_opacity &&
+  else if (node->data.opacity == 0.f &&
+           (!node->data.has_animated_opacity || property_trees()->is_active) &&
            !node->data.has_background_filters)
     node->data.is_drawn = false;
   else if (parent_node)
@@ -1294,13 +1319,7 @@ bool EffectTree::ContributesToDrawnSurface(int id) {
   // copy requests.
   EffectNode* node = Node(id);
   EffectNode* parent_node = parent(node);
-  bool contributes_to_drawn_surface =
-      node->data.is_drawn &&
-      (node->data.opacity != 0.f || node->data.has_animated_opacity ||
-       node->data.has_background_filters);
-  if (parent_node && !parent_node->data.is_drawn)
-    contributes_to_drawn_surface = false;
-  return contributes_to_drawn_surface;
+  return node->data.is_drawn && (!parent_node || parent_node->data.is_drawn);
 }
 
 void EffectTree::ResetChangeTracking() {
@@ -1444,6 +1463,9 @@ void ScrollTree::FromProtobuf(const proto::PropertyTree& proto) {
 
   currently_scrolling_node_id_ = data.currently_scrolling_node_id();
 
+  // TODO(khushalsagar): This should probably be removed if the copy constructor
+  // for ScrollTree copies the |layer_id_to_scroll_offset_map_| as well.
+  layer_id_to_scroll_offset_map_.clear();
   for (int i = 0; i < data.layer_id_to_scroll_offset_map_size(); ++i) {
     const proto::ScrollOffsetMapEntry entry =
         data.layer_id_to_scroll_offset_map(i);

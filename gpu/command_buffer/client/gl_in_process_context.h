@@ -68,8 +68,6 @@ class GL_IN_PROCESS_CONTEXT_EXPORT GLInProcessContext {
       GpuMemoryBufferManager* gpu_memory_buffer_manager,
       ImageFactory* image_factory);
 
-  virtual void SetContextLostCallback(const base::Closure& callback) = 0;
-
   // Allows direct access to the GLES2 implementation so a GLInProcessContext
   // can be used without making it current.
   virtual gles2::GLES2Implementation* GetImplementation() = 0;
@@ -77,12 +75,6 @@ class GL_IN_PROCESS_CONTEXT_EXPORT GLInProcessContext {
   virtual size_t GetMappedMemoryLimit() = 0;
 
   virtual void SetLock(base::Lock* lock) = 0;
-
-#if defined(OS_ANDROID)
-  virtual scoped_refptr<gfx::SurfaceTexture> GetSurfaceTexture(
-      uint32_t stream_id) = 0;
-  virtual uint32_t CreateStreamTexture(uint32_t texture_id) = 0;
-#endif
 };
 
 }  // namespace gpu

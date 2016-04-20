@@ -28,8 +28,8 @@
 #include "mojo/converters/surfaces/surfaces_type_converters.h"
 #include "mojo/converters/surfaces/surfaces_utils.h"
 #include "mojo/converters/transform/transform_type_converters.h"
-#include "mojo/shell/public/cpp/connection.h"
-#include "mojo/shell/public/cpp/connector.h"
+#include "services/shell/public/cpp/connection.h"
+#include "services/shell/public/cpp/connector.h"
 #include "third_party/skia/include/core/SkXfermode.h"
 #include "ui/base/cursor/cursor_loader.h"
 #include "ui/events/event.h"
@@ -358,12 +358,11 @@ void DefaultPlatformDisplay::OnDamageRect(const gfx::Rect& damaged_region) {
 }
 
 void DefaultPlatformDisplay::DispatchEvent(ui::Event* event) {
-  // TODO(moshayedi): crbug.com/590226. Enable this after we support wheel
-  // events in mus event dispatcher.
-  if (event->IsMouseWheelEvent())
-    return;
-
-  if (event->IsMouseEvent()) {
+  if (event->IsScrollEvent()) {
+    // TODO(moshayedi): crbug.com/602859. Dispatch scroll events as
+    // they are once we have proper support for scroll events.
+    delegate_->OnEvent(ui::MouseWheelEvent(*event->AsScrollEvent()));
+  } else if (event->IsMouseEvent() && !event->IsMouseWheelEvent()) {
     delegate_->OnEvent(ui::PointerEvent(*event->AsMouseEvent()));
   } else if (event->IsTouchEvent()) {
     delegate_->OnEvent(ui::PointerEvent(*event->AsTouchEvent()));

@@ -191,13 +191,13 @@ CandidateWindowView::~CandidateWindowView() {
 }
 
 views::Widget* CandidateWindowView::InitWidget() {
-  views::Widget* widget = BubbleDelegateView::CreateBubble(this);
+  views::Widget* widget = BubbleDialogDelegateView::CreateBubble(this);
 
   wm::SetWindowVisibilityAnimationType(
       widget->GetNativeView(),
       wm::WINDOW_VISIBILITY_ANIMATION_TYPE_FADE);
 
-  GetBubbleFrameView()->SetBubbleBorder(scoped_ptr<views::BubbleBorder>(
+  GetBubbleFrameView()->SetBubbleBorder(std::unique_ptr<views::BubbleBorder>(
       new CandidateWindowBorder(parent_window())));
   return widget;
 }
@@ -397,6 +397,10 @@ void CandidateWindowView::SelectCandidateAt(int index_in_page) {
 
 const char* CandidateWindowView::GetClassName() const {
   return "CandidateWindowView";
+}
+
+int CandidateWindowView::GetDialogButtons() const {
+  return ui::DIALOG_BUTTON_NONE;
 }
 
 void CandidateWindowView::ButtonPressed(views::Button* sender,

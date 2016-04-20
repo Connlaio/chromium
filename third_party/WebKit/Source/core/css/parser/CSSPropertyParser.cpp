@@ -18,6 +18,7 @@
 #include "core/css/CSSGradientValue.h"
 #include "core/css/CSSGridAutoRepeatValue.h"
 #include "core/css/CSSGridLineNamesValue.h"
+#include "core/css/CSSGridTemplateAreasValue.h"
 #include "core/css/CSSImageSetValue.h"
 #include "core/css/CSSPaintValue.h"
 #include "core/css/CSSPathValue.h"
@@ -36,7 +37,7 @@
 #include "core/css/FontFace.h"
 #include "core/css/HashTools.h"
 #include "core/css/parser/CSSParserFastPaths.h"
-#include "core/css/parser/CSSParserValues.h"
+#include "core/css/parser/CSSParserIdioms.h"
 #include "core/css/parser/CSSPropertyParserHelpers.h"
 #include "core/css/parser/CSSVariableParser.h"
 #include "core/frame/UseCounter.h"
@@ -57,6 +58,39 @@ CSSPropertyParser::CSSPropertyParser(const CSSParserTokenRange& range,
     , m_currentShorthand(CSSPropertyInvalid)
 {
     m_range.consumeWhitespace();
+}
+
+void CSSPropertyParser::addProperty(CSSPropertyID property, CSSValue* value, bool important, bool implicit)
+{
+    ASSERT(!isPropertyAlias(property));
+
+    int shorthandIndex = 0;
+    bool setFromShorthand = false;
+
+    if (m_currentShorthand) {
+        Vector<StylePropertyShorthand, 4> shorthands;
+        getMatchingShorthandsForLonghand(property, &shorthands);
+        setFromShorthand = true;
+        if (shorthands.size() > 1)
+            shorthandIndex = indexOfShorthandForLonghand(m_currentShorthand, shorthands);
+    }
+
+    m_parsedProperties->append(CSSProperty(property, value, important, setFromShorthand, shorthandIndex, implicit));
+}
+
+void CSSPropertyParser::addExpandedPropertyForValue(CSSPropertyID property, CSSValue* value, bool important)
+{
+    const StylePropertyShorthand& shorthand = shorthandForProperty(property);
+    unsigned shorthandLength = shorthand.length();
+    if (!shorthandLength) {
+        addProperty(property, value, important);
+        return;
+    }
+
+    ShorthandScope scope(this, property);
+    const CSSPropertyID* longhands = shorthand.properties();
+    for (unsigned i = 0; i < shorthandLength; ++i)
+        addProperty(longhands[i], value, important);
 }
 
 static bool hasInvalidNumericValues(const CSSParserTokenRange& range)
@@ -467,6 +501,13 @@ static CSSValue* consumeFontVariantLigatures(CSSParserTokenRange& range)
     return ligatureValues;
 }
 
+static CSSValue* consumeFontVariantCaps(CSSParserTokenRange& range)
+{
+    return consumeIdent<CSSValueNormal, CSSValueSmallCaps, CSSValueAllSmallCaps,
+        CSSValuePetiteCaps, CSSValueAllPetiteCaps,
+        CSSValueUnicase, CSSValueTitlingCaps>(range);
+}
+
 static CSSPrimitiveValue* consumeFontVariant(CSSParserTokenRange& range)
 {
     return consumeIdent<CSSValueNormal, CSSValueSmallCaps>(range);
@@ -620,7 +661,7 @@ static CSSValueList* consumeRotation(CSSParserTokenRange& range)
     return list;
 }
 
-static CSSValueList* consumeScale(CSSParserTokenRange& range, CSSParserMode cssParserMode)
+static CSSValueList* consumeScale(CSSParserTokenRange& range)
 {
     ASSERT(RuntimeEnabledFeatures::cssIndependentTransformPropertiesEnabled());
 
@@ -659,7 +700,7 @@ static CSSValueList* consumeTranslate(CSSParserTokenRange& range, CSSParserMode 
     return list;
 }
 
-static CSSValue* consumeCounter(CSSParserTokenRange& range, CSSParserMode cssParserMode, int defaultValue)
+static CSSValue* consumeCounter(CSSParserTokenRange& range, int defaultValue)
 {
     if (range.peek().id() == CSSValueNone)
         return consumeIdent(range);
@@ -938,7 +979,7 @@ static CSSValue* consumeColumnGap(CSSParserTokenRange& range, CSSParserMode cssP
     return consumeLength(range, cssParserMode, ValueRangeNonNegative);
 }
 
-static CSSValue* consumeColumnSpan(CSSParserTokenRange& range, CSSParserMode cssParserMode)
+static CSSValue* consumeColumnSpan(CSSParserTokenRange& range)
 {
     return consumeIdent<CSSValueAll, CSSValueNone>(range);
 }
@@ -2522,11 +2563,6 @@ static void complete4Sides(CSSPrimitiveValue* side[4])
 
 static bool consumeRadii(CSSPrimitiveValue* horizontalRadii[4], CSSPrimitiveValue* verticalRadii[4], CSSParserTokenRange& range, CSSParserMode cssParserMode, bool useLegacyParsing)
 {
-#if ENABLE(OILPAN)
-    // Unconditionally zero initialize the arrays of raw pointers.
-    memset(horizontalRadii, 0, 4 * sizeof(horizontalRadii[0]));
-    memset(verticalRadii, 0, 4 * sizeof(verticalRadii[0]));
-#endif
     unsigned i = 0;
     for (; i < 4 && !range.atEnd() && range.peek().type() != DelimiterToken; ++i) {
         horizontalRadii[i] = consumeLengthOrPercent(range, cssParserMode, ValueRangeNonNegative);
@@ -2586,8 +2622,8 @@ static CSSBasicShapeInsetValue* consumeBasicShapeInset(CSSParserTokenRange& args
         shape->updateShapeSize1Value(top);
 
     if (consumeIdent<CSSValueRound>(args)) {
-        CSSPrimitiveValue* horizontalRadii[4];
-        CSSPrimitiveValue* verticalRadii[4];
+        CSSPrimitiveValue* horizontalRadii[4] = { 0 };
+        CSSPrimitiveValue* verticalRadii[4] = { 0 };
         if (!consumeRadii(horizontalRadii, verticalRadii, args, context.mode(), false))
             return nullptr;
         shape->setTopLeftRadius(CSSValuePair::create(horizontalRadii[0], verticalRadii[0], CSSValuePair::DropIdenticalValues));
@@ -2704,14 +2740,11 @@ static CSSValue* consumeBorderImageRepeat(CSSParserTokenRange& range)
     return CSSValuePair::create(horizontal, vertical, CSSValuePair::DropIdenticalValues);
 }
 
-static CSSValue* consumeBorderImageSlice(CSSPropertyID property, CSSParserTokenRange& range, CSSParserMode cssParserMode)
+static CSSValue* consumeBorderImageSlice(CSSPropertyID property, CSSParserTokenRange& range)
 {
     bool fill = consumeIdent<CSSValueFill>(range);
-    CSSPrimitiveValue* slices[4];
-#if ENABLE(OILPAN)
-    // Unconditionally zero initialize the arrays of raw pointers.
-    memset(slices, 0, 4 * sizeof(slices[0]));
-#endif
+    CSSPrimitiveValue* slices[4] = { 0 };
+
     for (size_t index = 0; index < 4; ++index) {
         CSSPrimitiveValue* value = consumePercent(range, ValueRangeNonNegative);
         if (!value)
@@ -2737,11 +2770,8 @@ static CSSValue* consumeBorderImageSlice(CSSPropertyID property, CSSParserTokenR
 
 static CSSValue* consumeBorderImageOutset(CSSParserTokenRange& range)
 {
-    CSSPrimitiveValue* outsets[4];
-#if ENABLE(OILPAN)
-    // Unconditionally zero initialize the arrays of raw pointers.
-    memset(outsets, 0, 4 * sizeof(outsets[0]));
-#endif
+    CSSPrimitiveValue* outsets[4] = { 0 };
+
     CSSPrimitiveValue* value = nullptr;
     for (size_t index = 0; index < 4; ++index) {
         value = consumeNumber(range, ValueRangeNonNegative);
@@ -2759,11 +2789,8 @@ static CSSValue* consumeBorderImageOutset(CSSParserTokenRange& range)
 
 static CSSValue* consumeBorderImageWidth(CSSParserTokenRange& range)
 {
-    CSSPrimitiveValue* widths[4];
-#if ENABLE(OILPAN)
-    // Unconditionally zero initialize the arrays of raw pointers.
-    memset(widths, 0, 4 * sizeof(widths[0]));
-#endif
+    CSSPrimitiveValue* widths[4] = { 0 };
+
     CSSPrimitiveValue* value = nullptr;
     for (size_t index = 0; index < 4; ++index) {
         value = consumeNumber(range, ValueRangeNonNegative);
@@ -2796,7 +2823,7 @@ static bool consumeBorderImageComponents(CSSPropertyID property, CSSParserTokenR
                 continue;
         }
         if (!slice) {
-            slice = consumeBorderImageSlice(property, range, context.mode());
+            slice = consumeBorderImageSlice(property, range);
             if (slice) {
                 ASSERT(!width && !outset);
                 if (consumeSlashIncludingWhitespace(range)) {
@@ -2913,21 +2940,21 @@ static CSSValue* consumePrefixedBackgroundBox(CSSPropertyID property, CSSParserT
     return nullptr;
 }
 
-static CSSValue* consumeBackgroundSize(CSSPropertyID unresolvedProperty, CSSParserTokenRange& range, CSSParserMode mode)
+static CSSValue* consumeBackgroundSize(CSSPropertyID unresolvedProperty, CSSParserTokenRange& range, CSSParserMode cssParserMode)
 {
     if (identMatches<CSSValueContain, CSSValueCover>(range.peek().id()))
         return consumeIdent(range);
 
     CSSPrimitiveValue* horizontal = consumeIdent<CSSValueAuto>(range);
     if (!horizontal)
-        horizontal = consumeLengthOrPercent(range, mode, ValueRangeAll, UnitlessQuirk::Forbid);
+        horizontal = consumeLengthOrPercent(range, cssParserMode, ValueRangeAll, UnitlessQuirk::Forbid);
 
     CSSPrimitiveValue* vertical = nullptr;
     if (!range.atEnd()) {
         if (range.peek().id() == CSSValueAuto) // `auto' is the default
             range.consumeIncludingWhitespace();
         else
-            vertical = consumeLengthOrPercent(range, mode, ValueRangeAll, UnitlessQuirk::Forbid);
+            vertical = consumeLengthOrPercent(range, cssParserMode, ValueRangeAll, UnitlessQuirk::Forbid);
     } else if (unresolvedProperty == CSSPropertyAliasWebkitBackgroundSize) {
         // Legacy syntax: "-webkit-background-size: 10px" is equivalent to "background-size: 10px 10px".
         vertical = horizontal;
@@ -2935,6 +2962,23 @@ static CSSValue* consumeBackgroundSize(CSSPropertyID unresolvedProperty, CSSPars
     if (!vertical)
         return horizontal;
     return CSSValuePair::create(horizontal, vertical, CSSValuePair::KeepIdenticalValues);
+}
+
+static CSSValueList* consumeGridAutoFlow(CSSParserTokenRange& range)
+{
+    CSSPrimitiveValue* rowOrColumnValue = consumeIdent<CSSValueRow, CSSValueColumn>(range);
+    CSSPrimitiveValue* denseAlgorithm = consumeIdent<CSSValueDense>(range);
+    if (!rowOrColumnValue) {
+        rowOrColumnValue = consumeIdent<CSSValueRow, CSSValueColumn>(range);
+        if (!rowOrColumnValue && !denseAlgorithm)
+            return nullptr;
+    }
+    CSSValueList* parsedValues = CSSValueList::createSpaceSeparated();
+    if (rowOrColumnValue)
+        parsedValues->append(rowOrColumnValue);
+    if (denseAlgorithm)
+        parsedValues->append(denseAlgorithm);
+    return parsedValues;
 }
 
 static CSSValue* consumeBackgroundComponent(CSSPropertyID unresolvedProperty, CSSParserTokenRange& range, const CSSParserContext& context)
@@ -3099,6 +3143,123 @@ static CSSValue* consumeGridLine(CSSParserTokenRange& range)
     return values;
 }
 
+static bool allTracksAreFixedSized(CSSValueList& valueList)
+{
+    for (CSSValue* value : valueList) {
+        if (value->isGridLineNamesValue())
+            continue;
+        // The auto-repeat value holds a <fixed-size> = <fixed-breadth> | minmax( <fixed-breadth>, <track-breadth> )
+        if (value->isGridAutoRepeatValue()) {
+            if (!allTracksAreFixedSized(toCSSValueList(*value)))
+                return false;
+            continue;
+        }
+        const CSSPrimitiveValue& primitiveValue = value->isPrimitiveValue()
+            ? toCSSPrimitiveValue(*value)
+            : toCSSPrimitiveValue(*toCSSFunctionValue(*value).item(0));
+        CSSValueID valueID = primitiveValue.getValueID();
+        if (valueID == CSSValueMinContent || valueID == CSSValueMaxContent || valueID == CSSValueAuto || primitiveValue.isFlex())
+            return false;
+    }
+    return true;
+}
+
+static Vector<String> parseGridTemplateAreasColumnNames(const String& gridRowNames)
+{
+    ASSERT(!gridRowNames.isEmpty());
+    Vector<String> columnNames;
+    // Using StringImpl to avoid checks and indirection in every call to String::operator[].
+    StringImpl& text = *gridRowNames.impl();
+
+    StringBuilder areaName;
+    for (unsigned i = 0; i < text.length(); ++i) {
+        if (isCSSSpace(text[i])) {
+            if (!areaName.isEmpty()) {
+                columnNames.append(areaName.toString());
+                areaName.clear();
+            }
+            continue;
+        }
+        if (text[i] == '.') {
+            if (areaName == ".")
+                continue;
+            if (!areaName.isEmpty()) {
+                columnNames.append(areaName.toString());
+                areaName.clear();
+            }
+        } else {
+            if (!isNameCodePoint(text[i]))
+                return Vector<String>();
+            if (areaName == ".") {
+                columnNames.append(areaName.toString());
+                areaName.clear();
+            }
+        }
+
+        areaName.append(text[i]);
+    }
+
+    if (!areaName.isEmpty())
+        columnNames.append(areaName.toString());
+
+    return columnNames;
+}
+
+static bool parseGridTemplateAreasRow(const String& gridRowNames, NamedGridAreaMap& gridAreaMap, const size_t rowCount, size_t& columnCount)
+{
+    if (gridRowNames.isEmpty() || gridRowNames.containsOnlyWhitespace())
+        return false;
+
+    Vector<String> columnNames = parseGridTemplateAreasColumnNames(gridRowNames);
+    if (rowCount == 0) {
+        columnCount = columnNames.size();
+        if (columnCount == 0)
+            return false;
+    } else if (columnCount != columnNames.size()) {
+        // The declaration is invalid if all the rows don't have the number of columns.
+        return false;
+    }
+
+    for (size_t currentColumn = 0; currentColumn < columnCount; ++currentColumn) {
+        const String& gridAreaName = columnNames[currentColumn];
+
+        // Unamed areas are always valid (we consider them to be 1x1).
+        if (gridAreaName == ".")
+            continue;
+
+        size_t lookAheadColumn = currentColumn + 1;
+        while (lookAheadColumn < columnCount && columnNames[lookAheadColumn] == gridAreaName)
+            lookAheadColumn++;
+
+        NamedGridAreaMap::iterator gridAreaIt = gridAreaMap.find(gridAreaName);
+        if (gridAreaIt == gridAreaMap.end()) {
+            gridAreaMap.add(gridAreaName, GridArea(GridSpan::translatedDefiniteGridSpan(rowCount, rowCount + 1), GridSpan::translatedDefiniteGridSpan(currentColumn, lookAheadColumn)));
+        } else {
+            GridArea& gridArea = gridAreaIt->value;
+
+            // The following checks test that the grid area is a single filled-in rectangle.
+            // 1. The new row is adjacent to the previously parsed row.
+            if (rowCount != gridArea.rows.endLine())
+                return false;
+
+            // 2. The new area starts at the same position as the previously parsed area.
+            if (currentColumn != gridArea.columns.startLine())
+                return false;
+
+            // 3. The new area ends at the same position as the previously parsed area.
+            if (lookAheadColumn != gridArea.columns.endLine())
+                return false;
+
+            gridArea.rows = GridSpan::translatedDefiniteGridSpan(gridArea.rows.startLine(), gridArea.rows.endLine() + 1);
+        }
+        currentColumn = lookAheadColumn - 1;
+    }
+
+    return true;
+}
+
+enum TrackSizeRestriction { FixedSizeOnly, AllowAll };
+
 static CSSPrimitiveValue* consumeGridBreadth(CSSParserTokenRange& range, CSSParserMode cssParserMode, TrackSizeRestriction restriction = AllowAll)
 {
     if (restriction == AllowAll) {
@@ -3114,6 +3275,7 @@ static CSSPrimitiveValue* consumeGridBreadth(CSSParserTokenRange& range, CSSPars
     return consumeLengthOrPercent(range, cssParserMode, ValueRangeNonNegative, UnitlessQuirk::Allow);
 }
 
+// TODO(rob.buis): This needs a bool parameter so we can disallow <auto-track-list> for the grid shorthand.
 static CSSValue* consumeGridTrackSize(CSSParserTokenRange& range, CSSParserMode cssParserMode, TrackSizeRestriction restriction = AllowAll)
 {
     const CSSParserToken& token = range.peek();
@@ -3138,12 +3300,14 @@ static CSSValue* consumeGridTrackSize(CSSParserTokenRange& range, CSSParserMode 
     return consumeGridBreadth(range, cssParserMode, restriction);
 }
 
-static CSSGridLineNamesValue* consumeGridLineNames(CSSParserTokenRange& range)
+// Appends to the passed in CSSGridLineNamesValue if any, otherwise creates a new one.
+static CSSGridLineNamesValue* consumeGridLineNames(CSSParserTokenRange& range, CSSGridLineNamesValue* lineNames = nullptr)
 {
     CSSParserTokenRange rangeCopy = range;
     if (rangeCopy.consumeIncludingWhitespace().type() != LeftBracketToken)
         return nullptr;
-    CSSGridLineNamesValue* lineNames = CSSGridLineNamesValue::create();
+    if (!lineNames)
+        lineNames = CSSGridLineNamesValue::create();
     while (CSSCustomIdentValue* lineName = consumeCustomIdentForGridLine(rangeCopy))
         lineNames->append(lineName);
     if (rangeCopy.consumeIncludingWhitespace().type() != RightBracketToken)
@@ -3272,7 +3436,7 @@ CSSValue* CSSPropertyParser::parseSingleValue(CSSPropertyID unresolvedProperty)
 {
     CSSPropertyID property = resolveCSSPropertyID(unresolvedProperty);
     if (CSSParserFastPaths::isKeywordPropertyID(property)) {
-        if (!CSSParserFastPaths::isValidKeywordPropertyAndValue(property, m_range.peek().id()))
+        if (!CSSParserFastPaths::isValidKeywordPropertyAndValue(property, m_range.peek().id(), m_context.mode()))
             return nullptr;
         return consumeIdent(m_range);
     }
@@ -3285,6 +3449,8 @@ CSSValue* CSSPropertyParser::parseSingleValue(CSSPropertyID unresolvedProperty)
         return consumeQuotes(m_range);
     case CSSPropertyWebkitHighlight:
         return consumeWebkitHighlight(m_range);
+    case CSSPropertyFontVariantCaps:
+        return consumeFontVariantCaps(m_range);
     case CSSPropertyFontVariantLigatures:
         return consumeFontVariantLigatures(m_range);
     case CSSPropertyFontFeatureSettings:
@@ -3307,7 +3473,7 @@ CSSValue* CSSPropertyParser::parseSingleValue(CSSPropertyID unresolvedProperty)
     case CSSPropertyRotate:
         return consumeRotation(m_range);
     case CSSPropertyScale:
-        return consumeScale(m_range, m_context.mode());
+        return consumeScale(m_range);
     case CSSPropertyTranslate:
         return consumeTranslate(m_range, m_context.mode());
     case CSSPropertyWebkitBorderHorizontalSpacing:
@@ -3315,7 +3481,7 @@ CSSValue* CSSPropertyParser::parseSingleValue(CSSPropertyID unresolvedProperty)
         return consumeLength(m_range, m_context.mode(), ValueRangeNonNegative);
     case CSSPropertyCounterIncrement:
     case CSSPropertyCounterReset:
-        return consumeCounter(m_range, m_context.mode(), property == CSSPropertyCounterIncrement ? 1 : 0);
+        return consumeCounter(m_range, property == CSSPropertyCounterIncrement ? 1 : 0);
     case CSSPropertySize:
         return consumeSize(m_range, m_context.mode());
     case CSSPropertySnapHeight:
@@ -3384,7 +3550,7 @@ CSSValue* CSSPropertyParser::parseSingleValue(CSSPropertyID unresolvedProperty)
     case CSSPropertyColumnGap:
         return consumeColumnGap(m_range, m_context.mode());
     case CSSPropertyColumnSpan:
-        return consumeColumnSpan(m_range, m_context.mode());
+        return consumeColumnSpan(m_range);
     case CSSPropertyZoom:
         return consumeZoom(m_range, m_context);
     case CSSPropertyAnimationDelay:
@@ -3583,7 +3749,7 @@ CSSValue* CSSPropertyParser::parseSingleValue(CSSPropertyID unresolvedProperty)
         return consumeBorderImageRepeat(m_range);
     case CSSPropertyBorderImageSlice:
     case CSSPropertyWebkitMaskBoxImageSlice:
-        return consumeBorderImageSlice(property, m_range, m_context.mode());
+        return consumeBorderImageSlice(property, m_range);
     case CSSPropertyBorderImageOutset:
     case CSSPropertyWebkitMaskBoxImageOutset:
         return consumeBorderImageOutset(m_range);
@@ -3647,16 +3813,10 @@ CSSValue* CSSPropertyParser::parseSingleValue(CSSPropertyID unresolvedProperty)
     case CSSPropertyGridTemplateAreas:
         ASSERT(RuntimeEnabledFeatures::cssGridLayoutEnabled());
         return consumeGridTemplateAreas(m_range);
+    case CSSPropertyGridAutoFlow:
+        ASSERT(RuntimeEnabledFeatures::cssGridLayoutEnabled());
+        return consumeGridAutoFlow(m_range);
     default:
-        CSSParserValueList valueList(m_range);
-        if (valueList.size()) {
-            m_valueList = &valueList;
-            if (CSSValue* result = legacyParseValue(unresolvedProperty)) {
-                while (!m_range.atEnd())
-                    m_range.consume();
-                return result;
-            }
-        }
         return nullptr;
     }
 }
@@ -3757,7 +3917,7 @@ bool CSSPropertyParser::parseFontFaceDescriptor(CSSPropertyID propId)
     case CSSPropertyFontStretch:
     case CSSPropertyFontStyle: {
         CSSValueID id = m_range.consumeIncludingWhitespace().id();
-        if (!CSSParserFastPaths::isValidKeywordPropertyAndValue(propId, id))
+        if (!CSSParserFastPaths::isValidKeywordPropertyAndValue(propId, id, m_context.mode()))
             return false;
         parsedValue = cssValuePool().createIdentifierValue(id);
         break;
@@ -3824,12 +3984,13 @@ bool CSSPropertyParser::consumeFont(bool important)
     CSSPrimitiveValue* fontStretch = nullptr;
     while (!m_range.atEnd()) {
         CSSValueID id = m_range.peek().id();
-        if (!fontStyle && CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyFontStyle, id)) {
+        if (!fontStyle && CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyFontStyle, id, m_context.mode())) {
             fontStyle = consumeIdent(m_range);
             continue;
         }
         if (!fontVariant) {
             // Font variant in the shorthand is particular, it only accepts normal or small-caps.
+            // TODO: Make consumeFontVariant only accept the css21 values.
             fontVariant = consumeFontVariant(m_range);
             if (fontVariant)
                 continue;
@@ -3839,7 +4000,7 @@ bool CSSPropertyParser::consumeFont(bool important)
             if (fontWeight)
                 continue;
         }
-        if (!fontStretch && CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyFontStretch, id))
+        if (!fontStretch && CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyFontStretch, id, m_context.mode()))
             fontStretch = consumeIdent(m_range);
         else
             break;
@@ -3982,7 +4143,7 @@ bool CSSPropertyParser::parseViewportDescriptor(CSSPropertyID propId, bool impor
     }
 }
 
-static bool consumeColumnWidthOrCount(CSSParserTokenRange& range, CSSParserMode cssParserMode, CSSValue*& columnWidth, CSSValue*& columnCount)
+static bool consumeColumnWidthOrCount(CSSParserTokenRange& range, CSSValue*& columnWidth, CSSValue*& columnCount)
 {
     if (range.peek().id() == CSSValueAuto) {
         consumeIdent(range);
@@ -4002,9 +4163,9 @@ bool CSSPropertyParser::consumeColumns(bool important)
 {
     CSSValue* columnWidth = nullptr;
     CSSValue* columnCount = nullptr;
-    if (!consumeColumnWidthOrCount(m_range, m_context.mode(), columnWidth, columnCount))
+    if (!consumeColumnWidthOrCount(m_range, columnWidth, columnCount))
         return false;
-    consumeColumnWidthOrCount(m_range, m_context.mode(), columnWidth, columnCount);
+    consumeColumnWidthOrCount(m_range, columnWidth, columnCount);
     if (!m_range.atEnd())
         return false;
     if (!columnWidth)
@@ -4330,12 +4491,9 @@ static bool consumeRepeatStyle(CSSParserTokenRange& range, CSSValue*& resultX, C
 bool CSSPropertyParser::consumeBackgroundShorthand(const StylePropertyShorthand& shorthand, bool important)
 {
     const unsigned longhandCount = shorthand.length();
-    CSSValue* longhands[10];
+    CSSValue* longhands[10] = { 0 };
     ASSERT(longhandCount <= 10);
-#if ENABLE(OILPAN)
-    // Zero initialize the array of raw pointers.
-    memset(&longhands, 0, sizeof(longhands));
-#endif
+
     bool implicit = false;
     do {
         bool parsedLonghand[10] = { false };
@@ -4477,6 +4635,159 @@ bool CSSPropertyParser::consumeGridAreaShorthand(bool important)
     return true;
 }
 
+bool CSSPropertyParser::consumeGridTemplateRowsAndAreasAndColumns(bool important)
+{
+    NamedGridAreaMap gridAreaMap;
+    size_t rowCount = 0;
+    size_t columnCount = 0;
+    CSSValueList* templateRows = CSSValueList::createSpaceSeparated();
+
+    // Persists between loop iterations so we can use the same value for
+    // consecutive <line-names> values
+    CSSGridLineNamesValue* lineNames = nullptr;
+
+    do {
+        // Handle leading <custom-ident>*.
+        bool hasPreviousLineNames = lineNames;
+        lineNames = consumeGridLineNames(m_range, lineNames);
+        if (lineNames && !hasPreviousLineNames)
+            templateRows->append(lineNames);
+
+        // Handle a template-area's row.
+        if (m_range.peek().type() != StringToken || !parseGridTemplateAreasRow(m_range.consumeIncludingWhitespace().value(), gridAreaMap, rowCount, columnCount))
+            return false;
+        ++rowCount;
+
+        // Handle template-rows's track-size.
+        CSSValue* value = consumeGridTrackSize(m_range, m_context.mode());
+        if (!value)
+            value = cssValuePool().createIdentifierValue(CSSValueAuto);
+        templateRows->append(value);
+
+        // This will handle the trailing/leading <custom-ident>* in the grammar.
+        lineNames = consumeGridLineNames(m_range);
+        if (lineNames)
+            templateRows->append(lineNames);
+    } while (!m_range.atEnd() && !(m_range.peek().type() == DelimiterToken && m_range.peek().delimiter() == '/'));
+
+    CSSValue* columnsValue = nullptr;
+    if (!m_range.atEnd()) {
+        if (!consumeSlashIncludingWhitespace(m_range))
+            return false;
+        columnsValue = consumeGridTrackList(m_range, m_context.mode());
+        if (!columnsValue || !m_range.atEnd())
+            return false;
+    } else {
+        columnsValue = cssValuePool().createIdentifierValue(CSSValueNone);
+    }
+    addProperty(CSSPropertyGridTemplateRows, templateRows, important);
+    addProperty(CSSPropertyGridTemplateColumns, columnsValue, important);
+    addProperty(CSSPropertyGridTemplateAreas, CSSGridTemplateAreasValue::create(gridAreaMap, rowCount, columnCount), important);
+    return true;
+}
+
+bool CSSPropertyParser::consumeGridTemplateShorthand(bool important)
+{
+    ASSERT(RuntimeEnabledFeatures::cssGridLayoutEnabled());
+    ASSERT(gridTemplateShorthand().length() == 3);
+
+    CSSParserTokenRange rangeCopy = m_range;
+    CSSValue* rowsValue = consumeIdent<CSSValueNone>(m_range);
+
+    // 1- 'none' case.
+    if (rowsValue && m_range.atEnd()) {
+        addProperty(CSSPropertyGridTemplateRows, cssValuePool().createIdentifierValue(CSSValueNone), important);
+        addProperty(CSSPropertyGridTemplateColumns, cssValuePool().createIdentifierValue(CSSValueNone), important);
+        addProperty(CSSPropertyGridTemplateAreas, cssValuePool().createIdentifierValue(CSSValueNone), important);
+        return true;
+    }
+
+    // 2- <grid-template-rows> / <grid-template-columns>
+    if (!rowsValue)
+        rowsValue = consumeGridTrackList(m_range, m_context.mode());
+
+    if (rowsValue) {
+        if (!consumeSlashIncludingWhitespace(m_range))
+            return false;
+        CSSValue* columnsValue = consumeGridTemplatesRowsOrColumns(m_range, m_context.mode());
+        if (!columnsValue || !m_range.atEnd())
+            return false;
+
+        addProperty(CSSPropertyGridTemplateRows, rowsValue, important);
+        addProperty(CSSPropertyGridTemplateColumns, columnsValue, important);
+        addProperty(CSSPropertyGridTemplateAreas, cssValuePool().createIdentifierValue(CSSValueNone), important);
+        return true;
+    }
+
+    // 3- [ <line-names>? <string> <track-size>? <line-names>? ]+ [ / <track-list> ]?
+    m_range = rangeCopy;
+    return consumeGridTemplateRowsAndAreasAndColumns(important);
+}
+
+bool CSSPropertyParser::consumeGridShorthand(bool important)
+{
+    ASSERT(RuntimeEnabledFeatures::cssGridLayoutEnabled());
+    ASSERT(shorthandForProperty(CSSPropertyGrid).length() == 8);
+
+    CSSParserTokenRange rangeCopy = m_range;
+
+    // 1- <grid-template>
+    if (consumeGridTemplateShorthand(important)) {
+        // It can only be specified the explicit or the implicit grid properties in a single grid declaration.
+        // The sub-properties not specified are set to their initial value, as normal for shorthands.
+        addProperty(CSSPropertyGridAutoFlow, cssValuePool().createImplicitInitialValue(), important);
+        addProperty(CSSPropertyGridAutoColumns, cssValuePool().createImplicitInitialValue(), important);
+        addProperty(CSSPropertyGridAutoRows, cssValuePool().createImplicitInitialValue(), important);
+        addProperty(CSSPropertyGridColumnGap, cssValuePool().createImplicitInitialValue(), important);
+        addProperty(CSSPropertyGridRowGap, cssValuePool().createImplicitInitialValue(), important);
+        return true;
+    }
+
+    m_range = rangeCopy;
+
+    // 2- <grid-auto-flow> [ <grid-auto-rows> [ / <grid-auto-columns> ]? ]
+    CSSValueList* gridAutoFlow = consumeGridAutoFlow(m_range);
+    if (!gridAutoFlow)
+        return false;
+
+    CSSValue* autoColumnsValue = nullptr;
+    CSSValue* autoRowsValue = nullptr;
+
+    if (!m_range.atEnd()) {
+        autoRowsValue = consumeGridTrackSize(m_range, m_context.mode());
+        if (!autoRowsValue)
+            return false;
+        if (consumeSlashIncludingWhitespace(m_range)) {
+            autoColumnsValue = consumeGridTrackSize(m_range, m_context.mode());
+            if (!autoColumnsValue)
+                return false;
+        }
+        if (!m_range.atEnd())
+            return false;
+    } else {
+        // Other omitted values are set to their initial values.
+        autoColumnsValue = cssValuePool().createImplicitInitialValue();
+        autoRowsValue = cssValuePool().createImplicitInitialValue();
+    }
+
+    // if <grid-auto-columns> value is omitted, it is set to the value specified for grid-auto-rows.
+    if (!autoColumnsValue)
+        autoColumnsValue = autoRowsValue;
+
+    // It can only be specified the explicit or the implicit grid properties in a single grid declaration.
+    // The sub-properties not specified are set to their initial value, as normal for shorthands.
+    addProperty(CSSPropertyGridTemplateColumns, cssValuePool().createImplicitInitialValue(), important);
+    addProperty(CSSPropertyGridTemplateRows, cssValuePool().createImplicitInitialValue(), important);
+    addProperty(CSSPropertyGridTemplateAreas, cssValuePool().createImplicitInitialValue(), important);
+    addProperty(CSSPropertyGridAutoFlow, gridAutoFlow, important);
+    addProperty(CSSPropertyGridAutoColumns, autoColumnsValue, important);
+    addProperty(CSSPropertyGridAutoRows, autoRowsValue, important);
+    addProperty(CSSPropertyGridColumnGap, cssValuePool().createImplicitInitialValue(), important);
+    addProperty(CSSPropertyGridRowGap, cssValuePool().createImplicitInitialValue(), important);
+
+    return true;
+}
+
 bool CSSPropertyParser::parseShorthand(CSSPropertyID unresolvedProperty, bool important)
 {
     CSSPropertyID property = resolveCSSPropertyID(unresolvedProperty);
@@ -4487,7 +4798,7 @@ bool CSSPropertyParser::parseShorthand(CSSPropertyID unresolvedProperty, bool im
     switch (property) {
     case CSSPropertyWebkitMarginCollapse: {
         CSSValueID id = m_range.consumeIncludingWhitespace().id();
-        if (!CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyWebkitMarginBeforeCollapse, id))
+        if (!CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyWebkitMarginBeforeCollapse, id, m_context.mode()))
             return false;
         CSSValue* beforeCollapse = cssValuePool().createIdentifierValue(id);
         addProperty(CSSPropertyWebkitMarginBeforeCollapse, beforeCollapse, important);
@@ -4496,14 +4807,14 @@ bool CSSPropertyParser::parseShorthand(CSSPropertyID unresolvedProperty, bool im
             return true;
         }
         id = m_range.consumeIncludingWhitespace().id();
-        if (!CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyWebkitMarginAfterCollapse, id))
+        if (!CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyWebkitMarginAfterCollapse, id, m_context.mode()))
             return false;
         addProperty(CSSPropertyWebkitMarginAfterCollapse, cssValuePool().createIdentifierValue(id), important);
         return true;
     }
     case CSSPropertyOverflow: {
         CSSValueID id = m_range.consumeIncludingWhitespace().id();
-        if (!CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyOverflowY, id))
+        if (!CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyOverflowY, id, m_context.mode()))
             return false;
         if (!m_range.atEnd())
             return false;
@@ -4581,8 +4892,8 @@ bool CSSPropertyParser::parseShorthand(CSSPropertyID unresolvedProperty, bool im
     case CSSPropertyListStyle:
         return consumeShorthandGreedily(listStyleShorthand(), important);
     case CSSPropertyBorderRadius: {
-        CSSPrimitiveValue* horizontalRadii[4];
-        CSSPrimitiveValue* verticalRadii[4];
+        CSSPrimitiveValue* horizontalRadii[4] = { 0 };
+        CSSPrimitiveValue* verticalRadii[4] = { 0 };
         if (!consumeRadii(horizontalRadii, verticalRadii, m_range, m_context.mode(), unresolvedProperty == CSSPropertyAliasWebkitBorderRadius))
             return false;
         addProperty(CSSPropertyBorderTopLeftRadius, CSSValuePair::create(horizontalRadii[0], verticalRadii[0], CSSValuePair::DropIdenticalValues), important);
@@ -4659,13 +4970,13 @@ bool CSSPropertyParser::parseShorthand(CSSPropertyID unresolvedProperty, bool im
         return consumeGridItemPositionShorthand(property, important);
     case CSSPropertyGridArea:
         return consumeGridAreaShorthand(important);
+    case CSSPropertyGridTemplate:
+        return consumeGridTemplateShorthand(important);
+    case CSSPropertyGrid:
+        return consumeGridShorthand(important);
     default:
         m_currentShorthand = oldShorthand;
-        CSSParserValueList valueList(m_range);
-        if (!valueList.size())
-            return false;
-        m_valueList = &valueList;
-        return legacyParseShorthand(unresolvedProperty, important);
+        return false;
     }
 }
 

@@ -32,8 +32,8 @@
 #include "sandbox/win/src/sandbox.h"
 #include "third_party/WebKit/public/web/win/WebFontRendering.h"
 #include "third_party/skia/include/ports/SkTypeface_win.h"
+#include "ui/display/win/dpi.h"
 #include "ui/gfx/win/direct_write.h"
-#include "ui/gfx/win/dpi.h"
 #endif
 
 #if defined(OS_CHROMEOS)
@@ -135,7 +135,7 @@ int PpapiPluginMain(const MainFunctionParams& parameters) {
   LinuxSandbox::InitializeSandbox();
 #endif
 
-  scoped_ptr<base::FeatureList> feature_list(new base::FeatureList);
+  std::unique_ptr<base::FeatureList> feature_list(new base::FeatureList);
   feature_list->InitializeFromCommandLine(
       command_line.GetSwitchValueASCII(switches::kEnableFeatures),
       command_line.GetSwitchValueASCII(switches::kDisableFeatures));
@@ -156,7 +156,7 @@ int PpapiPluginMain(const MainFunctionParams& parameters) {
   }
 
   blink::WebFontRendering::setUseDirectWrite(use_direct_write);
-  blink::WebFontRendering::setDeviceScaleFactor(gfx::GetDPIScale());
+  blink::WebFontRendering::setDeviceScaleFactor(display::win::GetDPIScale());
 #endif
 
   main_message_loop.Run();

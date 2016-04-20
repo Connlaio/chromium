@@ -75,7 +75,7 @@ static const char xhrBreakpoints[] = "xhrBreakpoints";
 static const char enabled[] = "enabled";
 }
 
-RawPtr<InspectorDOMDebuggerAgent> InspectorDOMDebuggerAgent::create(v8::Isolate* isolate, InspectorDOMAgent* domAgent, V8RuntimeAgent* runtimeAgent, V8DebuggerAgent* debuggerAgent)
+InspectorDOMDebuggerAgent* InspectorDOMDebuggerAgent::create(v8::Isolate* isolate, InspectorDOMAgent* domAgent, V8RuntimeAgent* runtimeAgent, V8DebuggerAgent* debuggerAgent)
 {
     return new InspectorDOMDebuggerAgent(isolate, domAgent, runtimeAgent, debuggerAgent);
 }
@@ -99,10 +99,10 @@ void InspectorDOMDebuggerAgent::eventListenersInfoForTarget(v8::Isolate* isolate
         if (!listeners)
             continue;
         for (size_t k = 0; k < listeners->size(); ++k) {
-            RawPtr<EventListener> eventListener = listeners->at(k).listener;
+            EventListener* eventListener = listeners->at(k).listener;
             if (eventListener->type() != EventListener::JSEventListenerType)
                 continue;
-            V8AbstractEventListener* v8Listener = static_cast<V8AbstractEventListener*>(eventListener.get());
+            V8AbstractEventListener* v8Listener = static_cast<V8AbstractEventListener*>(eventListener);
             v8::Local<v8::Context> context = toV8Context(executionContext, v8Listener->world());
             // Hide listeners from other contexts.
             if (context != isolate->GetCurrentContext())
@@ -113,7 +113,7 @@ void InspectorDOMDebuggerAgent::eventListenersInfoForTarget(v8::Isolate* isolate
             v8::Local<v8::Object> handler = v8Listener->getListenerObject(executionContext);
             if (handler.IsEmpty())
                 continue;
-            eventInformation.append(V8EventListenerInfo(type, listeners->at(k).useCapture, handler));
+            eventInformation.append(V8EventListenerInfo(type, listeners->at(k).useCapture, listeners->at(k).passive, handler));
         }
     }
 }
@@ -129,9 +129,6 @@ InspectorDOMDebuggerAgent::InspectorDOMDebuggerAgent(v8::Isolate* isolate, Inspe
 
 InspectorDOMDebuggerAgent::~InspectorDOMDebuggerAgent()
 {
-#if !ENABLE(OILPAN)
-    ASSERT(!m_instrumentingAgents->inspectorDOMDebuggerAgent());
-#endif
 }
 
 DEFINE_TRACE(InspectorDOMDebuggerAgent)
@@ -398,6 +395,7 @@ PassOwnPtr<protocol::DOMDebugger::EventListener> InspectorDOMDebuggerAgent::buil
     OwnPtr<protocol::DOMDebugger::EventListener> value = protocol::DOMDebugger::EventListener::create()
         .setType(info.eventType)
         .setUseCapture(info.useCapture)
+        .setPassive(info.passive)
         .setLocation(location.release()).build();
     if (!objectGroupId.isEmpty()) {
         value->setHandler(m_runtimeAgent->wrapObject(context, function, objectGroupId));
@@ -565,6 +563,11 @@ void InspectorDOMDebuggerAgent::didFireWebGLErrorOrWarning(const String& message
         didFireWebGLError(String());
     else
         didFireWebGLWarning();
+}
+
+void InspectorDOMDebuggerAgent::cancelPauseOnNextStatement()
+{
+    m_debuggerAgent->cancelPauseOnNextStatement();
 }
 
 void InspectorDOMDebuggerAgent::setXHRBreakpoint(ErrorString* errorString, const String& url)

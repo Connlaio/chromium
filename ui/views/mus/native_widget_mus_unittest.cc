@@ -136,7 +136,7 @@ TEST_F(NativeWidgetMusTest, OnActivationChanged) {
 TEST_F(NativeWidgetMusTest, AppIcon) {
   // Create a Widget with a bitmap as the icon.
   SkBitmap source_bitmap = MakeBitmap(SK_ColorRED);
-  scoped_ptr<Widget> widget(
+  std::unique_ptr<Widget> widget(
       CreateWidget(new TestWidgetDelegate(source_bitmap)));
 
   // The mus::Window has the icon property.
@@ -155,7 +155,7 @@ TEST_F(NativeWidgetMusTest, AppIcon) {
 // property.
 TEST_F(NativeWidgetMusTest, NoAppIcon) {
   // Create a Widget without a special icon.
-  scoped_ptr<Widget> widget(CreateWidget(nullptr));
+  std::unique_ptr<Widget> widget(CreateWidget(nullptr));
 
   // The mus::Window does not have an icon property.
   mus::Window* window =
@@ -170,7 +170,7 @@ TEST_F(NativeWidgetMusTest, ChangeAppIcon) {
   // Create a Widget with an icon.
   SkBitmap bitmap1 = MakeBitmap(SK_ColorRED);
   TestWidgetDelegate* delegate = new TestWidgetDelegate(bitmap1);
-  scoped_ptr<Widget> widget(CreateWidget(delegate));
+  std::unique_ptr<Widget> widget(CreateWidget(delegate));
 
   // Update the icon to a new image.
   SkBitmap bitmap2 = MakeBitmap(SK_ColorGREEN);
@@ -186,11 +186,24 @@ TEST_F(NativeWidgetMusTest, ChangeAppIcon) {
 }
 
 TEST_F(NativeWidgetMusTest, ValidLayerTree) {
-  scoped_ptr<Widget> widget(CreateWidget(nullptr));
+  std::unique_ptr<Widget> widget(CreateWidget(nullptr));
   View* content = new View;
   content->SetPaintToLayer(true);
   widget->GetContentsView()->AddChildView(content);
   EXPECT_TRUE(widget->GetNativeWindow()->layer()->Contains(content->layer()));
+}
+
+// Tests that the internal name is propagated from the Widget to the
+// mus::Window.
+TEST_F(NativeWidgetMusTest, GetName) {
+  Widget widget;
+  Widget::InitParams params = CreateParams(Widget::InitParams::TYPE_WINDOW);
+  params.ownership = Widget::InitParams::WIDGET_OWNS_NATIVE_WIDGET;
+  params.name = "MyWidget";
+  widget.Init(params);
+  mus::Window* window =
+      static_cast<NativeWidgetMus*>(widget.native_widget_private())->window();
+  EXPECT_EQ("MyWidget", window->GetName());
 }
 
 }  // namespace

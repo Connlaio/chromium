@@ -5,6 +5,7 @@
 #ifndef ASH_MUS_SHELL_DELEGATE_MUS_H_
 #define ASH_MUS_SHELL_DELEGATE_MUS_H_
 
+#include <memory>
 #include <string>
 
 #include "ash/shell_delegate.h"
@@ -39,7 +40,7 @@ class ShellDelegateMus : public ash::ShellDelegate {
   void RemoveVirtualKeyboardStateObserver(
       VirtualKeyboardStateObserver* observer) override;
   void OpenUrl(const GURL& url) override;
-  app_list::AppListViewDelegate* GetAppListViewDelegate() override;
+  app_list::AppListPresenter* GetAppListPresenter() override;
   ShelfDelegate* CreateShelfDelegate(ShelfModel* model) override;
   ash::SystemTrayDelegate* CreateSystemTrayDelegate() override;
   ash::UserWallpaperDelegate* CreateUserWallpaperDelegate() override;
@@ -54,6 +55,8 @@ class ShellDelegateMus : public ash::ShellDelegate {
   gfx::Image GetDeprecatedAcceleratorImage() const override;
 
  private:
+  std::unique_ptr<app_list::AppListPresenter> app_list_presenter_;
+
   DISALLOW_COPY_AND_ASSIGN(ShellDelegateMus);
 };
 

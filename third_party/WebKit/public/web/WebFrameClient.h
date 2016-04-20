@@ -49,6 +49,7 @@
 #include "public/platform/WebCommon.h"
 #include "public/platform/WebFileSystem.h"
 #include "public/platform/WebFileSystemType.h"
+#include "public/platform/WebLoadingBehaviorFlag.h"
 #include "public/platform/WebSecurityOrigin.h"
 #include "public/platform/WebSetSinkIdCallbacks.h"
 #include "public/platform/WebStorageQuotaCallbacks.h"
@@ -80,7 +81,9 @@ class WebInstalledAppClient;
 class WebMediaPlayer;
 class WebMediaPlayerClient;
 class WebMediaPlayerEncryptedMediaClient;
+class WebMediaPlayerSource;
 class WebMediaSession;
+class WebMediaStream;
 class WebMIDIClient;
 class WebNotificationPermissionCallback;
 class WebPermissionClient;
@@ -94,10 +97,8 @@ class WebScreenOrientationClient;
 class WebString;
 class WebURL;
 class WebURLResponse;
-class WebUSBClient;
 class WebUserMediaClient;
 class WebVRClient;
-class WebWakeLockClient;
 class WebWorkerContentSettingsClientProxy;
 struct WebColorSuggestion;
 struct WebConsoleMessage;
@@ -116,7 +117,7 @@ public:
 
     // May return null.
     // WebContentDecryptionModule* may be null if one has not yet been set.
-    virtual WebMediaPlayer* createMediaPlayer(const WebURL&, WebMediaPlayerClient*, WebMediaPlayerEncryptedMediaClient*, WebContentDecryptionModule*, const WebString& sinkId, WebMediaSession*) { return 0; }
+    virtual WebMediaPlayer* createMediaPlayer(const WebMediaPlayerSource&, WebMediaPlayerClient*, WebMediaPlayerEncryptedMediaClient*, WebContentDecryptionModule*, const WebString& sinkId, WebMediaSession*) { return 0; }
 
     // May return null.
     virtual WebMediaSession* createMediaSession() { return 0; }
@@ -489,6 +490,10 @@ public:
     // A performance timing event (e.g. first paint) occurred
     virtual void didChangePerformanceTiming() { }
 
+    // Blink exhibited a certain loading behavior that the browser process will
+    // use for segregated histograms.
+    virtual void didObserveLoadingBehavior(WebLoadingBehaviorFlag) { }
+
 
     // Script notifications ------------------------------------------------
 
@@ -561,10 +566,6 @@ public:
 
     // A WebSocket object is going to open a new WebSocket connection.
     virtual void willOpenWebSocket(WebSocketHandle*) { }
-
-    // Wake Lock -----------------------------------------------------
-
-    virtual WebWakeLockClient* wakeLockClient() { return 0; }
 
     // Geolocation ---------------------------------------------------------
 
@@ -707,9 +708,6 @@ public:
 
     // Bluetooth -----------------------------------------------------------
     virtual WebBluetooth* bluetooth() { return 0; }
-
-    // WebUSB --------------------------------------------------------------
-    virtual WebUSBClient* usbClient() { return nullptr; }
 
 
     // Audio Output Devices API --------------------------------------------

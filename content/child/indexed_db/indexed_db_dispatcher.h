@@ -25,7 +25,7 @@
 #include "third_party/WebKit/public/platform/modules/indexeddb/WebIDBCallbacks.h"
 #include "third_party/WebKit/public/platform/modules/indexeddb/WebIDBDatabaseCallbacks.h"
 #include "third_party/WebKit/public/platform/modules/indexeddb/WebIDBTypes.h"
-#include "url/gurl.h"
+#include "url/origin.h"
 
 struct IndexedDBDatabaseMetadata;
 struct IndexedDBMsg_CallbacksSuccessCursorContinue_Params;
@@ -75,18 +75,18 @@ class CONTENT_EXPORT IndexedDBDispatcher : public WorkerThread::Observer {
   virtual bool Send(IPC::Message* msg);
 
   void RequestIDBFactoryGetDatabaseNames(blink::WebIDBCallbacks* callbacks,
-                                         const GURL& origin);
+                                         const url::Origin& origin);
 
   void RequestIDBFactoryOpen(const base::string16& name,
                              int64_t version,
                              int64_t transaction_id,
                              blink::WebIDBCallbacks* callbacks,
                              blink::WebIDBDatabaseCallbacks* database_callbacks,
-                             const GURL& origin);
+                             const url::Origin& origin);
 
   void RequestIDBFactoryDeleteDatabase(const base::string16& name,
                                        blink::WebIDBCallbacks* callbacks,
-                                       const GURL& origin);
+                                       const url::Origin& origin);
 
   // This method is virtual so it can be overridden in unit tests.
   virtual void RequestIDBCursorAdvance(unsigned long count,
@@ -195,7 +195,7 @@ class CONTENT_EXPORT IndexedDBDispatcher : public WorkerThread::Observer {
 
   template <typename T>
   void init_params(T* params, blink::WebIDBCallbacks* callbacks_ptr) {
-    scoped_ptr<blink::WebIDBCallbacks> callbacks(callbacks_ptr);
+    std::unique_ptr<blink::WebIDBCallbacks> callbacks(callbacks_ptr);
     params->ipc_thread_id = CurrentWorkerId();
     params->ipc_callbacks_id = pending_callbacks_.Add(callbacks.release());
   }

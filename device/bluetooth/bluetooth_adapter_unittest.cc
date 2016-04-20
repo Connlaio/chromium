@@ -6,6 +6,8 @@
 
 #include <stddef.h>
 #include <stdint.h>
+
+#include <memory>
 #include <utility>
 
 #include "base/bind.h"
@@ -24,6 +26,8 @@
 #include "device/bluetooth/test/bluetooth_test_mac.h"
 #elif defined(OS_WIN)
 #include "device/bluetooth/test/bluetooth_test_win.h"
+#elif defined(OS_CHROMEOS) || defined(OS_LINUX)
+#include "device/bluetooth/test/bluetooth_test_bluez.h"
 #endif
 
 using device::BluetoothDevice;
@@ -62,7 +66,7 @@ class TestBluetoothAdapter : public BluetoothAdapter {
   bool IsDiscovering() const override { return false; }
 
   void StartDiscoverySessionWithFilter(
-      scoped_ptr<BluetoothDiscoveryFilter> discovery_filter,
+      std::unique_ptr<BluetoothDiscoveryFilter> discovery_filter,
       const DiscoverySessionCallback& callback,
       const ErrorCallback& error_callback) override {
     OnStartDiscoverySession(std::move(discovery_filter), callback);
@@ -91,7 +95,7 @@ class TestBluetoothAdapter : public BluetoothAdapter {
       const BluetoothAudioSink::ErrorCallback& error_callback) override {}
 
   void RegisterAdvertisement(
-      scoped_ptr<BluetoothAdvertisement::Data> advertisement_data,
+      std::unique_ptr<BluetoothAdvertisement::Data> advertisement_data,
       const CreateAdvertisementCallback& callback,
       const CreateAdvertisementErrorCallback& error_callback) override {}
 
@@ -100,14 +104,14 @@ class TestBluetoothAdapter : public BluetoothAdapter {
   ScopedVector<BluetoothDiscoverySession> discovery_sessions_;
 
   void TestOnStartDiscoverySession(
-      scoped_ptr<device::BluetoothDiscoverySession> discovery_session) {
+      std::unique_ptr<device::BluetoothDiscoverySession> discovery_session) {
     discovery_sessions_.push_back(std::move(discovery_session));
   }
 
   void CleanupSessions() { discovery_sessions_.clear(); }
 
   void InjectFilteredSession(
-      scoped_ptr<device::BluetoothDiscoveryFilter> discovery_filter) {
+      std::unique_ptr<device::BluetoothDiscoveryFilter> discovery_filter) {
     StartDiscoverySessionWithFilter(
         std::move(discovery_filter),
         base::Bind(&TestBluetoothAdapter::TestOnStartDiscoverySession,
@@ -130,7 +134,7 @@ class TestBluetoothAdapter : public BluetoothAdapter {
       const DiscoverySessionErrorCallback& error_callback) override {}
 
   void SetDiscoveryFilter(
-      scoped_ptr<BluetoothDiscoveryFilter> discovery_filter,
+      std::unique_ptr<BluetoothDiscoveryFilter> discovery_filter,
       const base::Closure& callback,
       const DiscoverySessionErrorCallback& error_callback) override {}
 
@@ -219,7 +223,7 @@ TEST(BluetoothAdapterTest, UnregisterDelegate) {
 
 TEST(BluetoothAdapterTest, GetMergedDiscoveryFilterEmpty) {
   scoped_refptr<BluetoothAdapter> adapter = new TestBluetoothAdapter();
-  scoped_ptr<BluetoothDiscoveryFilter> discovery_filter;
+  std::unique_ptr<BluetoothDiscoveryFilter> discovery_filter;
 
   discovery_filter = adapter->GetMergedDiscoveryFilter();
   EXPECT_TRUE(discovery_filter.get() == nullptr);
@@ -230,13 +234,13 @@ TEST(BluetoothAdapterTest, GetMergedDiscoveryFilterEmpty) {
 
 TEST(BluetoothAdapterTest, GetMergedDiscoveryFilterRegular) {
   scoped_refptr<TestBluetoothAdapter> adapter = new TestBluetoothAdapter();
-  scoped_ptr<BluetoothDiscoveryFilter> discovery_filter;
+  std::unique_ptr<BluetoothDiscoveryFilter> discovery_filter;
 
   // make sure adapter have one session wihout filtering.
   adapter->InjectFilteredSession(std::move(discovery_filter));
 
   // having one reglar session should result in no filter
-  scoped_ptr<BluetoothDiscoveryFilter> resulting_filter =
+  std::unique_ptr<BluetoothDiscoveryFilter> resulting_filter =
       adapter->GetMergedDiscoveryFilter();
   EXPECT_TRUE(resulting_filter.get() == nullptr);
 
@@ -251,17 +255,17 @@ TEST(BluetoothAdapterTest, GetMergedDiscoveryFilterRssi) {
   scoped_refptr<TestBluetoothAdapter> adapter = new TestBluetoothAdapter();
   int16_t resulting_rssi;
   uint16_t resulting_pathloss;
-  scoped_ptr<BluetoothDiscoveryFilter> resulting_filter;
+  std::unique_ptr<BluetoothDiscoveryFilter> resulting_filter;
 
   BluetoothDiscoveryFilter* df = new BluetoothDiscoveryFilter(
       BluetoothDiscoveryFilter::Transport::TRANSPORT_LE);
   df->SetRSSI(-30);
-  scoped_ptr<BluetoothDiscoveryFilter> discovery_filter(df);
+  std::unique_ptr<BluetoothDiscoveryFilter> discovery_filter(df);
 
   BluetoothDiscoveryFilter* df2 = new BluetoothDiscoveryFilter(
       BluetoothDiscoveryFilter::Transport::TRANSPORT_LE);
   df2->SetRSSI(-65);
-  scoped_ptr<BluetoothDiscoveryFilter> discovery_filter2(df2);
+  std::unique_ptr<BluetoothDiscoveryFilter> discovery_filter2(df2);
 
   // make sure adapter have one session wihout filtering.
   adapter->InjectFilteredSession(std::move(discovery_filter));
@@ -296,7 +300,7 @@ TEST(BluetoothAdapterTest, GetMergedDiscoveryFilterRssi) {
   BluetoothDiscoveryFilter* df3 = new BluetoothDiscoveryFilter(
       BluetoothDiscoveryFilter::Transport::TRANSPORT_LE);
   df3->SetPathloss(60);
-  scoped_ptr<BluetoothDiscoveryFilter> discovery_filter3(df3);
+  std::unique_ptr<BluetoothDiscoveryFilter> discovery_filter3(df3);
 
   // when rssi and pathloss are merged, both should be cleared, becuase there is
   // no way to tell which filter will be more generic
@@ -310,15 +314,15 @@ TEST(BluetoothAdapterTest, GetMergedDiscoveryFilterRssi) {
 
 TEST(BluetoothAdapterTest, GetMergedDiscoveryFilterTransport) {
   scoped_refptr<TestBluetoothAdapter> adapter = new TestBluetoothAdapter();
-  scoped_ptr<BluetoothDiscoveryFilter> resulting_filter;
+  std::unique_ptr<BluetoothDiscoveryFilter> resulting_filter;
 
   BluetoothDiscoveryFilter* df = new BluetoothDiscoveryFilter(
       BluetoothDiscoveryFilter::Transport::TRANSPORT_CLASSIC);
-  scoped_ptr<BluetoothDiscoveryFilter> discovery_filter(df);
+  std::unique_ptr<BluetoothDiscoveryFilter> discovery_filter(df);
 
   BluetoothDiscoveryFilter* df2 = new BluetoothDiscoveryFilter(
       BluetoothDiscoveryFilter::Transport::TRANSPORT_LE);
-  scoped_ptr<BluetoothDiscoveryFilter> discovery_filter2(df2);
+  std::unique_ptr<BluetoothDiscoveryFilter> discovery_filter2(df2);
 
   adapter->InjectFilteredSession(std::move(discovery_filter));
 
@@ -348,7 +352,7 @@ TEST(BluetoothAdapterTest, GetMergedDiscoveryFilterTransport) {
       BluetoothDiscoveryFilter::Transport::TRANSPORT_LE);
   df3->CopyFrom(BluetoothDiscoveryFilter(
       BluetoothDiscoveryFilter::Transport::TRANSPORT_DUAL));
-  scoped_ptr<BluetoothDiscoveryFilter> discovery_filter3(df3);
+  std::unique_ptr<BluetoothDiscoveryFilter> discovery_filter3(df3);
 
   // Merging empty filter in should result in empty filter
   adapter->InjectFilteredSession(std::move(discovery_filter3));
@@ -367,7 +371,7 @@ TEST(BluetoothAdapterTest, GetMergedDiscoveryFilterAllFields) {
       BluetoothDiscoveryFilter::Transport::TRANSPORT_LE);
   df->SetRSSI(-60);
   df->AddUUID(device::BluetoothUUID("1000"));
-  scoped_ptr<BluetoothDiscoveryFilter> discovery_filter(df);
+  std::unique_ptr<BluetoothDiscoveryFilter> discovery_filter(df);
 
   BluetoothDiscoveryFilter* df2 = new BluetoothDiscoveryFilter(
       BluetoothDiscoveryFilter::Transport::TRANSPORT_LE);
@@ -375,7 +379,7 @@ TEST(BluetoothAdapterTest, GetMergedDiscoveryFilterAllFields) {
   df2->SetTransport(BluetoothDiscoveryFilter::Transport::TRANSPORT_LE);
   df2->AddUUID(device::BluetoothUUID("1020"));
   df2->AddUUID(device::BluetoothUUID("1001"));
-  scoped_ptr<BluetoothDiscoveryFilter> discovery_filter2(df2);
+  std::unique_ptr<BluetoothDiscoveryFilter> discovery_filter2(df2);
 
   BluetoothDiscoveryFilter* df3 = new BluetoothDiscoveryFilter(
       BluetoothDiscoveryFilter::Transport::TRANSPORT_LE);
@@ -383,14 +387,14 @@ TEST(BluetoothAdapterTest, GetMergedDiscoveryFilterAllFields) {
   df3->SetTransport(BluetoothDiscoveryFilter::Transport::TRANSPORT_CLASSIC);
   df3->AddUUID(device::BluetoothUUID("1020"));
   df3->AddUUID(device::BluetoothUUID("1003"));
-  scoped_ptr<BluetoothDiscoveryFilter> discovery_filter3(df3);
+  std::unique_ptr<BluetoothDiscoveryFilter> discovery_filter3(df3);
 
   // make sure adapter have one session wihout filtering.
   adapter->InjectFilteredSession(std::move(discovery_filter));
   adapter->InjectFilteredSession(std::move(discovery_filter2));
   adapter->InjectFilteredSession(std::move(discovery_filter3));
 
-  scoped_ptr<BluetoothDiscoveryFilter> resulting_filter =
+  std::unique_ptr<BluetoothDiscoveryFilter> resulting_filter =
       adapter->GetMergedDiscoveryFilter();
   resulting_filter->GetRSSI(&resulting_rssi);
   resulting_filter->GetUUIDs(resulting_uuids);
@@ -545,7 +549,6 @@ TEST_F(BluetoothTest, NoPermissions) {
 }
 #endif  // defined(OS_ANDROID) || defined(OS_MACOSX)
 
-#if defined(OS_ANDROID) || defined(OS_MACOSX) || defined(OS_WIN)
 // Discovers a device.
 TEST_F(BluetoothTest, DiscoverLowEnergyDevice) {
   if (!PlatformSupportsLowEnergy()) {
@@ -562,9 +565,7 @@ TEST_F(BluetoothTest, DiscoverLowEnergyDevice) {
   BluetoothDevice* device = adapter_->GetDevice(observer.last_device_address());
   EXPECT_TRUE(device);
 }
-#endif  // defined(OS_ANDROID) || defined(OS_MACOSX) || defined(OS_WIN)
 
-#if defined(OS_ANDROID) || defined(OS_MACOSX) || defined(OS_WIN)
 // Discovers the same device multiple times.
 TEST_F(BluetoothTest, DiscoverLowEnergyDeviceTwice) {
   if (!PlatformSupportsLowEnergy()) {
@@ -588,7 +589,6 @@ TEST_F(BluetoothTest, DiscoverLowEnergyDeviceTwice) {
   EXPECT_EQ(0, observer.device_added_count());
   EXPECT_EQ(1u, adapter_->GetDevices().size());
 }
-#endif  // defined(OS_ANDROID) || defined(OS_MACOSX) || defined(OS_WIN)
 
 #if defined(OS_ANDROID) || defined(OS_MACOSX)
 // Discovers a device, and then again with new Service UUIDs.
@@ -641,7 +641,6 @@ TEST_F(BluetoothTest, DiscoverLowEnergyDeviceWithUpdatedUUIDs) {
 }
 #endif  // defined(OS_ANDROID) || defined(OS_MACOSX)
 
-#if defined(OS_ANDROID) || defined(OS_MACOSX) || defined(OS_WIN)
 // Discovers multiple devices when addresses vary.
 TEST_F(BluetoothTest, DiscoverMultipleLowEnergyDevices) {
   if (!PlatformSupportsLowEnergy()) {
@@ -658,7 +657,6 @@ TEST_F(BluetoothTest, DiscoverMultipleLowEnergyDevices) {
   EXPECT_EQ(2, observer.device_added_count());
   EXPECT_EQ(2u, adapter_->GetDevices().size());
 }
-#endif  // defined(OS_ANDROID) || defined(OS_MACOSX) || defined(OS_WIN)
 
 #if defined(OS_ANDROID)
 TEST_F(BluetoothTest, TogglePowerFakeAdapter) {

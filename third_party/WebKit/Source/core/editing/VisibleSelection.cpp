@@ -100,7 +100,7 @@ template <typename Strategy>
 static SelectionType computeSelectionType(const PositionTemplate<Strategy>& start, const PositionTemplate<Strategy>& end)
 {
     if (start.isNull()) {
-        ASSERT(end.isNull());
+        DCHECK(end.isNull());
         return NoSelection;
     }
     if (start == end)
@@ -150,18 +150,10 @@ VisibleSelectionTemplate<Strategy>& VisibleSelectionTemplate<Strategy>::operator
     return *this;
 }
 
-#if !ENABLE(OILPAN)
-template <typename Strategy>
-VisibleSelectionTemplate<Strategy>::~VisibleSelectionTemplate()
-{
-    didChange();
-}
-#endif
-
 template <typename Strategy>
 VisibleSelectionTemplate<Strategy> VisibleSelectionTemplate<Strategy>::selectionFromContentsOfNode(Node* node)
 {
-    ASSERT(!Strategy::editingIgnoresContent(node));
+    DCHECK(!Strategy::editingIgnoresContent(node));
     return VisibleSelectionTemplate(PositionTemplate<Strategy>::firstPositionInNode(node), PositionTemplate<Strategy>::lastPositionInNode(node));
 }
 
@@ -214,7 +206,7 @@ EphemeralRange firstEphemeralRangeOf(const VisibleSelection& selection)
     return EphemeralRange(start, end);
 }
 
-RawPtr<Range> firstRangeOf(const VisibleSelection& selection)
+Range* firstRangeOf(const VisibleSelection& selection)
 {
     return createRange(firstEphemeralRangeOf(selection));
 }
@@ -253,7 +245,7 @@ EphemeralRangeTemplate<Strategy> VisibleSelectionTemplate<Strategy>::toNormalize
     // On a treasure map, <b>X</b> marks the spot.
     //                       ^ selected
     //
-    ASSERT(isRange());
+    DCHECK(isRange());
     return normalizeRange(EphemeralRangeTemplate<Strategy>(m_start, m_end));
 }
 
@@ -293,7 +285,7 @@ static EphemeralRangeTemplate<Strategy> makeSearchRange(const PositionTemplate<S
 template <typename Strategy>
 void VisibleSelectionTemplate<Strategy>::appendTrailingWhitespace()
 {
-    ASSERT(m_granularity == WordGranularity);
+    DCHECK_EQ(m_granularity, WordGranularity);
     const EphemeralRangeTemplate<Strategy> searchRange = makeSearchRange(end());
     if (searchRange.isNull())
         return;
@@ -344,8 +336,8 @@ void VisibleSelectionTemplate<Strategy>::setBaseAndExtentToDeepEquivalents()
 template <typename Strategy>
 void VisibleSelectionTemplate<Strategy>::setStartRespectingGranularity(TextGranularity granularity, EWordSide wordSide)
 {
-    ASSERT(m_base.isNotNull());
-    ASSERT(m_extent.isNotNull());
+    DCHECK(m_base.isNotNull());
+    DCHECK(m_extent.isNotNull());
 
     m_start = m_baseIsFirst ? m_base : m_extent;
 
@@ -404,8 +396,8 @@ void VisibleSelectionTemplate<Strategy>::setStartRespectingGranularity(TextGranu
 template <typename Strategy>
 void VisibleSelectionTemplate<Strategy>::setEndRespectingGranularity(TextGranularity granularity, EWordSide wordSide)
 {
-    ASSERT(m_base.isNotNull());
-    ASSERT(m_extent.isNotNull());
+    DCHECK(m_base.isNotNull());
+    DCHECK(m_extent.isNotNull());
 
     m_end = m_baseIsFirst ? m_extent : m_base;
 
@@ -540,9 +532,9 @@ void VisibleSelectionTemplate<Strategy>::validate(TextGranularity granularity)
     m_start = m_baseIsFirst ? m_base : m_extent;
     m_end = m_baseIsFirst ? m_extent : m_base;
     setStartRespectingGranularity(granularity);
-    ASSERT(m_start.isNotNull());
+    DCHECK(m_start.isNotNull());
     setEndRespectingGranularity(granularity);
-    ASSERT(m_end.isNotNull());
+    DCHECK(m_end.isNotNull());
     adjustSelectionToAvoidCrossingShadowBoundaries();
     adjustSelectionToAvoidCrossingEditingBoundaries();
     updateSelectionType();
@@ -806,14 +798,14 @@ VisibleSelectionChangeObserver::~VisibleSelectionChangeObserver()
 template <typename Strategy>
 void VisibleSelectionTemplate<Strategy>::setChangeObserver(VisibleSelectionChangeObserver& observer)
 {
-    ASSERT(!m_changeObserver);
+    DCHECK(!m_changeObserver);
     m_changeObserver = &observer;
 }
 
 template <typename Strategy>
 void VisibleSelectionTemplate<Strategy>::clearChangeObserver()
 {
-    ASSERT(m_changeObserver);
+    DCHECK(m_changeObserver);
     m_changeObserver = nullptr;
 }
 

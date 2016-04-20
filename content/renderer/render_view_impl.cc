@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 
 #include "base/auto_reset.h"
 #include "base/bind.h"
@@ -18,7 +19,7 @@
 #include "base/i18n/rtl.h"
 #include "base/json/json_writer.h"
 #include "base/lazy_instance.h"
-#include "base/memory/scoped_ptr.h"
+#include "base/memory/ptr_util.h"
 #include "base/metrics/field_trial.h"
 #include "base/metrics/histogram.h"
 #include "base/process/kill.h"
@@ -722,14 +723,14 @@ void RenderViewImpl::Initialize(const ViewMsg_New_Params& params,
     main_render_frame_->Initialize();
 
 #if defined(OS_ANDROID)
-  content_detectors_.push_back(make_scoped_ptr(new AddressDetector()));
+  content_detectors_.push_back(base::WrapUnique(new AddressDetector()));
   const std::string& contry_iso =
       params.renderer_preferences.network_contry_iso;
   if (!contry_iso.empty()) {
     content_detectors_.push_back(
-        make_scoped_ptr(new PhoneNumberDetector(contry_iso)));
+        base::WrapUnique(new PhoneNumberDetector(contry_iso)));
   }
-  content_detectors_.push_back(make_scoped_ptr(new EmailDetector()));
+  content_detectors_.push_back(base::WrapUnique(new EmailDetector()));
 #endif
 
   RenderThread::Get()->AddRoute(GetRoutingID(), this);
@@ -794,8 +795,7 @@ void RenderViewImpl::Initialize(const ViewMsg_New_Params& params,
   // Ensure that sandbox flags are inherited from an opener in a different
   // process.  In that case, the browser process will set any inherited sandbox
   // flags in |replicated_frame_state|, so apply them here.
-  if (opener_frame && !was_created_by_renderer &&
-      webview()->mainFrame()->isWebLocalFrame()) {
+  if (!was_created_by_renderer && webview()->mainFrame()->isWebLocalFrame()) {
     webview()->mainFrame()->toWebLocalFrame()->forceSandboxFlags(
         params.replicated_frame_state.sandbox_flags);
   }
@@ -1088,14 +1088,16 @@ void RenderView::ApplyWebPreferences(const WebPreferences& prefs,
       prefs.resue_global_for_unowned_main_frame);
   settings->setPreferHiddenVolumeControls(true);
   settings->setShrinksViewportContentToFit(true);
-  settings->setUseMobileViewportStyle(true);
   settings->setAutoplayExperimentMode(
       blink::WebString::fromUTF8(prefs.autoplay_experiment_mode));
 #endif
 
   settings->setViewportEnabled(prefs.viewport_enabled);
-  settings->setLoadWithOverviewMode(prefs.initialize_at_minimum_page_scale);
   settings->setViewportMetaEnabled(prefs.viewport_meta_enabled);
+  settings->setViewportStyle(
+      static_cast<blink::WebViewportStyle>(prefs.viewport_style));
+
+  settings->setLoadWithOverviewMode(prefs.initialize_at_minimum_page_scale);
   settings->setMainFrameResizesAreOrientationChanges(
       prefs.main_frame_resizes_are_orientation_changes);
 
@@ -1203,8 +1205,7 @@ void RenderViewImpl::OnGetRenderedText() {
   // TODO(dglazkov): WebFrameContentDumper should only be used for
   // testing purposes. See http://crbug.com/585164.
   std::string text =
-      WebFrameContentDumper::deprecatedDumpFrameTreeAsText(
-          webview()->mainFrame()->toWebLocalFrame(), kMaximumMessageSize)
+      WebFrameContentDumper::dumpWebViewAsText(webview(), kMaximumMessageSize)
           .utf8();
 
   Send(new ViewMsg_GetRenderedTextCompleted(GetRoutingID(), text));
@@ -1492,7 +1493,7 @@ void RenderViewImpl::OnForceRedraw(int id) {
                                   0,
                                   id);
   }
-  scoped_ptr<cc::SwapPromiseMonitor> latency_info_swap_promise_monitor;
+  std::unique_ptr<cc::SwapPromiseMonitor> latency_info_swap_promise_monitor;
   if (RenderWidgetCompositor* rwc = compositor()) {
     latency_info_swap_promise_monitor =
         rwc->CreateLatencyInfoSwapPromiseMonitor(&latency_info);
@@ -2946,7 +2947,7 @@ bool RenderViewImpl::ScheduleFileChooser(
   }
 
   file_chooser_completions_.push_back(
-      make_scoped_ptr(new PendingFileChooser(params, completion)));
+      base::WrapUnique(new PendingFileChooser(params, completion)));
   if (file_chooser_completions_.size() == 1) {
     // Actually show the browse dialog when this is the first request.
     Send(new ViewHostMsg_RunFileChooser(GetRoutingID(), params));
@@ -3148,7 +3149,7 @@ bool RenderViewImpl::didTapMultipleTargets(
           gfx::ScaleToCeiledSize(zoom_rect.size(), new_total_scale);
       cc::SharedBitmapManager* manager =
           RenderThreadImpl::current()->shared_bitmap_manager();
-      scoped_ptr<cc::SharedBitmap> shared_bitmap =
+      std::unique_ptr<cc::SharedBitmap> shared_bitmap =
           manager->AllocateSharedBitmap(canvas_size);
       CHECK(!!shared_bitmap);
       {

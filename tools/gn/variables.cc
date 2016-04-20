@@ -418,6 +418,25 @@ const char kAllowCircularIncludesFrom_Help[] =
     "    public_deps = [ \":c\" ]\n"
     "  }\n";
 
+const char kArflags[] = "arflags";
+const char kArflags_HelpShort[] =
+    "arflags: [string list] Arguments passed to static_library archiver.";
+const char kArflags_Help[] =
+    "arflags: Arguments passed to static_library archiver.\n"
+    "\n"
+    "  A list of flags passed to the archive/lib command that creates static\n"
+    "  libraries.\n"
+    "\n"
+    "  arflags are NOT pushed to dependents, so applying arflags to source\n"
+    "  sets or any other target type will be a no-op. As with ldflags,\n"
+    "  you could put the arflags in a config and set that as a public or\n"
+    "  \"all dependent\" config, but that will likely not be what you want.\n"
+    "  If you have a chain of static libraries dependent on each other,\n"
+    "  this can cause the flags to propagate up to other static libraries.\n"
+    "  Due to the nature of how arflags are typically used, you will normally\n"
+    "  want to apply them directly on static_library targets themselves.\n"
+    COMMON_ORDERING_HELP;
+
 const char kArgs[] = "args";
 const char kArgs_HelpShort[] =
     "args: [string list] Arguments passed to an action.";
@@ -1119,6 +1138,34 @@ const char kOutputExtension_Help[] =
     "    }\n"
     "  }\n";
 
+const char kOutputDir[] = "output_dir";
+const char kOutputDir_HelpShort[] =
+    "output_dir: [directory] Directory to put output file in.";
+const char kOutputDir_Help[] =
+    "output_dir: [directory] Directory to put output file in.\n"
+    "\n"
+    "  For library and executable targets, overrides the directory for the\n"
+    "  final output. This must be in the root_build_dir or a child thereof.\n"
+    "\n"
+    "  This should generally be in the root_out_dir or a subdirectory thereof\n"
+    "  (the root_out_dir will be the same as the root_build_dir for the\n"
+    "  default toolchain, and will be a subdirectory for other toolchains).\n"
+    "  Not putting the output in a subdirectory of root_out_dir can result\n"
+    "  in collisions between different toolchains, so you will need to take\n"
+    "  steps to ensure that your target is only present in one toolchain.\n"
+    "\n"
+    "  Normally the toolchain specifies the output directory for libraries\n"
+    "  and executables (see \"gn help tool\"). You will have to consult that\n"
+    "  for the default location. The default location will be used if\n"
+    "  output_dir is undefined or empty.\n"
+    "\n"
+    "Example\n"
+    "\n"
+    "  shared_library(\"doom_melon\") {\n"
+    "    output_dir = \"$root_out_dir/plugin_libs\"\n"
+    "    ...\n"
+    "  }\n";
+
 const char kOutputName[] = "output_name";
 const char kOutputName_HelpShort[] =
     "output_name: [string] Name for the output file other than the default.";
@@ -1610,6 +1657,7 @@ const VariableInfoMap& GetTargetVariables() {
   if (info_map.empty()) {
     INSERT_VARIABLE(AllDependentConfigs)
     INSERT_VARIABLE(AllowCircularIncludesFrom)
+    INSERT_VARIABLE(Arflags)
     INSERT_VARIABLE(Args)
     INSERT_VARIABLE(Asmflags)
     INSERT_VARIABLE(AssertNoDeps)
@@ -1636,6 +1684,7 @@ const VariableInfoMap& GetTargetVariables() {
     INSERT_VARIABLE(Ldflags)
     INSERT_VARIABLE(Libs)
     INSERT_VARIABLE(LibDirs)
+    INSERT_VARIABLE(OutputDir)
     INSERT_VARIABLE(OutputExtension)
     INSERT_VARIABLE(OutputName)
     INSERT_VARIABLE(OutputPrefixOverride)

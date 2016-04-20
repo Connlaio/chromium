@@ -10,7 +10,6 @@
 #include "base/macros.h"
 #include "base/memory/weak_ptr.h"
 #include "base/values.h"
-#include "cc/raster/tile_task_runner.h"
 #include "cc/raster/tile_task_worker_pool.h"
 
 namespace base {
@@ -23,33 +22,30 @@ namespace cc {
 class ResourceProvider;
 
 class CC_EXPORT ZeroCopyTileTaskWorkerPool : public TileTaskWorkerPool,
-                                             public TileTaskRunner,
-                                             public TileTaskClient {
+                                             public RasterBufferProvider {
  public:
   ~ZeroCopyTileTaskWorkerPool() override;
 
-  static scoped_ptr<TileTaskWorkerPool> Create(
+  static std::unique_ptr<TileTaskWorkerPool> Create(
       base::SequencedTaskRunner* task_runner,
       TaskGraphRunner* task_graph_runner,
       ResourceProvider* resource_provider,
       ResourceFormat preferred_tile_format);
 
   // Overridden from TileTaskWorkerPool:
-  TileTaskRunner* AsTileTaskRunner() override;
-
-  // Overridden from TileTaskRunner:
   void Shutdown() override;
   void ScheduleTasks(TaskGraph* graph) override;
   void CheckForCompletedTasks() override;
   ResourceFormat GetResourceFormat(bool must_support_alpha) const override;
   bool GetResourceRequiresSwizzle(bool must_support_alpha) const override;
+  RasterBufferProvider* AsRasterBufferProvider() override;
 
-  // Overridden from TileTaskClient:
-  scoped_ptr<RasterBuffer> AcquireBufferForRaster(
+  // Overridden from RasterBufferProvider:
+  std::unique_ptr<RasterBuffer> AcquireBufferForRaster(
       const Resource* resource,
       uint64_t resource_content_id,
       uint64_t previous_content_id) override;
-  void ReleaseBufferForRaster(scoped_ptr<RasterBuffer> buffer) override;
+  void ReleaseBufferForRaster(std::unique_ptr<RasterBuffer> buffer) override;
 
  protected:
   ZeroCopyTileTaskWorkerPool(base::SequencedTaskRunner* task_runner,
@@ -58,7 +54,8 @@ class CC_EXPORT ZeroCopyTileTaskWorkerPool : public TileTaskWorkerPool,
                              ResourceFormat preferred_tile_format);
 
  private:
-  scoped_ptr<base::trace_event::ConvertableToTraceFormat> StateAsValue() const;
+  std::unique_ptr<base::trace_event::ConvertableToTraceFormat> StateAsValue()
+      const;
 
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
   TaskGraphRunner* task_graph_runner_;

@@ -4,6 +4,7 @@
 
 #include "chrome/browser/ntp_snippets/ntp_snippets_service_factory.h"
 
+#include "base/memory/ptr_util.h"
 #include "base/memory/singleton.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/profiles/profile.h"
@@ -17,6 +18,7 @@
 #include "components/version_info/version_info.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/browser_thread.h"
+#include "content/public/browser/storage_partition.h"
 #include "net/url_request/url_request_context_getter.h"
 
 #if defined(OS_ANDROID)
@@ -53,7 +55,8 @@ KeyedService* NTPSnippetsServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
   scoped_refptr<net::URLRequestContextGetter> request_context =
-      context->GetRequestContext();
+      content::BrowserContext::GetDefaultStoragePartition(context)->
+            GetURLRequestContext();
   SuggestionsService* suggestions_service =
       SuggestionsServiceFactory::GetForProfile(profile);
 
@@ -71,7 +74,7 @@ KeyedService* NTPSnippetsServiceFactory::BuildServiceInstanceFor(
   return new ntp_snippets::NTPSnippetsService(
       profile->GetPrefs(), suggestions_service, task_runner,
       g_browser_process->GetApplicationLocale(), scheduler,
-      make_scoped_ptr(new ntp_snippets::NTPSnippetsFetcher(
+      base::WrapUnique(new ntp_snippets::NTPSnippetsFetcher(
           task_runner, request_context,
           chrome::GetChannel() == version_info::Channel::STABLE)),
       base::Bind(&safe_json::SafeJsonParser::Parse));

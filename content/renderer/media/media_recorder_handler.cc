@@ -65,10 +65,11 @@ bool MediaRecorderHandler::canSupportMimeType(
   // Both |video| and |audio| support empty |codecs|; |type| == "video" supports
   // vp8, vp9 or opus; |type| = "audio", supports only opus.
   // http://www.webmproject.org/docs/container Sec:"HTML5 Video Type Parameters"
-  static const char* kVideoCodecs[] = { "vp8", "vp9", "opus" };
-  static const char* kAudioCodecs[] = { "opus" };
-  const char** codecs = video ? &kVideoCodecs[0] : &kAudioCodecs[0];
-  int codecs_count =  video ? arraysize(kVideoCodecs) : arraysize(kAudioCodecs);
+  static const char* const kVideoCodecs[] = { "vp8", "vp9", "opus" };
+  static const char* const kAudioCodecs[] = { "opus" };
+  const char* const* codecs = video ? &kVideoCodecs[0] : &kAudioCodecs[0];
+  const int codecs_count =
+      video ? arraysize(kVideoCodecs) : arraysize(kAudioCodecs);
 
   std::vector<std::string> codecs_list;
   media::ParseCodecString(web_codecs.utf8(), &codecs_list, true /* strip */);
@@ -165,7 +166,9 @@ bool MediaRecorderHandler::start(int timeslice) {
             &MediaRecorderHandler::OnEncodedVideo, weak_factory_.GetWeakPtr()));
 
     video_recorders_.push_back(new VideoTrackRecorder(
-        use_vp9_, video_track, on_encoded_video_cb, video_bits_per_second_));
+        use_vp9_ ? VideoTrackRecorder::CodecId::VP9
+                 : VideoTrackRecorder::CodecId::VP8,
+        video_track, on_encoded_video_cb, video_bits_per_second_));
   }
 
   if (use_audio_tracks) {
@@ -225,7 +228,7 @@ void MediaRecorderHandler::resume() {
 
 void MediaRecorderHandler::OnEncodedVideo(
     const scoped_refptr<media::VideoFrame>& video_frame,
-    scoped_ptr<std::string> encoded_data,
+    std::unique_ptr<std::string> encoded_data,
     TimeTicks timestamp,
     bool is_key_frame) {
   DCHECK(main_render_thread_checker_.CalledOnValidThread());
@@ -235,9 +238,10 @@ void MediaRecorderHandler::OnEncodedVideo(
                               is_key_frame);
 }
 
-void MediaRecorderHandler::OnEncodedAudio(const media::AudioParameters& params,
-                                          scoped_ptr<std::string> encoded_data,
-                                          base::TimeTicks timestamp) {
+void MediaRecorderHandler::OnEncodedAudio(
+    const media::AudioParameters& params,
+    std::unique_ptr<std::string> encoded_data,
+    base::TimeTicks timestamp) {
   DCHECK(main_render_thread_checker_.CalledOnValidThread());
   if (webm_muxer_)
     webm_muxer_->OnEncodedAudio(params, std::move(encoded_data), timestamp);

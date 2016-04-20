@@ -7,6 +7,8 @@
 #include <stddef.h>
 #include <string.h>
 
+#include <memory>
+
 #include "base/bind.h"
 #include "base/location.h"
 #include "base/thread_task_runner_handle.h"
@@ -87,13 +89,13 @@ void FakeVideoDecodeAccelerator::AssignPictureBuffers(
   DCHECK(!(buffers.size()%2));
 
   // Save buffers and mark all buffers as ready for use.
-  scoped_ptr<uint8_t[]> white_data(
+  std::unique_ptr<uint8_t[]> white_data(
       new uint8_t[frame_buffer_size_.width() * frame_buffer_size_.height() *
                   4]);
   memset(white_data.get(),
          UINT8_MAX,
          frame_buffer_size_.width() * frame_buffer_size_.height() * 4);
-  scoped_ptr<uint8_t[]> black_data(
+  std::unique_ptr<uint8_t[]> black_data(
       new uint8_t[frame_buffer_size_.width() * frame_buffer_size_.height() *
                   4]);
   memset(black_data.get(),

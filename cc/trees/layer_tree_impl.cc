@@ -119,22 +119,6 @@ void LayerTreeImpl::RecreateResources() {
   }
 }
 
-void LayerTreeImpl::GatherFrameTimingRequestIds(
-    std::vector<int64_t>* request_ids) {
-  if (!root_layer_)
-    return;
-
-  // TODO(vmpstr): Early out if there are no requests on any of the layers. For
-  // that, we need to inform LayerTreeImpl whenever there are requests when we
-  // get them.
-  LayerTreeHostCommon::CallFunctionForEveryLayer(
-      this,
-      [request_ids](LayerImpl* layer) {
-        layer->GatherFrameTimingRequestIds(request_ids);
-      },
-      CallFunctionLayerType::ALL_LAYERS);
-}
-
 bool LayerTreeImpl::IsViewportLayerId(int id) const {
   if (id == inner_viewport_scroll_layer_id_ ||
       id == outer_viewport_scroll_layer_id_)
@@ -275,7 +259,7 @@ void LayerTreeImpl::UpdateScrollbars(int scroll_layer_id, int clip_layer_id) {
   }
 }
 
-void LayerTreeImpl::SetRootLayer(scoped_ptr<LayerImpl> layer) {
+void LayerTreeImpl::SetRootLayer(std::unique_ptr<LayerImpl> layer) {
   if (root_layer_ && layer.get() != root_layer_)
     RemoveLayer(root_layer_->id());
   root_layer_ = layer.get();
@@ -320,11 +304,11 @@ gfx::ScrollOffset LayerTreeImpl::TotalMaxScrollOffset() const {
   return offset;
 }
 
-scoped_ptr<OwnedLayerImplList> LayerTreeImpl::DetachLayers() {
+std::unique_ptr<OwnedLayerImplList> LayerTreeImpl::DetachLayers() {
   root_layer_ = nullptr;
   render_surface_layer_list_.clear();
   set_needs_update_draw_properties();
-  scoped_ptr<OwnedLayerImplList> ret = std::move(layers_);
+  std::unique_ptr<OwnedLayerImplList> ret = std::move(layers_);
   layers_.reset(new OwnedLayerImplList);
   return ret;
 }
@@ -418,11 +402,14 @@ void LayerTreeImpl::PushPropertiesTo(LayerTreeImpl* target_tree) {
   target_tree->set_has_transparent_background(has_transparent_background());
   target_tree->set_have_scroll_event_handlers(have_scroll_event_handlers());
   target_tree->set_event_listener_properties(
-      EventListenerClass::kTouch,
-      event_listener_properties(EventListenerClass::kTouch));
+      EventListenerClass::kTouchStartOrMove,
+      event_listener_properties(EventListenerClass::kTouchStartOrMove));
   target_tree->set_event_listener_properties(
       EventListenerClass::kMouseWheel,
       event_listener_properties(EventListenerClass::kMouseWheel));
+  target_tree->set_event_listener_properties(
+      EventListenerClass::kTouchEndOrCancel,
+      event_listener_properties(EventListenerClass::kTouchEndOrCancel));
 
   if (ViewportSizeInvalid())
     target_tree->SetViewportSizeInvalid();
@@ -438,20 +425,20 @@ void LayerTreeImpl::PushPropertiesTo(LayerTreeImpl* target_tree) {
   target_tree->has_ever_been_drawn_ = false;
 }
 
-LayerListIterator LayerTreeImpl::begin() {
-  return LayerListIterator(root_layer_);
+LayerListIterator<LayerImpl> LayerTreeImpl::begin() {
+  return LayerListIterator<LayerImpl>(root_layer_);
 }
 
-LayerListIterator LayerTreeImpl::end() {
-  return LayerListIterator(nullptr);
+LayerListIterator<LayerImpl> LayerTreeImpl::end() {
+  return LayerListIterator<LayerImpl>(nullptr);
 }
 
-LayerListReverseIterator LayerTreeImpl::rbegin() {
-  return LayerListReverseIterator(root_layer_);
+LayerListReverseIterator<LayerImpl> LayerTreeImpl::rbegin() {
+  return LayerListReverseIterator<LayerImpl>(root_layer_);
 }
 
-LayerListReverseIterator LayerTreeImpl::rend() {
-  return LayerListReverseIterator(nullptr);
+LayerListReverseIterator<LayerImpl> LayerTreeImpl::rend() {
+  return LayerListReverseIterator<LayerImpl>(nullptr);
 }
 
 void LayerTreeImpl::AddToElementMap(LayerImpl* layer) {
@@ -847,6 +834,9 @@ bool LayerTreeImpl::UpdateDrawProperties(bool update_lcd_text) {
               "Compositing.%s.LayerTreeImpl.CalculateDrawPropertiesUs",
               client_name),
           timer.Elapsed().InMicroseconds());
+      UMA_HISTOGRAM_COUNTS_100(
+          base::StringPrintf("Compositing.%s.NumRenderSurfaces", client_name),
+          base::saturated_cast<int>(render_surface_layer_list_.size()));
     }
   }
 
@@ -867,7 +857,7 @@ bool LayerTreeImpl::UpdateDrawProperties(bool update_lcd_text) {
          it != end; ++it) {
       occlusion_tracker.EnterLayer(it);
 
-      bool inside_replica = it->render_target()->InsideReplica();
+      bool inside_replica = it->InsideReplica();
 
       // Don't use occlusion if a layer will appear in a replica, since the
       // tile raster code does not know how to look for the replica and would
@@ -913,7 +903,7 @@ bool LayerTreeImpl::UpdateDrawProperties(bool update_lcd_text) {
     }
 
     unoccluded_screen_space_region_ =
-        occlusion_tracker.ComputeVisibleRegionInScreen();
+        occlusion_tracker.ComputeVisibleRegionInScreen(this);
   }
 
   // It'd be ideal if this could be done earlier, but when the raster source
@@ -1047,19 +1037,19 @@ void LayerTreeImpl::UnregisterLayer(LayerImpl* layer) {
 }
 
 // These manage ownership of the LayerImpl.
-void LayerTreeImpl::AddLayer(scoped_ptr<LayerImpl> layer) {
+void LayerTreeImpl::AddLayer(std::unique_ptr<LayerImpl> layer) {
   DCHECK(std::find(layers_->begin(), layers_->end(), layer) == layers_->end());
   layers_->push_back(std::move(layer));
   set_needs_update_draw_properties();
 }
 
-scoped_ptr<LayerImpl> LayerTreeImpl::RemoveLayer(int id) {
+std::unique_ptr<LayerImpl> LayerTreeImpl::RemoveLayer(int id) {
   if (root_layer_ && root_layer_->id() == id)
     root_layer_ = nullptr;
   for (auto it = layers_->begin(); it != layers_->end(); ++it) {
     if ((*it) && (*it)->id() != id)
       continue;
-    scoped_ptr<LayerImpl> ret = std::move(*it);
+    std::unique_ptr<LayerImpl> ret = std::move(*it);
     set_needs_update_draw_properties();
     layers_->erase(it);
     return ret;
@@ -1217,7 +1207,7 @@ const gfx::Rect LayerTreeImpl::ViewportRectForTilePriority() const {
   return layer_tree_host_impl_->ViewportRectForTilePriority();
 }
 
-scoped_ptr<ScrollbarAnimationController>
+std::unique_ptr<ScrollbarAnimationController>
 LayerTreeImpl::CreateScrollbarAnimationController(int scroll_layer_id) {
   DCHECK(settings().scrollbar_fade_delay_ms);
   DCHECK(settings().scrollbar_fade_duration_ms);
@@ -1338,20 +1328,21 @@ bool LayerTreeImpl::DistributeRootScrollOffset(
   return true;
 }
 
-void LayerTreeImpl::QueueSwapPromise(scoped_ptr<SwapPromise> swap_promise) {
+void LayerTreeImpl::QueueSwapPromise(
+    std::unique_ptr<SwapPromise> swap_promise) {
   DCHECK(swap_promise);
   swap_promise_list_.push_back(std::move(swap_promise));
 }
 
 void LayerTreeImpl::QueuePinnedSwapPromise(
-    scoped_ptr<SwapPromise> swap_promise) {
+    std::unique_ptr<SwapPromise> swap_promise) {
   DCHECK(IsActiveTree());
   DCHECK(swap_promise);
   pinned_swap_promise_list_.push_back(std::move(swap_promise));
 }
 
 void LayerTreeImpl::PassSwapPromises(
-    std::vector<scoped_ptr<SwapPromise>>* new_swap_promise) {
+    std::vector<std::unique_ptr<SwapPromise>>* new_swap_promise) {
   for (const auto& swap_promise : swap_promise_list_)
     swap_promise->DidNotSwap(SwapPromise::SWAP_FAILS);
   swap_promise_list_.clear();
@@ -1754,42 +1745,34 @@ static void FindClosestMatchingLayer(const gfx::PointF& screen_space_point,
   }
 }
 
-static bool ScrollsAnyDrawnRenderSurfaceLayerListMember(LayerImpl* layer) {
-  if (!layer->scrollable())
-    return false;
-  if (layer->layer_or_descendant_is_drawn())
-    return true;
-
-  if (!layer->scroll_children())
-    return false;
-  for (std::set<LayerImpl*>::const_iterator it =
-           layer->scroll_children()->begin();
-       it != layer->scroll_children()->end(); ++it) {
-    if ((*it)->layer_or_descendant_is_drawn())
-      return true;
-  }
-  return false;
+static bool ScrollsOrScrollbarAnyDrawnRenderSurfaceLayerListMember(
+    LayerImpl* layer) {
+  return layer->scrolls_drawn_descendant() ||
+         (layer->ToScrollbarLayer() &&
+          layer->IsDrawnRenderSurfaceLayerListMember());
 }
 
-struct FindScrollingLayerFunctor {
+struct FindScrollingLayerOrScrollbarLayerFunctor {
   bool operator()(LayerImpl* layer) const {
-    return ScrollsAnyDrawnRenderSurfaceLayerListMember(layer);
+    return ScrollsOrScrollbarAnyDrawnRenderSurfaceLayerListMember(layer);
   }
 };
 
-LayerImpl* LayerTreeImpl::FindFirstScrollingLayerThatIsHitByPoint(
+LayerImpl*
+LayerTreeImpl::FindFirstScrollingLayerOrScrollbarLayerThatIsHitByPoint(
     const gfx::PointF& screen_space_point) {
   FindClosestMatchingLayerState state;
-  FindClosestMatchingLayer(
-      screen_space_point, root_layer(), FindScrollingLayerFunctor(),
-      property_trees_.transform_tree, property_trees_.clip_tree, &state);
+  FindClosestMatchingLayer(screen_space_point, root_layer(),
+                           FindScrollingLayerOrScrollbarLayerFunctor(),
+                           property_trees_.transform_tree,
+                           property_trees_.clip_tree, &state);
   return state.closest_match;
 }
 
 struct HitTestVisibleScrollableOrTouchableFunctor {
   bool operator()(LayerImpl* layer) const {
     return layer->IsDrawnRenderSurfaceLayerListMember() ||
-           ScrollsAnyDrawnRenderSurfaceLayerListMember(layer) ||
+           ScrollsOrScrollbarAnyDrawnRenderSurfaceLayerListMember(layer) ||
            !layer->touch_event_handler_region().IsEmpty();
   }
 };
@@ -1948,11 +1931,11 @@ VideoFrameControllerClient* LayerTreeImpl::GetVideoFrameControllerClient()
 }
 
 void LayerTreeImpl::SetPendingPageScaleAnimation(
-    scoped_ptr<PendingPageScaleAnimation> pending_animation) {
+    std::unique_ptr<PendingPageScaleAnimation> pending_animation) {
   pending_page_scale_animation_ = std::move(pending_animation);
 }
 
-scoped_ptr<PendingPageScaleAnimation>
+std::unique_ptr<PendingPageScaleAnimation>
 LayerTreeImpl::TakePendingPageScaleAnimation() {
   return std::move(pending_page_scale_animation_);
 }

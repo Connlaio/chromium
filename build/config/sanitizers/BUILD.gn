@@ -33,7 +33,9 @@ group("deps") {
 }
 
 config("sanitizer_options_link_helper") {
-  if (!is_win) {
+  if (is_mac) {
+    ldflags = [ "-Wl,-U,_sanitizer_options_link_helper" ]
+  } else if (!is_win) {
     ldflags = [ "-Wl,-u_sanitizer_options_link_helper" ]
   }
 }
@@ -255,7 +257,7 @@ config("default_sanitizer_flags") {
     ubsan_blacklist_path =
         rebase_path("//tools/ubsan/blacklist.txt", root_build_dir)
     cflags += [
-      "-fsanitize=signed-integer-overflow",
+      "-fsanitize=signed-integer-overflow,shift",
       "-fsanitize-blacklist=$ubsan_blacklist_path",
     ]
   }

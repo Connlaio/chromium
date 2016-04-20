@@ -9,12 +9,12 @@
 #include <stdint.h>
 
 #include <map>
+#include <memory>
 #include <queue>
 #include <string>
 
 #include "base/macros.h"
 #include "base/memory/ref_counted.h"
-#include "base/memory/scoped_ptr.h"
 #include "base/observer_list.h"
 #include "base/process/process.h"
 #include "base/synchronization/waitable_event.h"
@@ -57,6 +57,7 @@ class BrowserDemuxerAndroid;
 class InProcessChildThreadParams;
 class MessagePortMessageFilter;
 class MojoApplicationHost;
+class MojoChildConnection;
 class NotificationMessageFilter;
 #if defined(ENABLE_WEBRTC)
 class P2PSocketDispatcherHost;
@@ -159,7 +160,8 @@ class CONTENT_EXPORT RenderProcessHostImpl
   void ResumeDeferredNavigation(const GlobalRequestID& request_id) override;
   void NotifyTimezoneChange(const std::string& timezone) override;
   ServiceRegistry* GetServiceRegistry() override;
-  scoped_ptr<base::SharedPersistentMemoryAllocator> TakeMetricsAllocator()
+  shell::Connection* GetChildConnection() override;
+  std::unique_ptr<base::SharedPersistentMemoryAllocator> TakeMetricsAllocator()
       override;
   const base::TimeTicks& GetInitTimeForNavigationMetrics() const override;
   bool SubscribeUniformEnabled() const override;
@@ -278,7 +280,7 @@ class CONTENT_EXPORT RenderProcessHostImpl
 
  protected:
   // A proxy for our IPC::Channel that lives on the IO thread.
-  scoped_ptr<IPC::ChannelProxy> channel_;
+  std::unique_ptr<IPC::ChannelProxy> channel_;
 
   // True if fast shutdown has been performed on this RPH.
   bool fast_shutdown_started_;
@@ -300,7 +302,7 @@ class CONTENT_EXPORT RenderProcessHostImpl
   friend class VisitRelayingRenderProcessHost;
   friend class ChildProcessLauncherBrowserTest_ChildSpawnFail_Test;
 
-  scoped_ptr<IPC::ChannelProxy> CreateChannelProxy(
+  std::unique_ptr<IPC::ChannelProxy> CreateChannelProxy(
       const std::string& channel_id);
 
   // Creates and adds the IO thread message filters.
@@ -368,11 +370,8 @@ class CONTENT_EXPORT RenderProcessHostImpl
   base::FilePath GetEventLogFilePathWithExtensions(const base::FilePath& file);
 #endif
 
-  // The token to be passed to the child process and exchanged for a message
-  // pipe to the shell.
-  std::string shell_pipe_token_;
-
-  scoped_ptr<MojoApplicationHost> mojo_application_host_;
+  std::unique_ptr<MojoChildConnection> mojo_child_connection_;
+  std::unique_ptr<MojoApplicationHost> mojo_application_host_;
 
   // The registered IPC listener objects. When this list is empty, we should
   // delete ourselves.
@@ -399,7 +398,7 @@ class CONTENT_EXPORT RenderProcessHostImpl
   scoped_refptr<NotificationMessageFilter> notification_message_filter_;
 
   // Used in single-process mode.
-  scoped_ptr<base::Thread> in_process_renderer_;
+  std::unique_ptr<base::Thread> in_process_renderer_;
 
   // True after Init() has been called. We can't just check channel_ because we
   // also reset that in the case of process termination.
@@ -410,7 +409,7 @@ class CONTENT_EXPORT RenderProcessHostImpl
   base::TimeTicks init_time_;
 
   // Used to launch and terminate the process without blocking the UI thread.
-  scoped_ptr<ChildProcessLauncher> child_process_launcher_;
+  std::unique_ptr<ChildProcessLauncher> child_process_launcher_;
 
   // Messages we queue while waiting for the process handle.  We queue them here
   // instead of in the channel so that we ensure they're sent after init related
@@ -502,7 +501,7 @@ class CONTENT_EXPORT RenderProcessHostImpl
 
   // Context shared for each mojom::PermissionService instance created for this
   // RPH.
-  scoped_ptr<PermissionServiceContext> permission_service_context_;
+  std::unique_ptr<PermissionServiceContext> permission_service_context_;
 
   // This is a set of all subscription targets valuebuffers in the GPU process
   // are currently subscribed too. Used to prevent sending unnecessary
@@ -519,7 +518,7 @@ class CONTENT_EXPORT RenderProcessHostImpl
   bool subscribe_uniform_enabled_;
 
   // The memory allocator, if any, in which the renderer will write its metrics.
-  scoped_ptr<base::SharedPersistentMemoryAllocator> metrics_allocator_;
+  std::unique_ptr<base::SharedPersistentMemoryAllocator> metrics_allocator_;
 
   bool channel_connected_;
   bool sent_render_process_ready_;

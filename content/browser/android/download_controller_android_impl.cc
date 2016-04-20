@@ -4,6 +4,7 @@
 
 #include "content/browser/android/download_controller_android_impl.h"
 
+#include <memory>
 #include <utility>
 
 #include "base/android/context_utils.h"
@@ -12,7 +13,6 @@
 #include "base/bind.h"
 #include "base/lazy_instance.h"
 #include "base/logging.h"
-#include "base/memory/scoped_ptr.h"
 #include "base/synchronization/lock.h"
 #include "base/time/time.h"
 #include "content/browser/android/content_view_core_impl.h"
@@ -80,7 +80,7 @@ void CreateContextMenuDownload(int render_process_id,
       static_cast<content::DownloadManagerImpl*>(
           content::BrowserContext::GetDownloadManager(
               web_contents->GetBrowserContext()));
-  scoped_ptr<content::DownloadUrlParameters> dl_params(
+  std::unique_ptr<content::DownloadUrlParameters> dl_params(
       content::DownloadUrlParameters::FromWebContents(web_contents, url));
   content::Referrer referrer = content::Referrer::SanitizeForRequest(
       url,
@@ -126,10 +126,11 @@ static void OnRequestFileAccessResult(JNIEnv* env,
   DCHECK(callback_id);
 
   // Convert java long long int to c++ pointer, take ownership.
-  scoped_ptr<DownloadControllerAndroid::AcquireFileAccessPermissionCallback> cb(
-      reinterpret_cast<
-          DownloadControllerAndroid::AcquireFileAccessPermissionCallback*>(
-              callback_id));
+  std::unique_ptr<
+      DownloadControllerAndroid::AcquireFileAccessPermissionCallback>
+  cb(reinterpret_cast<
+      DownloadControllerAndroid::AcquireFileAccessPermissionCallback*>(
+      callback_id));
   cb->Run(granted);
 }
 
@@ -479,8 +480,7 @@ void DownloadControllerAndroidImpl::OnDownloadUpdated(DownloadItem* item) {
           item->GetReceivedBytes(), item->GetId(), jguid.obj(),
           item->PercentComplete(), time_delta.InMilliseconds(),
           item->HasUserGesture(), item->IsPaused(),
-          // Get all requirements that allows a download to be resumable.
-          !item->GetBrowserContext()->IsOffTheRecord());
+          item->GetBrowserContext()->IsOffTheRecord());
       break;
     }
     case DownloadItem::COMPLETE:
@@ -508,7 +508,8 @@ void DownloadControllerAndroidImpl::OnDownloadUpdated(DownloadItem* item) {
           env, GetJavaObject()->Controller(env).obj(), jurl.obj(),
           jmime_type.obj(), jfilename.obj(), jpath.obj(),
           item->GetReceivedBytes(), item->GetId(), jguid.obj(),
-          item->CanResume(), IsInterruptedDownloadAutoResumable(item));
+          item->CanResume(), IsInterruptedDownloadAutoResumable(item),
+          item->GetBrowserContext()->IsOffTheRecord());
       item->RemoveObserver(this);
       break;
     case DownloadItem::MAX_DOWNLOAD_STATE:
@@ -607,6 +608,9 @@ DownloadControllerAndroidImpl::DownloadInfoAndroid::DownloadInfoAndroid(
   if (info)
     has_user_gesture = info->HasUserGesture();
 }
+
+DownloadControllerAndroidImpl::DownloadInfoAndroid::DownloadInfoAndroid(
+    const DownloadInfoAndroid& other) = default;
 
 DownloadControllerAndroidImpl::DownloadInfoAndroid::~DownloadInfoAndroid() {}
 

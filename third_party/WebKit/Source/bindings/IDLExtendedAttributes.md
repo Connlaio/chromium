@@ -923,21 +923,6 @@ Usage: `[DeprecateAs]` can be specified on methods, attributes, and constants.
 
 The deprecation message show on the console can be specified via the [UseCounter::deprecationMessage](https://code.google.com/p/chromium/codesearch#chromium/src/third_party/WebKit/Source/core/frame/UseCounter.cpp&q=UseCounter::deprecationMessage&l=615) method.
 
-### [GarbageCollected] _(i)_
-
-Summary: The `[GarbageCollected]` attribute signals that the object is kept on the Oilpan heap and handled by its garbage collector.
-
-Usage: `[GarbageCollected]` can be specified on interfaces, and is inherited:
-
-```webidl
-[
-    GarbageCollected,
-] interface BatteryManager { ... };
-```
-
-In order to generate correct binding layer code for an interface, `[GarbageCollected]` must be supplied if the object is an Oilpan-based object.
-
-
 ### [Iterable] _(i)_
 
 Summary: Installs a @@iterator method.
@@ -1283,6 +1268,32 @@ The `[SetWrapperReferenceFrom]` extended attribute takes a value, which is the f
 The code generates a function called `YYY::visitDOMWrapper` which is called by `V8GCController` before GC. The function adds implicit references from this object's wrapper to a target object's wrapper to keeps it alive.
 
 The `[SetWrapperReferenceTo]` extended attribute takes a value, which is the method name to call to get the target object. For example, with the above declaration a call will be made to `YYY::targetMethod()` to get the target of the reference.
+
+### [TraceWrappers=(list)] _(i)_
+
+Summary: This generates code that traces script-wrappable references (which are used to keep wrappers alive during V8 GC).
+
+Usage: `[TraceWrappers=(list)]` can be specified on an interface.
+
+```webidl
+[
+  TraceWrappers=(element1, element2)
+] interface XXX : YYY { ... };
+```
+
+The generator generates a function called `XXX::traceWrappers` which is called by `ScriptWrappableVisitor` during V8 GC. The function adds references from the XXX instance to this object's element1() and element2() children.
+
+The generated code is then:
+
+```c++
+DEFINE_TRACE_WRAPPERS(XXX)
+{
+    visitor->traceWrappers(element1());
+    visitor->traceWrappers(element2());
+
+    YYY::traceWrappers(visitor);
+}
+```
 
 ## Rare Blink-specific IDL Extended Attributes
 

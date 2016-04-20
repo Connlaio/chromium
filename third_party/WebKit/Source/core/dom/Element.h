@@ -48,6 +48,7 @@ class Attribute;
 class CSSStyleDeclaration;
 class ClientRect;
 class ClientRectList;
+class CompositorMutation;
 class CustomElementDefinition;
 class DOMStringMap;
 class DOMTokenList;
@@ -68,6 +69,7 @@ class ScrollToOptions;
 class ShadowRoot;
 class ShadowRootInit;
 class StylePropertySet;
+class StylePropertyMap;
 
 enum SpellcheckAttributeState {
     SpellcheckAttributeTrue,
@@ -113,7 +115,7 @@ typedef HeapVector<Member<Attr>> AttrNodeList;
 class CORE_EXPORT Element : public ContainerNode {
     DEFINE_WRAPPERTYPEINFO();
 public:
-    static RawPtr<Element> create(const QualifiedName&, Document*);
+    static Element* create(const QualifiedName&, Document*);
     ~Element() override;
 
     DEFINE_ATTRIBUTE_EVENT_LISTENER(beforecopy);
@@ -229,20 +231,21 @@ public:
     void removeAttribute(const AtomicString& name);
     void removeAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName);
 
-    RawPtr<Attr> detachAttribute(size_t index);
+    Attr* detachAttribute(size_t index);
 
-    RawPtr<Attr> getAttributeNode(const AtomicString& name);
-    RawPtr<Attr> getAttributeNodeNS(const AtomicString& namespaceURI, const AtomicString& localName);
-    RawPtr<Attr> setAttributeNode(Attr*, ExceptionState&);
-    RawPtr<Attr> setAttributeNodeNS(Attr*, ExceptionState&);
-    RawPtr<Attr> removeAttributeNode(Attr*, ExceptionState&);
+    Attr* getAttributeNode(const AtomicString& name);
+    Attr* getAttributeNodeNS(const AtomicString& namespaceURI, const AtomicString& localName);
+    Attr* setAttributeNode(Attr*, ExceptionState&);
+    Attr* setAttributeNodeNS(Attr*, ExceptionState&);
+    Attr* removeAttributeNode(Attr*, ExceptionState&);
 
-    RawPtr<Attr> attrIfExists(const QualifiedName&);
-    RawPtr<Attr> ensureAttr(const QualifiedName&);
+    Attr* attrIfExists(const QualifiedName&);
+    Attr* ensureAttr(const QualifiedName&);
 
     AttrNodeList* attrNodeList();
 
     CSSStyleDeclaration* style();
+    StylePropertyMap* styleMap();
 
     const QualifiedName& tagQName() const { return m_tagName; }
     String tagName() const { return nodeName(); }
@@ -266,8 +269,8 @@ public:
 
     String nodeName() const override;
 
-    RawPtr<Element> cloneElementWithChildren();
-    RawPtr<Element> cloneElementWithoutChildren();
+    Element* cloneElementWithChildren();
+    Element* cloneElementWithoutChildren();
 
     void scheduleSVGFilterLayerUpdateHack();
 
@@ -278,9 +281,11 @@ public:
 
     const StylePropertySet* inlineStyle() const { return elementData() ? elementData()->m_inlineStyle.get() : nullptr; }
 
-    bool setInlineStyleProperty(CSSPropertyID, CSSValueID identifier, bool important = false);
-    bool setInlineStyleProperty(CSSPropertyID, double value, CSSPrimitiveValue::UnitType, bool important = false);
+    void setInlineStyleProperty(CSSPropertyID, CSSValueID identifier, bool important = false);
+    void setInlineStyleProperty(CSSPropertyID, double value, CSSPrimitiveValue::UnitType, bool important = false);
+    void setInlineStyleProperty(CSSPropertyID, CSSValue*, bool important = false);
     bool setInlineStyleProperty(CSSPropertyID, const String& value, bool important = false);
+
     bool removeInlineStyleProperty(CSSPropertyID);
     void removeAllInlineStyleProperties();
 
@@ -343,9 +348,9 @@ public:
     // If type of ShadowRoot (either closed or open) is explicitly specified, creation of multiple
     // shadow roots is prohibited in any combination and throws an exception. Multiple shadow roots
     // are allowed only when createShadowRoot() is used without any parameters from JavaScript.
-    RawPtr<ShadowRoot> createShadowRoot(const ScriptState*, ExceptionState&);
-    RawPtr<ShadowRoot> attachShadow(const ScriptState*, const ShadowRootInit&, ExceptionState&);
-    RawPtr<ShadowRoot> createShadowRootInternal(ShadowRootType, ExceptionState&);
+    ShadowRoot* createShadowRoot(const ScriptState*, ExceptionState&);
+    ShadowRoot* attachShadow(const ScriptState*, const ShadowRootInit&, ExceptionState&);
+    ShadowRoot* createShadowRootInternal(ShadowRootType, ExceptionState&);
 
     ShadowRoot* openShadowRoot() const;
     ShadowRoot* closedShadowRoot() const;
@@ -399,10 +404,13 @@ public:
     void setDistributeScroll(ScrollStateCallback*, String nativeScrollBehavior);
     void nativeDistributeScroll(ScrollState&);
     void setApplyScroll(ScrollStateCallback*, String nativeScrollBehavior);
+    void removeApplyScroll();
     void nativeApplyScroll(ScrollState&);
 
     void callDistributeScroll(ScrollState&);
     void callApplyScroll(ScrollState&);
+
+    ScrollStateCallback* getApplyScroll();
 
     // Whether this element can receive focus at all. Most elements are not
     // focusable but some elements, such as form controls and links, are. Unlike
@@ -476,11 +484,9 @@ public:
 
     DOMStringMap& dataset();
 
-#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
     virtual bool isDateTimeEditElement() const { return false; }
     virtual bool isDateTimeFieldElement() const { return false; }
     virtual bool isPickerIndicatorElement() const { return false; }
-#endif
 
     virtual bool isFormControlElement() const { return false; }
     virtual bool isSpinButtonElement() const { return false; }
@@ -504,7 +510,7 @@ public:
     void clearHasPendingResources() { clearElementFlag(HasPendingResources); }
     virtual void buildPendingResource() { }
 
-    void setCustomElementDefinition(RawPtr<CustomElementDefinition>);
+    void setCustomElementDefinition(CustomElementDefinition*);
     CustomElementDefinition* customElementDefinition() const;
 
     bool containsFullScreenElement() const { return hasElementFlag(ContainsFullScreenElement); }
@@ -549,6 +555,7 @@ public:
     void incrementCompositorProxiedProperties(uint32_t mutableProperties);
     void decrementCompositorProxiedProperties(uint32_t mutableProperties);
     uint32_t compositorMutableProperties() const;
+    void updateFromCompositorMutation(const CompositorMutation&);
 
     // Helpers for V8DOMActivityLogger::logEvent.  They call logEvent only if
     // the element is inShadowIncludingDocument() and the context is an isolated world.
@@ -573,7 +580,7 @@ protected:
     void addPropertyToPresentationAttributeStyle(MutableStylePropertySet*, CSSPropertyID, CSSValueID identifier);
     void addPropertyToPresentationAttributeStyle(MutableStylePropertySet*, CSSPropertyID, double value, CSSPrimitiveValue::UnitType);
     void addPropertyToPresentationAttributeStyle(MutableStylePropertySet*, CSSPropertyID, const String& value);
-    void addPropertyToPresentationAttributeStyle(MutableStylePropertySet*, CSSPropertyID, RawPtr<CSSValue>);
+    void addPropertyToPresentationAttributeStyle(MutableStylePropertySet*, CSSPropertyID, CSSValue*);
 
     InsertionNotificationRequest insertedInto(ContainerNode*) override;
     void removedFrom(ContainerNode*) override;
@@ -689,8 +696,8 @@ private:
 
     // cloneNode is private so that non-virtual cloneElementWithChildren and cloneElementWithoutChildren
     // are used instead.
-    RawPtr<Node> cloneNode(bool deep) override;
-    virtual RawPtr<Element> cloneElementWithoutAttributesAndChildren();
+    Node* cloneNode(bool deep) override;
+    virtual Element* cloneElementWithoutAttributesAndChildren();
 
     QualifiedName m_tagName;
 
@@ -949,9 +956,9 @@ inline bool isAtShadowBoundary(const Element* element)
     DEFINE_NODE_TYPE_CASTS_WITH_FUNCTION(thisType)
 
 #define DECLARE_ELEMENT_FACTORY_WITH_TAGNAME(T) \
-    static RawPtr<T> create(const QualifiedName&, Document&)
+    static T* create(const QualifiedName&, Document&)
 #define DEFINE_ELEMENT_FACTORY_WITH_TAGNAME(T) \
-    RawPtr<T> T::create(const QualifiedName& tagName, Document& document) \
+    T* T::create(const QualifiedName& tagName, Document& document) \
     { \
         return new T(tagName, document); \
     }

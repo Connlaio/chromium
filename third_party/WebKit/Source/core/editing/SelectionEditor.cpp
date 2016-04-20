@@ -56,11 +56,6 @@ SelectionEditor::SelectionEditor(FrameSelection& frameSelection)
 
 SelectionEditor::~SelectionEditor()
 {
-#if !ENABLE(OILPAN)
-    // Oilpan: No need to clear out VisibleSelection observer;
-    // it is finalized as a part object of FrameSelection.
-    stopObservingVisibleSelectionChangeIfNecessary();
-#endif
 }
 
 void SelectionEditor::dispose()
@@ -102,7 +97,7 @@ void SelectionEditor::setVisibleSelection(const VisibleSelection& newSelection, 
 
 void SelectionEditor::setVisibleSelection(const VisibleSelectionInFlatTree& newSelection, FrameSelection::SetSelectionOptions options)
 {
-    ASSERT(!(options & FrameSelection::DoNotAdjustInFlatTree));
+    DCHECK(!(options & FrameSelection::DoNotAdjustInFlatTree));
     m_selectionInFlatTree = newSelection;
     SelectionAdjuster::adjustSelectionInDOMTree(&m_selection, m_selectionInFlatTree);
 }
@@ -582,7 +577,7 @@ static bool isBoundary(TextGranularity granularity)
 bool SelectionEditor::modify(EAlteration alter, SelectionDirection direction, TextGranularity granularity, EUserTriggered userTriggered)
 {
     if (userTriggered == UserTriggered) {
-        RawPtr<FrameSelection> trialFrameSelection = FrameSelection::create();
+        FrameSelection* trialFrameSelection = FrameSelection::create();
         trialFrameSelection->setSelection(m_selection);
         trialFrameSelection->modify(alter, direction, granularity, NotUserTriggered);
 
@@ -695,7 +690,7 @@ bool SelectionEditor::modify(EAlteration alter, unsigned verticalDistance, Verti
         return false;
 
     if (userTriggered == UserTriggered) {
-        RawPtr<FrameSelection> trialFrameSelection = FrameSelection::create();
+        FrameSelection* trialFrameSelection = FrameSelection::create();
         trialFrameSelection->setSelection(m_selection);
         trialFrameSelection->modify(alter, verticalDistance, direction, NotUserTriggered);
     }
@@ -850,7 +845,7 @@ bool SelectionEditor::setSelectedRange(const EphemeralRange& range, TextAffinity
     return true;
 }
 
-RawPtr<Range> SelectionEditor::firstRange() const
+Range* SelectionEditor::firstRange() const
 {
     if (m_logicalRange)
         return m_logicalRange->cloneRange();
@@ -868,7 +863,7 @@ DispatchEventResult SelectionEditor::dispatchSelectStart()
 
 void SelectionEditor::didChangeVisibleSelection()
 {
-    ASSERT(m_observingVisibleSelection);
+    DCHECK(m_observingVisibleSelection);
     // Invalidate the logical range when the underlying VisibleSelection has changed.
     if (m_logicalRange) {
         m_logicalRange->dispose();
@@ -880,7 +875,7 @@ void SelectionEditor::didChangeVisibleSelection()
 
 void SelectionEditor::startObservingVisibleSelectionChange()
 {
-    ASSERT(!m_observingVisibleSelection);
+    DCHECK(!m_observingVisibleSelection);
     m_selection.setChangeObserver(*this);
     m_observingVisibleSelection = true;
 }

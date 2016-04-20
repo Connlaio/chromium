@@ -6,7 +6,9 @@
 
 #include <vector>
 
+#include "base/format_macros.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/strings/stringprintf.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace net {
@@ -75,6 +77,32 @@ TEST(IPAddressTest, IsValid) {
   EXPECT_TRUE(ip_address4.empty());
 }
 
+TEST(IPAddressTest, IsReserved) {
+  struct {
+    const char* const address;
+    bool is_reserved;
+  } tests[] = {{"10.10.10.10", true},
+               {"9.9.255.255", false},
+               {"127.0.0.1", true},
+               {"128.0.0.1", false},
+               {"198.18.0.0", true},
+               {"198.18.255.255", true},
+               {"198.17.255.255", false},
+               {"198.19.255.255", true},
+               {"198.20.0.0", false},
+               {"0000::", true},
+               {"FFC0:ba98:7654:3210:FEDC:BA98:7654:3210", false},
+               {"2000:ba98:7654:2301:EFCD:BA98:7654:3210", false},
+               {"::192.9.5.5", true},
+               {"FEED::BEEF", true}};
+
+  IPAddress address;
+  for (const auto& test : tests) {
+    EXPECT_TRUE(address.AssignFromIPLiteral(test.address));
+    EXPECT_EQ(test.is_reserved, address.IsReserved());
+  }
+}
+
 TEST(IPAddressTest, IsZero) {
   uint8_t address1[4] = {};
   IPAddress zero_ipv4_address(address1);
@@ -94,6 +122,15 @@ TEST(IPAddressTest, IsZero) {
 
   IPAddress empty_address;
   EXPECT_FALSE(empty_address.IsZero());
+}
+
+TEST(IPAddressTest, IsIPv4Mapped) {
+  IPAddress ipv4_address(192, 168, 0, 1);
+  EXPECT_FALSE(ipv4_address.IsIPv4MappedIPv6());
+  IPAddress ipv6_address(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1);
+  EXPECT_FALSE(ipv6_address.IsIPv4MappedIPv6());
+  IPAddress mapped_address(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 1, 1, 0, 1);
+  EXPECT_TRUE(mapped_address.IsIPv4MappedIPv6());
 }
 
 TEST(IPAddressTest, AllZeros) {
@@ -157,17 +194,12 @@ TEST(IPAddressTest, AssignFromIPLiteral_IPv6) {
 }
 
 TEST(IPAddressTest, IsIPv4MappedIPv6) {
-  IPAddress ipv4_address;
-  EXPECT_TRUE(ipv4_address.AssignFromIPLiteral("192.168.0.1"));
+  IPAddress ipv4_address(192, 168, 0, 1);
   EXPECT_FALSE(ipv4_address.IsIPv4MappedIPv6());
-
-  IPAddress ipv6_address;
-  EXPECT_TRUE(ipv6_address.AssignFromIPLiteral("::1"));
+  IPAddress ipv6_address = IPAddress::IPv6Localhost();
   EXPECT_FALSE(ipv6_address.IsIPv4MappedIPv6());
-
-  IPAddress ipv4mapped_address;
-  EXPECT_TRUE(ipv4mapped_address.AssignFromIPLiteral("::ffff:0101:1"));
-  EXPECT_TRUE(ipv4mapped_address.IsIPv4MappedIPv6());
+  IPAddress mapped_address(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 1, 1, 0, 1);
+  EXPECT_TRUE(mapped_address.IsIPv4MappedIPv6());
 }
 
 TEST(IPAddressTest, IsEqual) {
@@ -231,25 +263,67 @@ TEST(IPAddressTest, IPAddressToPackedString) {
   EXPECT_EQ(expected_ipv6_address, IPAddressToPackedString(ipv6_address));
 }
 
+// Test mapping an IPv4 address to an IPv6 address.
 TEST(IPAddressTest, ConvertIPv4ToIPv4MappedIPv6) {
-  IPAddress ipv4_address;
-  EXPECT_TRUE(ipv4_address.AssignFromIPLiteral("192.168.0.1"));
-
+  IPAddress ipv4_address(192, 168, 0, 1);
   IPAddress ipv6_address = ConvertIPv4ToIPv4MappedIPv6(ipv4_address);
 
   // ::ffff:192.168.0.1
+  EXPECT_EQ("0,0,0,0,0,0,0,0,0,0,255,255,192,168,0,1",
+            DumpIPAddress(ipv6_address));
   EXPECT_EQ("::ffff:c0a8:1", ipv6_address.ToString());
 }
 
+// Test reversal of a IPv6 address mapping.
 TEST(IPAddressTest, ConvertIPv4MappedIPv6ToIPv4) {
   IPAddress ipv4mapped_address;
   EXPECT_TRUE(ipv4mapped_address.AssignFromIPLiteral("::ffff:c0a8:1"));
 
-  IPAddress expected;
-  EXPECT_TRUE(expected.AssignFromIPLiteral("192.168.0.1"));
+  IPAddress expected(192, 168, 0, 1);
 
   IPAddress result = ConvertIPv4MappedIPv6ToIPv4(ipv4mapped_address);
   EXPECT_EQ(expected, result);
+}
+
+TEST(IPAddressTest, IPAddressMatchesPrefix) {
+  struct {
+    const char* const cidr_literal;
+    size_t prefix_length_in_bits;
+    const char* const ip_literal;
+    bool expected_to_match;
+  } tests[] = {
+      // IPv4 prefix with IPv4 inputs.
+      {"10.10.1.32", 27, "10.10.1.44", true},
+      {"10.10.1.32", 27, "10.10.1.90", false},
+      {"10.10.1.32", 27, "10.10.1.90", false},
+
+      // IPv6 prefix with IPv6 inputs.
+      {"2001:db8::", 32, "2001:DB8:3:4::5", true},
+      {"2001:db8::", 32, "2001:c8::", false},
+
+      // IPv6 prefix with IPv4 inputs.
+      {"2001:db8::", 33, "192.168.0.1", false},
+      {"::ffff:192.168.0.1", 112, "192.168.33.77", true},
+
+      // IPv4 prefix with IPv6 inputs.
+      {"10.11.33.44", 16, "::ffff:0a0b:89", true},
+      {"10.11.33.44", 16, "::ffff:10.12.33.44", false},
+  };
+  for (size_t i = 0; i < arraysize(tests); ++i) {
+    SCOPED_TRACE(base::StringPrintf("Test[%" PRIuS "]: %s, %s", i,
+                                    tests[i].cidr_literal,
+                                    tests[i].ip_literal));
+
+    IPAddress ip_address;
+    EXPECT_TRUE(ip_address.AssignFromIPLiteral(tests[i].ip_literal));
+
+    IPAddress ip_prefix;
+    EXPECT_TRUE(ip_prefix.AssignFromIPLiteral(tests[i].cidr_literal));
+
+    EXPECT_EQ(tests[i].expected_to_match,
+              IPAddressMatchesPrefix(ip_address, ip_prefix,
+                                     tests[i].prefix_length_in_bits));
+  }
 }
 
 // Test parsing invalid CIDR notation literals.

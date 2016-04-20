@@ -25,6 +25,7 @@
 #include "content/common/storage_partition_service.mojom.h"
 #include "content/public/browser/storage_partition.h"
 #include "mojo/public/cpp/bindings/binding_set.h"
+#include "net/cookies/cookie_store.h"
 #include "storage/browser/quota/special_storage_policy.h"
 
 namespace content {
@@ -37,6 +38,12 @@ class StoragePartitionImpl : public StoragePartition,
   // Quota managed data uses a different bitmask for types than
   // StoragePartition uses. This method generates that mask.
   CONTENT_EXPORT static int GenerateQuotaClientMask(uint32_t remove_mask);
+
+  // This creates a CookiePredicate that matches all host (NOT domain) cookies
+  // that match the host of |url|. This is intended to be used with
+  // DeleteAllCreatedBetweenWithPredicateAsync.
+  CONTENT_EXPORT static net::CookieStore::CookiePredicate
+  CreatePredicateForHostCookies(const GURL& url);
 
   CONTENT_EXPORT void OverrideQuotaManagerForTesting(
       storage::QuotaManager* quota_manager);
@@ -77,6 +84,14 @@ class StoragePartitionImpl : public StoragePartition,
                  uint32_t quota_storage_remove_mask,
                  const GURL& storage_origin,
                  const OriginMatcherFunction& origin_matcher,
+                 const base::Time begin,
+                 const base::Time end,
+                 const base::Closure& callback) override;
+
+  void ClearData(uint32_t remove_mask,
+                 uint32_t quota_storage_remove_mask,
+                 const OriginMatcherFunction& origin_matcher,
+                 const CookieMatcherFunction& cookie_matcher,
                  const base::Time begin,
                  const base::Time end,
                  const base::Closure& callback) override;
@@ -123,6 +138,7 @@ class StoragePartitionImpl : public StoragePartition,
                            RemoveQuotaManagedIgnoreDevTools);
   FRIEND_TEST_ALL_PREFIXES(StoragePartitionImplTest, RemoveCookieForever);
   FRIEND_TEST_ALL_PREFIXES(StoragePartitionImplTest, RemoveCookieLastHour);
+  FRIEND_TEST_ALL_PREFIXES(StoragePartitionImplTest, RemoveCookieWithMatcher);
   FRIEND_TEST_ALL_PREFIXES(StoragePartitionImplTest,
                            RemoveUnprotectedLocalStorageForever);
   FRIEND_TEST_ALL_PREFIXES(StoragePartitionImplTest,
@@ -159,10 +175,12 @@ class StoragePartitionImpl : public StoragePartition,
       PlatformNotificationContextImpl* platform_notification_context,
       BackgroundSyncContextImpl* background_sync_context);
 
+  // We will never have both remove_origin be populated and a cookie_matcher.
   void ClearDataImpl(uint32_t remove_mask,
                      uint32_t quota_storage_remove_mask,
                      const GURL& remove_origin,
                      const OriginMatcherFunction& origin_matcher,
+                     const CookieMatcherFunction& cookie_matcher,
                      net::URLRequestContextGetter* rq_context,
                      const base::Time begin,
                      const base::Time end,

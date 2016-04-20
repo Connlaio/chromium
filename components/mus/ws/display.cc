@@ -20,7 +20,7 @@
 #include "components/mus/ws/window_tree_binding.h"
 #include "mojo/common/common_type_converters.h"
 #include "mojo/converters/geometry/geometry_type_converters.h"
-#include "mojo/shell/public/interfaces/connector.mojom.h"
+#include "services/shell/public/interfaces/connector.mojom.h"
 #include "ui/base/cursor/cursor.h"
 
 namespace mus {
@@ -255,8 +255,7 @@ void Display::InitWindowManagersIfNecessary() {
     WindowManagerState* wms = wms_ptr.get();
     // For this case we never create additional WindowManagerStates, so any
     // id works.
-    window_manager_state_map_[mojo::shell::mojom::kRootUserID] =
-        std::move(wms_ptr);
+    window_manager_state_map_[shell::mojom::kRootUserID] = std::move(wms_ptr);
     wms->tree_ = binding_->CreateWindowTree(wms->root());
   } else {
     CreateWindowManagerStatesFromRegistry();

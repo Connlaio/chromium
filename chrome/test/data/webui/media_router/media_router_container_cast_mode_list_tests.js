@@ -155,8 +155,8 @@ cr.define('media_router_container_cast_mode_list', function() {
 
       // Tests the header text. Choosing a cast mode updates the header text.
       test('header text with no default cast modes', function(done) {
-        assertEquals(loadTimeData.getString('selectCastModeHeader'),
-            container.selectCastModeHeaderText_);
+        assertEquals(loadTimeData.getString('selectCastModeHeaderText'),
+            container.i18n('selectCastModeHeaderText'));
 
         // The container is currently in auto cast mode, since we have not
         // picked a cast mode explicitly, and the sinks is not compatible
@@ -297,7 +297,8 @@ cr.define('media_router_container_cast_mode_list', function() {
 
           setTimeout(function() {
             var sinkList =
-                container.$['sink-list'].querySelectorAll('paper-item');
+                container.shadowRoot.getElementById('sink-list')
+                    .querySelectorAll('paper-item');
 
             // The sink list is empty because none of the sinks in fakeSinkList
             // is compatible with cast mode 0.
@@ -307,7 +308,8 @@ cr.define('media_router_container_cast_mode_list', function() {
 
             setTimeout(function() {
               var sinkList =
-                  container.$['sink-list'].querySelectorAll('paper-item');
+                  container.shadowRoot.getElementById('sink-list')
+                      .querySelectorAll('paper-item');
               assertEquals(3, sinkList.length);
               done();
             });
@@ -339,7 +341,8 @@ cr.define('media_router_container_cast_mode_list', function() {
 
         setTimeout(function() {
           var sinkList =
-              container.$['sink-list'].querySelectorAll('paper-item');
+              container.shadowRoot.getElementById('sink-list')
+                  .querySelectorAll('paper-item');
 
           // Since we haven't selected a cast mode, we don't filter sinks.
           assertEquals(3, sinkList.length);
@@ -357,7 +360,8 @@ cr.define('media_router_container_cast_mode_list', function() {
 
             setTimeout(function() {
               var sinkList =
-                  container.$['sink-list'].querySelectorAll('paper-item');
+                  container.shadowRoot.getElementById('sink-list')
+                      .querySelectorAll('paper-item');
 
               // newSinks[0] got filtered out since it is not compatible with
               // cast mode 1.
@@ -382,7 +386,8 @@ cr.define('media_router_container_cast_mode_list', function() {
                 assertEquals(fakeCastModeList[1].type,
                     container.shownCastModeValue_);
                 var sinkList =
-                    container.$['sink-list'].querySelectorAll('paper-item');
+                    container.shadowRoot.getElementById('sink-list')
+                        .querySelectorAll('paper-item');
                 assertEquals(0, sinkList.length);
                 done();
               });

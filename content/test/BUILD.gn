@@ -54,6 +54,7 @@ source_set("test_support") {
     "//components/scheduler:test_support",
     "//content/app:both_for_content_tests",
     "//content/browser/speech/proto",
+    "//content/child:for_content_tests",
     "//content/gpu",
     "//content/public/browser",
     "//content/public/child",
@@ -66,8 +67,8 @@ source_set("test_support") {
     "//ipc/mojo",
     "//media",
     "//mojo/edk/test:test_support",
-    "//mojo/shell/public/cpp:cpp_for_chromium",
     "//net:test_support",
+    "//services/shell/public/cpp:cpp_for_chromium",
     "//skia",
     "//storage/browser",
     "//storage/common",
@@ -79,6 +80,7 @@ source_set("test_support") {
     "//ui/base:ui_data_pack",
     "//ui/base/ime",
     "//ui/compositor:test_support",
+    "//ui/display",
     "//ui/events:dom_keycode_converter",
     "//ui/events:events_base",
     "//ui/events:gesture_detection",
@@ -305,6 +307,7 @@ static_library("layouttest_support") {
     ":test_support",
     "//cc",
     "//cc/blink",
+    "//components/scheduler:test_support",
     "//components/test_runner:test_runner",
     "//content/browser:for_content_tests",
     "//content/public/common",
@@ -468,9 +471,9 @@ test("content_browsertests") {
     "//mojo/edk/test:test_support",
     "//mojo/public/cpp/bindings",
     "//mojo/public/js",
-    "//mojo/shell/public/cpp:cpp_for_chromium",
     "//mojo/test:test_support",
     "//net:test_support",
+    "//services/shell/public/cpp:cpp_for_chromium",
     "//storage/browser",
     "//testing/gmock",
     "//testing/gtest",
@@ -650,6 +653,7 @@ test("content_unittests") {
     "//content/browser/notifications:notification_proto",
     "//content/browser/service_worker:service_worker_proto",
     "//content/browser/speech/proto",
+    "//content/child:for_content_tests",
     "//content/common:mojo_bindings",
     "//content/gpu",
     "//content/public/browser",
@@ -755,6 +759,13 @@ test("content_unittests") {
     }
   }
 
+  if (enable_webrtc && enable_plugins) {
+    sources += rebase_path(
+            content_tests_gypi_values.content_unittests_plugin_webrtc_sources,
+            ".",
+            "//content")
+  }
+
   if (enable_web_speech) {
     sources +=
         rebase_path(content_tests_gypi_values.content_unittests_speech_sources,
@@ -796,7 +807,6 @@ test("content_unittests") {
       "../browser/geolocation/network_location_provider_unittest.cc",
       "../browser/geolocation/wifi_data_provider_common_unittest.cc",
       "../browser/power_usage_monitor_impl_unittest.cc",
-      "../browser/renderer_host/begin_frame_observer_proxy_unittest.cc",
       "../browser/webui/url_data_manager_backend_unittest.cc",
     ]
     deps -= [ "//device/battery" ]
@@ -858,7 +868,7 @@ test("content_unittests") {
         [ "../browser/compositor/software_output_device_ozone_unittest.cc" ]
   }
 
-  if (is_mac && use_openssl) {
+  if (is_mac) {
     deps += [ "//third_party/boringssl" ]
   }
 
@@ -907,6 +917,7 @@ test("content_gl_tests") {
 
   sources = [
     "../browser/compositor/gl_helper_unittest.cc",
+    "../browser/compositor/yuv_readback_unittest.cc",
     "../common/gpu/client/gpu_context_tests.h",
     "../common/gpu/client/gpu_in_process_context_tests.cc",
     "run_all_gl_tests.cc",

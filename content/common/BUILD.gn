@@ -187,12 +187,12 @@ source_set("common") {
     "//media/midi",
     "//mojo/common:common_base",
     "//mojo/edk/system",
-    "//mojo/shell",
-    "//mojo/shell/public/cpp",
-    "//mojo/shell/public/interfaces",
-    "//mojo/shell/runner/common",
     "//net",
     "//sandbox",
+    "//services/shell",
+    "//services/shell/public/cpp",
+    "//services/shell/public/interfaces",
+    "//services/shell/runner/common",
     "//skia",
     "//storage/common",
     "//third_party/WebKit/public:blink",
@@ -241,6 +241,7 @@ source_set("common") {
       ":libvt_generate_stubs",
       "//content:resources",
       "//content/app/resources",
+      "//sandbox/mac:seatbelt",
       "//third_party/WebKit/public:image_resources",
       "//third_party/WebKit/public:resources",
       "//ui/accelerated_widget_mac",
@@ -314,7 +315,6 @@ source_set("common") {
       "pepper_renderer_instance_data.h",
       "plugin_list.cc",
       "plugin_list.h",
-      "sandbox_util.cc",
     ]
   }
 
@@ -526,18 +526,15 @@ mojom("mojo_bindings") {
     "service_worker/embedded_worker_setup.mojom",
     "storage_partition_service.mojom",
     "vr_service.mojom",
-    "wake_lock_service.mojom",
   ]
 
   import_dirs = [ "//mojo/services" ]
-
-  typemaps = [ "//url/mojo/origin.typemap" ]
 
   public_deps = [
     "//components/leveldb/public/interfaces",
     "//components/mus/public/interfaces",
     "//content/public/common:mojo_bindings",
-    "//mojo/shell/public/interfaces",
+    "//services/shell/public/interfaces",
     "//skia/public/interfaces",
     "//third_party/WebKit/public:mojo_bindings",
     "//ui/mojo/geometry:interfaces",

@@ -11,6 +11,7 @@
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/profiles/profile_window.h"
 #include "chrome/browser/task_management/task_manager_observer.h"
+#include "chrome/browser/task_manager/task_manager.h"
 #include "chrome/browser/ui/browser_navigator_params.h"
 #include "chrome/browser/ui/task_manager/task_manager_columns.h"
 #include "chrome/browser/ui/user_manager.h"
@@ -34,7 +35,7 @@
 #endif  // defined(USE_ASH)
 
 #if defined(OS_WIN)
-#include "chrome/browser/shell_integration.h"
+#include "chrome/browser/shell_integration_win.h"
 #include "ui/base/win/shell.h"
 #include "ui/views/win/hwnd_util.h"
 #endif  // defined(OS_WIN)
@@ -80,7 +81,7 @@ void NewTaskManagerView::Show(Browser* browser) {
   // process.
   if (browser) {
     ui::win::SetAppIdForWindow(
-        shell_integration::GetChromiumModelIdForProfile(
+        shell_integration::win::GetChromiumModelIdForProfile(
             browser->profile()->GetPath()),
         views::HWNDForWidget(g_task_manager_view->GetWidget()));
   }
@@ -255,7 +256,8 @@ void NewTaskManagerView::OnSelectionChanged() {
   }
 
   kill_button_->SetEnabled(!selection_contains_browser_process &&
-                           !selections.empty());
+                           !selections.empty() &&
+                           TaskManager::IsEndProcessEnabled());
 }
 
 void NewTaskManagerView::OnDoubleClick() {

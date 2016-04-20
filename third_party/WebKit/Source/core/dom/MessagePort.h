@@ -28,6 +28,7 @@
 #define MessagePort_h
 
 #include "bindings/core/v8/ActiveScriptWrappable.h"
+#include "bindings/core/v8/SerializedScriptValue.h"
 #include "core/CoreExport.h"
 #include "core/dom/ActiveDOMObject.h"
 #include "core/events/EventListener.h"
@@ -49,25 +50,21 @@ class MessagePort;
 class ScriptState;
 class SerializedScriptValue;
 
-// The overwhelmingly common case is sending a single port, so handle that efficiently with an inline buffer of size 1.
-typedef HeapVector<Member<MessagePort>, 1> MessagePortArray;
-
 // Not to be confused with WebMessagePortChannelArray; this one uses Vector and OwnPtr instead of WebVector and raw pointers.
 typedef Vector<OwnPtr<WebMessagePortChannel>, 1> MessagePortChannelArray;
 
 class CORE_EXPORT MessagePort
-    : public RefCountedGarbageCollectedEventTargetWithInlineData<MessagePort>
+    : public EventTargetWithInlineData
     , public ActiveScriptWrappable
     , public ActiveDOMObject
     , public WebMessagePortChannelClient {
     DEFINE_WRAPPERTYPEINFO();
-    REFCOUNTED_GARBAGE_COLLECTED_EVENT_TARGET(MessagePort);
     USING_GARBAGE_COLLECTED_MIXIN(MessagePort);
 public:
     static MessagePort* create(ExecutionContext&);
     ~MessagePort() override;
 
-    void postMessage(ExecutionContext*, PassRefPtr<SerializedScriptValue> message, const MessagePortArray*, ExceptionState&);
+    void postMessage(ExecutionContext*, PassRefPtr<SerializedScriptValue> message, const MessagePortArray&, ExceptionState&);
 
     void start();
     void close();
@@ -82,7 +79,7 @@ public:
     static MessagePortArray* toMessagePortArray(ExecutionContext*, const WebMessagePortChannelArray&);
 
     // Returns nullptr if there is an exception, or if the passed-in array is nullptr/empty.
-    static PassOwnPtr<MessagePortChannelArray> disentanglePorts(ExecutionContext*, const MessagePortArray*, ExceptionState&);
+    static PassOwnPtr<MessagePortChannelArray> disentanglePorts(ExecutionContext*, const MessagePortArray&, ExceptionState&);
 
     // Returns an empty array if the passed array is nullptr/empty.
     static MessagePortArray* entanglePorts(ExecutionContext&, PassOwnPtr<MessagePortChannelArray>);
@@ -99,7 +96,7 @@ public:
     // ActiveDOMObject implementation.
     void stop() override { close(); }
 
-    void setOnmessage(RawPtr<EventListener> listener)
+    void setOnmessage(EventListener* listener)
     {
         setAttributeEventListener(EventTypeNames::message, listener);
         start();

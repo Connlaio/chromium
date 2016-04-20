@@ -32,6 +32,7 @@
 
 #include "bindings/core/v8/ActiveScriptWrappable.h"
 #include "bindings/core/v8/RetainedDOMInfo.h"
+#include "bindings/core/v8/ScriptWrappableVisitor.h"
 #include "bindings/core/v8/V8AbstractEventListener.h"
 #include "bindings/core/v8/V8Binding.h"
 #include "bindings/core/v8/V8MutationObserver.h"
@@ -52,8 +53,8 @@
 #include "platform/TraceEvent.h"
 #include "public/platform/BlameContext.h"
 #include "public/platform/Platform.h"
-#include "wtf/Partitions.h"
 #include "wtf/Vector.h"
+#include "wtf/allocator/Partitions.h"
 #include <algorithm>
 
 namespace blink {
@@ -168,7 +169,7 @@ public:
         if (type->hasPendingActivity(wrapper)) {
             // If you hit this assert, you'll need to add a [DependentiLifetime]
             // extended attribute to the DOM interface. A DOM interface that
-            // overrides hasPendingActivity must be marked as [DependentiLifetime].
+            // overrides hasPendingActivity must be marked as [DependentLifetime].
             RELEASE_ASSERT(!value->IsIndependent());
             m_isolate->SetObjectGroupId(*value, liveRootId());
             ++m_domObjectsWithPendingActivity;
@@ -259,6 +260,9 @@ void objectGroupingForMajorGC(v8::Isolate* isolate, bool constructRetainedObject
 
 void gcPrologueForMajorGC(v8::Isolate* isolate, bool constructRetainedObjectInfos)
 {
+    if (RuntimeEnabledFeatures::traceWrappablesEnabled())
+        return;
+
     objectGroupingForMajorGC(isolate, constructRetainedObjectInfos);
 }
 
@@ -356,7 +360,7 @@ void V8GCController::gcEpilogue(v8::Isolate* isolate, v8::GCType type, v8::GCCal
         // to collect all garbage, you need to wait until the next event loop.
         // Regarding (2), it would be OK in practice to trigger only one GC per gcEpilogue, because
         // GCController.collectAll() forces multiple V8's GC.
-        Heap::collectGarbage(BlinkGC::HeapPointersOnStack, BlinkGC::GCWithSweep, BlinkGC::ForcedGC);
+        ThreadHeap::collectGarbage(BlinkGC::HeapPointersOnStack, BlinkGC::GCWithSweep, BlinkGC::ForcedGC);
 
         // Forces a precise GC at the end of the current event loop.
         if (ThreadState::current()) {
@@ -369,7 +373,7 @@ void V8GCController::gcEpilogue(v8::Isolate* isolate, v8::GCType type, v8::GCCal
     // low memory notifications.
     if (flags & v8::kGCCallbackFlagCollectAllAvailableGarbage) {
         // This single GC is not enough. See the above comment.
-        Heap::collectGarbage(BlinkGC::HeapPointersOnStack, BlinkGC::GCWithSweep, BlinkGC::ForcedGC);
+        ThreadHeap::collectGarbage(BlinkGC::HeapPointersOnStack, BlinkGC::GCWithSweep, BlinkGC::ForcedGC);
 
         // Do not force a precise GC at the end of the current event loop.
         // According to UMA stats, the collection rate of the precise GC

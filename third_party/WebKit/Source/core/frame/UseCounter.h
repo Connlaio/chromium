@@ -753,7 +753,6 @@ public:
         PresentationRequestConnectionAvailableEventListener = 932,
         PresentationConnectionTerminate = 933,
         PresentationConnectionSend = 934,
-        PresentationConnectionStateChangeEventListener = 935,
         PresentationConnectionMessageEventListener = 936,
         CSSAnimationsStackedNeutralKeyframe = 937,
         ReadingCheckedInClickHandler = 938,
@@ -1112,6 +1111,21 @@ public:
         FormValidationShowedMessage = 1294,
         WebAnimationsEasingAsFunctionLinear = 1295,
         WebAnimationsEasingAsFunctionOther = 1296,
+        // The above items are available in M51 branch
+
+        V8Document_Images_AttributeGetter = 1297,
+        V8Document_Embeds_AttributeGetter = 1298,
+        V8Document_Plugins_AttributeGetter = 1299,
+        V8Document_Links_AttributeGetter = 1300,
+        V8Document_Forms_AttributeGetter = 1301,
+        V8Document_Scripts_AttributeGetter = 1302,
+        V8Document_Anchors_AttributeGetter = 1303,
+        V8Document_Applets_AttributeGetter = 1304,
+        XMLHttpRequestCrossOriginWithCredentials = 1305,
+        MediaStreamTrackRemote = 1306,
+        V8Node_IsConnected_AttributeGetter = 1307,
+        ShadowRootDelegatesFocus = 1308,
+        MixedShadowRootV0AndV1 = 1309,
 
         // Add new features immediately above this line. Don't change assigned
         // numbers of any item, and don't reuse removed slots.

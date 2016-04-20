@@ -64,12 +64,6 @@
           # Use the PCI lib to collect GPU information.
           'use_libpci%': 1,
 
-          # Use OpenSSL instead of NSS as the underlying SSL and crypto
-          # implementation. Certificate verification will in most cases be
-          # handled by the OS. If OpenSSL's struct X509 is used to represent
-          # certificates, use_openssl_certs must be set.
-          'use_openssl%': 1,
-
           # Use OpenSSL for representing certificates. When targeting Android,
           # the platform certificate library is used for certificate
           # verification. On other targets, this flag also enables OpenSSL for
@@ -168,7 +162,6 @@
         'use_ozone%': '<(use_ozone)',
         'embedded%': '<(embedded)',
         'use_libpci%': '<(use_libpci)',
-        'use_openssl%': '<(use_openssl)',
         'use_openssl_certs%': '<(use_openssl_certs)',
         'enable_viewport%': '<(enable_viewport)',
         'enable_hidpi%': '<(enable_hidpi)',
@@ -265,11 +258,6 @@
             'enable_topchrome_md%': 1,
           }],
 
-          # On iOS, use NSS rather than OpenSSL. See http://crbug.com/338886.
-          ['OS=="ios"', {
-            'use_openssl%': 0,
-          }],
-
           # Enable App Launcher everywhere but mobile.
           ['OS!="ios" and OS!="android"', {
             'enable_app_list%': 1,
@@ -360,7 +348,6 @@
       'use_ozone_evdev%': '<(use_ozone_evdev)',
       'use_clipboard_aurax11%': '<(use_clipboard_aurax11)',
       'embedded%': '<(embedded)',
-      'use_openssl%': '<(use_openssl)',
       'use_openssl_certs%': '<(use_openssl_certs)',
       'enable_viewport%': '<(enable_viewport)',
       'enable_hidpi%': '<(enable_hidpi)',
@@ -612,6 +599,12 @@
       # Enable FTP support by default.
       'disable_ftp_support%': 0,
 
+      # Do not use the platform ICU alternatives by default.
+      'use_platform_icu_alternatives%': 0,
+
+      # Do not disable brotli filter by default.
+      'disable_brotli_filter%': 0,
+
       # Use of precompiled headers on Windows.
       #
       # This variable may be explicitly set to 1 (enabled) or 0
@@ -741,15 +734,6 @@
           'use_nss_certs%': 1,
         }, {
           'use_nss_certs%': 0,
-        }],
-
-        # NSS verifier usage.
-        # On non-OpenSSL iOS configurations, certificates use the operating
-        # system library, but the verifier uses the bundled copy of NSS.
-        ['(OS=="linux" or OS=="freebsd" or OS=="openbsd" or OS=="solaris") or (OS=="ios" and use_openssl==0)', {
-          'use_nss_verifier%': 1,
-        }, {
-          'use_nss_verifier%': 0,
         }],
 
         # libudev usage.  This currently only affects the content layer.
@@ -1065,18 +1049,23 @@
           # http://crbug.com/574476
           'fastbuild%': 2,
         }],
-
-        # Enable crash reporting via Kasko.
+        # Enable hang report capture. Capture can only be enabled for 32bit
+        # Windows.
         ['OS=="win" and target_arch=="ia32" and branding=="Chrome"', {
-          # This needs to be enabled with kasko_hang_reports.
-          'kasko%': 0,
+          # Enable hang reports from the watcher process.
+          'kasko_hang_reports%': 0,
+          # Enable failed rendez-vous reports.
+          'kasko_failed_rdv_reports%': 0,
         }, {
-          'kasko%': 0,
+          # Enable hang reports from the watcher process.
+          'kasko_hang_reports%': 0,
+          # Enable failed rendez-vous reports.
+          'kasko_failed_rdv_reports%': 0,
         }],
       ],
 
-      # Enable hang reports in Kasko. Requires Kasko to be enabled.
-      'kasko_hang_reports%': 0,
+      # Kasko reporting is disabled by default, but may get enabled below.
+      'kasko%': 0,
 
       # Setting this to '0' will cause V8's startup snapshot to be
       # embedded in the binary instead of being a external files.
@@ -1161,10 +1150,8 @@
     'use_ash%': '<(use_ash)',
     'use_cras%': '<(use_cras)',
     'use_libpci%': '<(use_libpci)',
-    'use_openssl%': '<(use_openssl)',
     'use_openssl_certs%': '<(use_openssl_certs)',
     'use_nss_certs%': '<(use_nss_certs)',
-    'use_nss_verifier%': '<(use_nss_verifier)',
     'use_udev%': '<(use_udev)',
     'os_bsd%': '<(os_bsd)',
     'os_posix%': '<(os_posix)',
@@ -1228,6 +1215,7 @@
     'syzyasan%': '<(syzyasan)',
     'kasko%': '<(kasko)',
     'kasko_hang_reports%': '<(kasko_hang_reports)',
+    'kasko_failed_rdv_reports%': '<(kasko_failed_rdv_reports)',
     'syzygy_optimize%': '<(syzygy_optimize)',
     'lsan%': '<(lsan)',
     'msan%': '<(msan)',
@@ -1269,6 +1257,8 @@
     'enable_captive_portal_detection%': '<(enable_captive_portal_detection)',
     'disable_file_support%': '<(disable_file_support)',
     'disable_ftp_support%': '<(disable_ftp_support)',
+    'use_platform_icu_alternatives%': '<(use_platform_icu_alternatives)',
+    'disable_brotli_filter%': '<(disable_brotli_filter)',
     'enable_task_manager%': '<(enable_task_manager)',
     'sas_dll_path%': '<(sas_dll_path)',
     'wix_path%': '<(wix_path)',
@@ -2023,10 +2013,15 @@
           }, {
             'win_console_app%': 0,
           }],
+          # Disable hang reporting for syzyasan builds.
           ['syzyasan==1', {
-            'kasko%': 1,
-            # Disable hang reports for SyzyASAN builds.
+            # Note: override.
             'kasko_hang_reports': 0,
+            'kasko_failed_rdv_reports': 0,
+          }],
+          # Enable the Kasko reporter for syzyasan builds and hang reporting.
+          ['syzyasan==1 or kasko_hang_reports==1 or kasko_failed_rdv_reports==1', {
+            'kasko': 1,
           }],
           ['component=="shared_library" and "<(GENERATOR)"=="ninja"', {
             # Only enabled by default for ninja because it's buggy in VS.
@@ -2124,9 +2119,6 @@
       }],
       ['use_nss_certs==1', {
         'grit_defines': ['-D', 'use_nss_certs'],
-      }],
-      ['use_nss_verifier==1', {
-        'grit_defines': ['-D', 'use_nss_verifier'],
       }],
       ['use_ozone==1', {
         'grit_defines': ['-D', 'use_ozone'],
@@ -2248,7 +2240,8 @@
             }],
           ],
           'clang_plugin_args%': '-Xclang -plugin-arg-find-bad-constructs -Xclang check-templates '
-          '-Xclang -plugin-arg-find-bad-constructs -Xclang follow-macro-expansion ',
+          '-Xclang -plugin-arg-find-bad-constructs -Xclang follow-macro-expansion '
+          '-Xclang -plugin-arg-find-bad-constructs -Xclang check-implicit-copy-ctors ',
         },
         # If you change these, also change build/config/clang/BUILD.gn.
         'clang_chrome_plugins_flags%':
@@ -2260,7 +2253,7 @@
         'use_allocator%': 'none',
         'use_sanitizer_options%': 1,
       }],
-      ['OS=="linux" and asan==0 and msan==0 and lsan==0 and tsan==0 and build_for_tool==""', {
+      ['(OS=="linux" or OS=="android") and asan==0 and msan==0 and lsan==0 and tsan==0 and build_for_tool==""', {
         'use_experimental_allocator_shim%': 1,
       }],
       ['OS=="linux" and asan==0 and msan==0 and lsan==0 and tsan==0', {
@@ -2471,6 +2464,12 @@
         'enable_hangout_services_extension%': 1,
       }, {
         'enable_hangout_services_extension%': 0,
+      }],
+
+      # Gold doesn't respect section alignment and breaks gcc builds with icf
+      # https://bugs.chromium.org/p/chromium/issues/detail?id=576197
+      ['clang==0 and linux_use_bundled_gold==1', {
+        'gold_icf_level%': 'none'
       }],
     ],
 
@@ -3054,15 +3053,11 @@
       ['<(use_libpci)==1', {
         'defines': ['USE_LIBPCI=1'],
       }],
-      ['<(use_openssl)==1', {
-        'defines': ['USE_OPENSSL=1'],
-      }],
       ['<(use_openssl_certs)==1', {
         'defines': ['USE_OPENSSL_CERTS=1'],
       }],
       ['>(nacl_untrusted_build)==1', {
         'defines': [
-          'USE_OPENSSL=1',
           'USE_OPENSSL_CERTS=1',
         ],
       }],
@@ -3072,15 +3067,16 @@
       ['<(use_nss_certs)==1 and >(nacl_untrusted_build)==0', {
         'defines': ['USE_NSS_CERTS=1'],
       }],
-      ['<(use_nss_verifier)==1 and >(nacl_untrusted_build)==0', {
-        'defines': ['USE_NSS_VERIFIER=1'],
-      }],
       ['<(chromeos)==1 and >(nacl_untrusted_build)==0', {
         'defines': ['OS_CHROMEOS=1'],
       }],
       ['enable_wexit_time_destructors==1 and OS!="win"', {
         # TODO: Enable on Windows too, http://crbug.com/404525
         'variables': { 'clang_warning_flags': ['-Wexit-time-destructors']},
+      }],
+      ['"<!(python <(DEPTH)/tools/clang/scripts/update.py --print-revision)"!="266460-1"', {
+        # TODO(thakis): https://crbug.com/604888
+        'variables': { 'clang_warning_flags': ['-Wno-undefined-var-template']},
       }],
       ['chromium_code==0', {
         'variables': {
@@ -3213,6 +3209,9 @@
           'VCCLCompilerTool': {
             'AdditionalOptions': [
               '/bigobj',
+              # Tell the compiler to crash on failures. This is undocumented
+              # and unsupported but very handy.
+              '/d2FastFail',
             ],
           },
           'VCLinkerTool': {
@@ -3545,11 +3544,6 @@
             'defines': [
               'NS_BLOCK_ASSERTIONS=1',
             ],
-          }],
-          # Force disable blink assertions on Cast device builds (overriding DCHECK_ALWAYS_ON)
-          # Only defined for Release builds (NDEBUG), otherwise blink won't compile.
-          ['chromecast==1 and OS=="linux" and is_cast_desktop_build==0', {
-            'defines': ['ENABLE_ASSERT=0'],
           }],
         ],
       },
@@ -5190,7 +5184,6 @@
           # These should end with %, but there seems to be a bug with % in
           # variables that are intended to be set to different values in
           # different targets, like these.
-          'mac_pie': 1,        # Most executables can be position-independent.
           # Strip debugging symbols from the target.
           'mac_strip': '<(mac_strip_release)',
           'conditions': [
@@ -5283,55 +5276,14 @@
             ],
           }],
           ['_type=="executable"', {
-            'postbuilds': [
-              {
-                # Arranges for data (heap) pages to be protected against
-                # code execution when running on Mac OS X 10.7 ("Lion"), and
-                # ensures that the position-independent executable (PIE) bit
-                # is set for ASLR when running on Mac OS X 10.5 ("Leopard").
-                'variables': {
-                  # Define change_mach_o_flags in a variable ending in _path
-                  # so that GYP understands it's a path and performs proper
-                  # relativization during dict merging.
-                  'change_mach_o_flags_path':
-                      'mac/change_mach_o_flags_from_xcode.sh',
-                  'change_mach_o_flags_options%': [
-                  ],
-                  'target_conditions': [
-                    ['mac_pie==0 or release_valgrind_build==1', {
-                      # Don't enable PIE if it's unwanted. It's unwanted if
-                      # the target specifies mac_pie=0 or if building for
-                      # Valgrind, because Valgrind doesn't understand slide.
-                      # See the similar mac_pie/release_valgrind_build check
-                      # below.
-                      'change_mach_o_flags_options': [
-                        '--no-pie',
-                      ],
-                    }],
-                  ],
-                },
-                'postbuild_name': 'Change Mach-O Flags',
-                'action': [
-                  '<(change_mach_o_flags_path)',
-                  '>@(change_mach_o_flags_options)',
-                ],
-              },
-            ],
-            'target_conditions': [
-              ['mac_pie==1 and release_valgrind_build==0', {
-                # Turn on position-independence (ASLR) for executables. When
-                # PIE is on for the Chrome executables, the framework will
-                # also be subject to ASLR.
-                # Don't do this when building for Valgrind, because Valgrind
-                # doesn't understand slide. TODO: Make Valgrind on Mac OS X
-                # understand slide, and get rid of the Valgrind check.
-                'xcode_settings': {
-                  'OTHER_LDFLAGS': [
-                    '-Wl,-pie',  # Position-independent executable (MH_PIE)
-                  ],
-                },
-              }],
-            ],
+            # Turn on position-independence (ASLR) for executables. When
+            # PIE is on for the Chrome executables, the framework will
+            # also be subject to ASLR.
+            'xcode_settings': {
+              'OTHER_LDFLAGS': [
+                '-Wl,-pie',  # Position-independent executable (MH_PIE)
+              ],
+            },
           }],
           ['(_type=="executable" or _type=="shared_library" or \
              _type=="loadable_module") and mac_strip!=0', {
@@ -5709,10 +5661,11 @@
           # 2015 64-bit warning for integer to larger pointer
           4312,
 
-          # TODO(brucedawson): http://crbug.com/593448 4334 is a 'suspicious
-          # shift' warning and 4595 is an 'illegal inline operator new' warning
-          # Both are new in VS 2015 Update 2 and can safely be deferred for now.
-          4334, 4595,
+          # TODO(brucedawson): http://crbug.com/593448 - C4595 is an 'illegal
+          # inline operator new' warning that is new in VS 2015 Update 2.
+          # This is equivalent to clang's no-inline-new-delete warning.
+          # See http://bugs.icu-project.org/trac/ticket/11122
+          4595,
         ],
         'msvs_settings': {
           'VCCLCompilerTool': {

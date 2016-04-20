@@ -28,6 +28,7 @@ ApplicationCache status=stable
 AudioOutputDevices status=stable
 AudioVideoTracks status=experimental
 BackgroundSync status=stable
+BackspaceDefaultHandler status=test
 CacheIgnoreSearchOption status=experimental
 Canvas2dImageChromium status=experimental
 ClientHints status=stable
@@ -53,7 +54,7 @@ CSSOMSmoothScroll status=experimental
 CSSPaintAPI status=test, depends_on=Worklet
 CSSPropertyD status=experimental
 CSSSnapSize status=experimental
-CSSStickyPosition
+CSSStickyPosition status=experimental
 CSSTouchActionPanDirections status=experimental
 CSSTypedOM status=experimental
 CSSVariables status=stable
@@ -103,6 +104,7 @@ InertTopControls status=experimental
 InputDeviceCapabilities status=stable
 InputEvent status=experimental
 InputModeAttribute status=experimental
+InputMultipleFieldsUI status=stable
 InstalledApp status=experimental
 IntersectionObserver status=stable
 KeyboardEventCode status=stable
@@ -133,7 +135,6 @@ NetInfoDownlinkMax status=stable
 NewMediaPlaybackUi
 NotificationConstructor status=stable
 NotificationExperimental status=test
-NotificationActionIcons status=stable
 NotificationBadge status=experimental
 NotificationInlineReplies status=experimental
 Notifications status=stable
@@ -158,7 +159,6 @@ Presentation status=stable
 PresentationReceiver status=test
 PromiseRejectionEvent status=stable
 PushMessaging status=stable
-PushMessagingData status=stable
 PushSubscriptionRestrictions status=experimental
 QuotaPromise status=experimental
 ReducedReferrerGranularity
@@ -178,7 +178,6 @@ ScrollAnchoring
 // as per the spec, matching other Web engines.
 ScrollTopLeftInterop status=experimental
 ServiceWorkerClientAttributes status=stable
-ServiceWorkerExtendableMessageEvent status=stable
 ServiceWorkerClientsGetID status=stable
 ServiceWorkerWindowClientNavigate status=stable
 ShadowDOMV1 status=experimental
@@ -205,6 +204,7 @@ Suborigins status=experimental
 // Chromium sets this conditionally (eg. based on the presence of a
 // touchscreen) in ApplyWebPreferences.
 Touch status=stable
+TraceWrappables
 TrustedEvents status=stable
 TrustedEventsDefaultAction
 UnsafeES3APIs

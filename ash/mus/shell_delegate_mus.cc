@@ -14,6 +14,7 @@
 #include "ash/system/tray/default_system_tray_delegate.h"
 #include "base/strings/string16.h"
 #include "components/user_manager/user_info_impl.h"
+#include "ui/app_list/presenter/app_list_presenter.h"
 #include "ui/gfx/image/image.h"
 
 namespace ash {
@@ -93,9 +94,31 @@ class MediaDelegateStub : public MediaDelegate {
   DISALLOW_COPY_AND_ASSIGN(MediaDelegateStub);
 };
 
+class AppListPresenterMus : public app_list::AppListPresenter {
+ public:
+  AppListPresenterMus() {}
+  ~AppListPresenterMus() override {}
+
+  // app_list::AppListPresenter:
+  void Show(aura::Window* window) override { NOTIMPLEMENTED(); }
+  void Dismiss() override { NOTIMPLEMENTED(); }
+  bool IsVisible() const override {
+    NOTIMPLEMENTED();
+    return false;
+  }
+  bool GetTargetVisibility() const override {
+    NOTIMPLEMENTED();
+    return false;
+  }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(AppListPresenterMus);
+};
+
 }  // namespace
 
-ShellDelegateMus::ShellDelegateMus() {}
+ShellDelegateMus::ShellDelegateMus()
+    : app_list_presenter_(new AppListPresenterMus) {}
 
 ShellDelegateMus::~ShellDelegateMus() {}
 
@@ -164,9 +187,8 @@ void ShellDelegateMus::OpenUrl(const GURL& url) {
   NOTIMPLEMENTED();
 }
 
-app_list::AppListViewDelegate* ShellDelegateMus::GetAppListViewDelegate() {
-  NOTIMPLEMENTED();
-  return nullptr;
+app_list::AppListPresenter* ShellDelegateMus::GetAppListPresenter() {
+  return app_list_presenter_.get();
 }
 
 ShelfDelegate* ShellDelegateMus::CreateShelfDelegate(ShelfModel* model) {

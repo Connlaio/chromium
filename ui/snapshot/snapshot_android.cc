@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "base/bind.h"
+#include "base/memory/scoped_ptr.h"
 #include "cc/output/copy_output_request.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/android/view_android.h"
@@ -38,7 +39,7 @@ static void MakeAsyncCopyRequest(
     gfx::NativeWindow window,
     const gfx::Rect& source_rect,
     const cc::CopyOutputRequest::CopyOutputRequestCallback& callback) {
-  scoped_ptr<cc::CopyOutputRequest> request =
+  std::unique_ptr<cc::CopyOutputRequest> request =
       cc::CopyOutputRequest::CreateBitmapRequest(callback);
 
   const gfx::Display& display = gfx::Screen::GetScreen()->GetPrimaryDisplay();

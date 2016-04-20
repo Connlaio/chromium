@@ -52,7 +52,7 @@ RenderFrameProxy* RenderFrameProxy::CreateProxyToReplaceFrame(
     blink::WebTreeScopeType scope) {
   CHECK_NE(routing_id, MSG_ROUTING_NONE);
 
-  scoped_ptr<RenderFrameProxy> proxy(
+  std::unique_ptr<RenderFrameProxy> proxy(
       new RenderFrameProxy(routing_id, frame_to_replace->GetRoutingID()));
 
   // When a RenderFrame is replaced by a RenderProxy, the WebRemoteFrame should
@@ -94,7 +94,7 @@ RenderFrameProxy* RenderFrameProxy::CreateFrameProxy(
   blink::WebFrame* opener =
       RenderFrameImpl::ResolveOpener(opener_routing_id, nullptr);
 
-  scoped_ptr<RenderFrameProxy> proxy(
+  std::unique_ptr<RenderFrameProxy> proxy(
       new RenderFrameProxy(routing_id, MSG_ROUTING_NONE));
   RenderViewImpl* render_view = nullptr;
   RenderWidget* render_widget = nullptr;
@@ -416,10 +416,9 @@ void RenderFrameProxy::postMessageEvent(
 }
 
 void RenderFrameProxy::initializeChildFrame(
-    const blink::WebRect& frame_rect,
     float scale_factor) {
   Send(new FrameHostMsg_InitializeChildFrame(
-      routing_id_, frame_rect, scale_factor));
+      routing_id_, scale_factor));
 }
 
 void RenderFrameProxy::navigate(const blink::WebURLRequest& request,

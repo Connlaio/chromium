@@ -7,6 +7,8 @@
 
 #include <stdint.h>
 
+#include <memory>
+
 #include "base/compiler_specific.h"
 #include "content/common/content_export.h"
 #include "content/common/gpu/media/android_video_decode_accelerator.h"
@@ -50,7 +52,7 @@ class CONTENT_EXPORT AndroidCopyingBackingStrategy
 
  private:
   // Used for copy the texture from surface texture to picture buffers.
-  scoped_ptr<gpu::CopyTextureCHROMIUMResourceManager> copier_;
+  std::unique_ptr<gpu::CopyTextureCHROMIUMResourceManager> copier_;
 
   AVDAStateProvider* state_provider_;
 

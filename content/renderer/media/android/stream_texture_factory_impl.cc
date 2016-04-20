@@ -35,7 +35,7 @@ class StreamTextureProxyImpl : public StreamTextureProxy,
  private:
   void BindOnThread(int32_t stream_id);
 
-  const scoped_ptr<StreamTextureHost> host_;
+  const std::unique_ptr<StreamTextureHost> host_;
 
   // Protects access to |client_| and |loop_|.
   base::Lock lock_;
@@ -156,14 +156,6 @@ void StreamTextureFactoryImpl::SetStreamTextureSize(int32_t stream_id,
 
 gpu::gles2::GLES2Interface* StreamTextureFactoryImpl::ContextGL() {
   return context_provider_->ContextGL();
-}
-
-void StreamTextureFactoryImpl::AddObserver(
-    StreamTextureFactoryContextObserver* obs) {
-}
-
-void StreamTextureFactoryImpl::RemoveObserver(
-    StreamTextureFactoryContextObserver* obs) {
 }
 
 }  // namespace content

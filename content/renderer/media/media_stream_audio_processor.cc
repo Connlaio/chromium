@@ -111,6 +111,13 @@ bool GetStartupMinVolumeForAgc(int* startup_min_volume) {
          base::StringToInt(min_volume_str, startup_min_volume);
 }
 
+// Checks if the AEC's refined adaptive filter tuning was enabled on the command
+// line.
+bool UseAecRefinedAdaptiveFilter() {
+  return base::CommandLine::ForCurrentProcess()->HasSwitch(
+      switches::kAecRefinedAdaptiveFilter);
+}
+
 }  // namespace
 
 // Wraps AudioBus to provide access to the array of channel pointers, since this
@@ -144,8 +151,8 @@ class MediaStreamAudioBus {
 
  private:
   base::ThreadChecker thread_checker_;
-  scoped_ptr<media::AudioBus> bus_;
-  scoped_ptr<float*[]> channel_ptrs_;
+  std::unique_ptr<media::AudioBus> bus_;
+  std::unique_ptr<float* []> channel_ptrs_;
 };
 
 // Wraps AudioFifo to provide a cleaner interface to MediaStreamAudioProcessor.
@@ -249,9 +256,9 @@ class MediaStreamAudioFifo {
   const int source_channels_;  // For a DCHECK.
   const int source_frames_;  // For a DCHECK.
   const int sample_rate_;
-  scoped_ptr<media::AudioBus> audio_source_intermediate_;
-  scoped_ptr<MediaStreamAudioBus> destination_;
-  scoped_ptr<media::AudioFifo> fifo_;
+  std::unique_ptr<media::AudioBus> audio_source_intermediate_;
+  std::unique_ptr<MediaStreamAudioBus> destination_;
+  std::unique_ptr<media::AudioFifo> fifo_;
 
   // When using |fifo_|, this is the audio delay of the first sample to be
   // consumed next from the FIFO.  When not using |fifo_|, this is the audio
@@ -516,6 +523,10 @@ void MediaStreamAudioProcessor::InitializeAudioProcessingModule(
   config.Set<webrtc::ExperimentalNs>(
       new webrtc::ExperimentalNs(goog_experimental_ns));
   config.Set<webrtc::DelayAgnostic>(new webrtc::DelayAgnostic(true));
+  if (UseAecRefinedAdaptiveFilter()) {
+    config.Set<webrtc::RefinedAdaptiveFilter>(
+        new webrtc::RefinedAdaptiveFilter(true));
+  }
   if (goog_beamforming) {
     const auto& geometry =
         GetArrayGeometryPreferringConstraints(audio_constraints, input_params);

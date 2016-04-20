@@ -20,7 +20,11 @@ MediaSessionDelegateAndroid::MediaSessionDelegateAndroid(
     : media_session_(media_session) {
 }
 
-MediaSessionDelegateAndroid::~MediaSessionDelegateAndroid() = default;
+MediaSessionDelegateAndroid::~MediaSessionDelegateAndroid() {
+  JNIEnv* env = base::android::AttachCurrentThread();
+  DCHECK(env);
+  Java_MediaSessionDelegate_tearDown(env, j_media_session_delegate_.obj());
+}
 
 void MediaSessionDelegateAndroid::Initialize() {
   JNIEnv* env = base::android::AttachCurrentThread();
@@ -80,12 +84,12 @@ void MediaSessionDelegateAndroid::RecordSessionDuck(
 }
 
 // static
-scoped_ptr<MediaSessionDelegate> MediaSessionDelegate::Create(
+std::unique_ptr<MediaSessionDelegate> MediaSessionDelegate::Create(
     MediaSession* media_session) {
   MediaSessionDelegateAndroid* delegate =
       new MediaSessionDelegateAndroid(media_session);
   delegate->Initialize();
-  return scoped_ptr<MediaSessionDelegate>(delegate);
+  return std::unique_ptr<MediaSessionDelegate>(delegate);
 }
 
 }  // namespace content

@@ -27,7 +27,6 @@
 #include "ipc/message_filter.h"
 #include "third_party/WebKit/public/web/WebInputEvent.h"
 #include "ui/accessibility/ax_node_data.h"
-#include "ui/base/ime/text_input_type.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 #include "url/gurl.h"
 
@@ -79,17 +78,15 @@ GURL GetFileUrlWithQuery(const base::FilePath& path,
 bool IsLastCommittedEntryOfPageType(WebContents* web_contents,
                                     content::PageType page_type);
 
-// Waits for a load stop for the specified |web_contents|'s controller, if the
-// tab is currently web_contents.  Otherwise returns immediately.  Tests should
-// use WaitForLoadStop instead and check that last navigation succeeds, and
-// this function should only be used if the navigation leads to web_contents
-// being destroyed.
+// Waits for |web_contents| to stop loading.  If |web_contents| is not loading
+// returns immediately.  Tests should use WaitForLoadStop instead and check that
+// last navigation succeeds, and this function should only be used if the
+// navigation leads to web_contents being destroyed.
 void WaitForLoadStopWithoutSuccessCheck(WebContents* web_contents);
 
-// Waits for a load stop for the specified |web_contents|'s controller, if the
-// tab is currently web_contents.  Otherwise returns immediately.  Returns true
-// if the last navigation succeeded (resulted in a committed navigation entry
-// of type PAGE_TYPE_NORMAL).
+// Waits for |web_contents| to stop loading.  If |web_contents| is not loading
+// returns immediately.  Returns true if the last navigation succeeded (resulted
+// in a committed navigation entry of type PAGE_TYPE_NORMAL).
 // TODO(alexmos): tests that use this function to wait for successful
 // navigations should be refactored to do EXPECT_TRUE(WaitForLoadStop()).
 bool WaitForLoadStop(WebContents* web_contents);
@@ -235,6 +232,10 @@ RenderFrameHost* FrameMatchingPredicate(
 bool FrameMatchesName(const std::string& name, RenderFrameHost* frame);
 bool FrameIsChildOfMainFrame(RenderFrameHost* frame);
 bool FrameHasSourceUrl(const GURL& url, RenderFrameHost* frame);
+
+// Finds the child frame at the specified |index| for |frame| and returns its
+// RenderFrameHost.  Returns nullptr if such child frame does not exist.
+RenderFrameHost* ChildFrameAt(RenderFrameHost* frame, size_t index);
 
 // Executes the WebUI resource test runner injecting each resource ID in
 // |js_resource_ids| prior to executing the tests.
@@ -416,7 +417,7 @@ class WebContentsAddedObserver {
   base::Callback<void(WebContents*)> web_contents_created_callback_;
 
   WebContents* web_contents_;
-  scoped_ptr<RenderViewCreatedObserver> child_observer_;
+  std::unique_ptr<RenderViewCreatedObserver> child_observer_;
   scoped_refptr<MessageLoopRunner> runner_;
 
   DISALLOW_COPY_AND_ASSIGN(WebContentsAddedObserver);
@@ -475,7 +476,7 @@ class MainThreadFrameObserver : public IPC::Listener {
   void Quit();
 
   RenderWidgetHost* render_widget_host_;
-  scoped_ptr<base::RunLoop> run_loop_;
+  std::unique_ptr<base::RunLoop> run_loop_;
   int routing_id_;
 
   DISALLOW_COPY_AND_ASSIGN(MainThreadFrameObserver);
@@ -504,23 +505,6 @@ class InputMsgWatcher : public BrowserMessageFilter {
   base::Closure quit_;
 
   DISALLOW_COPY_AND_ASSIGN(InputMsgWatcher);
-};
-
-class TextInputStateTestExport {
- public:
-  static TextInputStateTestExport FromWebContents(
-      content::WebContents* web_contents);
-
-  const ui::TextInputType& type() const { return type_; }
-
-  const std::string& value() const { return value_; }
-
- private:
-  TextInputStateTestExport(const ui::TextInputType& type,
-                           const std::string& value);
-
-  ui::TextInputType type_;
-  std::string value_;
 };
 
 }  // namespace content

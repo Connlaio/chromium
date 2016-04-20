@@ -66,7 +66,6 @@
 <translation id="3130323860337406239">O Chromium está a utilizar o microfone.</translation>
 <translation id="313551035350905294">Está a iniciar sessão com uma conta gerida e a permitir que o administrador controle o seu perfil do Chromium. Os seus dados do Chromium, como aplicações, marcadores, histórico, palavras-passe e outras definições, ficarão associados permanentemente a <ph name="USER_NAME" />. Poderá eliminar estes dados através do Painel de Controlo das Contas Google mas não poderá associar estes dados a outra conta.</translation>
 <translation id="3190315855212034486">Ups! O Chromium falhou. Reiniciar agora?</translation>
-<translation id="3197823471738295152">O dispositivo está atualizado.</translation>
 <translation id="3244477511402911926">Centro de Notificações do Chromium</translation>
 <translation id="3256316712990552818">Copiado para o Chromium</translation>
 <translation id="3258596308407688501">O Chromium não consegue ler e escrever no respetivo diretório de dados:
@@ -112,6 +111,7 @@
 <translation id="4987820182225656817">Os convidados podem utilizar o Chromium sem perder qualquer funcionalidade.</translation>
 <translation id="4994636714258228724">Adicionar-se ao Chromium</translation>
 <translation id="5032989939245619637">Guardar os detalhes no Chromium</translation>
+<translation id="5116586539350239523">O Chromium armazena os seus detalhes pessoais em segurança para que não tenha de os introduzir novamente.</translation>
 <translation id="5358375970380395591">Está a iniciar sessão com uma conta gerida e a permitir que o administrador controle o seu perfil do Chromium. Os seus dados do Chromium, como aplicações, marcadores, histórico, palavras-passe e outras definições, ficarão associados definitivamente a <ph name="USER_NAME" />. Poderá eliminar estes dados através do Painel de Controlo das Contas Google, mas não poderá associá-los a outra conta. <ph name="LEARN_MORE" /></translation>
 <translation id="5398878173008909840">Está disponível uma nova versão do Chromium.</translation>
 <translation id="5427571867875391349">Definir o Chromium como o seu navegador predefinido</translation>
@@ -119,6 +119,7 @@
 <translation id="549669000822060376">Aguarde até que o Chromium instale as atualizações do sistema mais recentes.</translation>
 <translation id="5563479599352954471">Pesquisar com um toque</translation>
 <translation id="5620765574781326016">Saiba mais acerca de tópicos em Websites sem sair da página.</translation>
+<translation id="5634636535844844681">O Chromium requer o Windows 7 ou superior.</translation>
 <translation id="5680901439334282664">inicie sessão no Chromium</translation>
 <translation id="5772805321386874569">(é necessário <ph name="BEGIN_BUTTON" />reiniciar<ph name="END_BUTTON" /> o Chromium)</translation>
 <translation id="5796460469508169315">O Chromium está quase pronto.</translation>
@@ -206,6 +207,7 @@ O Chromium não consegue recuperar as suas definições.</translation>
 <translation id="8586442755830160949">Copyright <ph name="YEAR" /> Os autores do Chromium. Todos os direitos reservados.</translation>
 <translation id="8621669128220841554">A instalação falhou devido a um erro não especificado. Transfira novamente o Chromium .</translation>
 <translation id="8628626585870903697">O Chromium não inclui o visualizador de PDF que é necessário para que a Pré-visualização da Impressão funcione.</translation>
+<translation id="8667808506758191620">O seu <ph name="DEVICE_TYPE" /> está atualizado.</translation>
 <translation id="8697124171261953979">Também controla a página apresentada quando inicia o Chromium ou pesquisa a partir da Caixa geral.</translation>
 <translation id="8704119203788522458">Este é o seu Chromium</translation>
 <translation id="872034308864968620">Permitir que o Chromium Seja Executado em Segundo Plano</translation>
@@ -222,7 +224,6 @@ O Chromium não consegue recuperar as suas definições.</translation>
 
 Se continuar com este início de sessão, as informações do Chromium, como marcadores, histórico e outras definições, fundir-se-ão com <ph name="ACCOUNT_EMAIL_NEW" />.</translation>
 <translation id="9013087743919948559">Adicionar ao Chromium</translation>
-<translation id="9013262824292842194">O Chromium requer o Windows Vista ou Windows XP com SP2 ou superior.</translation>
 <translation id="9019929317751753759">Para tornar o Chromium mais seguro, desativámos a seguinte extensão, que não está listada na <ph name="IDS_EXTENSION_WEB_STORE_TITLE" />, e é possível que tenha sido adicionada sem o seu conhecimento.</translation>
 <translation id="9022552996538154597">Iniciar sessão no Chromium</translation>
 <translation id="9036189287518468038">Iniciador de Aplicações do Chromium</translation>

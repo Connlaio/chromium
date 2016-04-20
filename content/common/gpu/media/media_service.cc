@@ -4,6 +4,7 @@
 
 #include "content/common/gpu/media/media_service.h"
 
+#include <memory>
 #include <utility>
 
 #include "content/common/gpu/media/gpu_video_decode_accelerator.h"
@@ -24,7 +25,7 @@ MediaService::~MediaService() {}
 void MediaService::AddChannel(int32_t client_id) {
   gpu::GpuChannel* gpu_channel = channel_manager_->LookupChannel(client_id);
   DCHECK(gpu_channel);
-  scoped_ptr<MediaChannel> media_channel(new MediaChannel(gpu_channel));
+  std::unique_ptr<MediaChannel> media_channel(new MediaChannel(gpu_channel));
   gpu_channel->SetUnhandledMessageListener(media_channel.get());
   media_channels_.set(client_id, std::move(media_channel));
 }

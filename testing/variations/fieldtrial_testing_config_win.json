@@ -59,6 +59,11 @@
             "group_name": "Enabled"
         }
     ],
+    "DefaultBrowserInfobar": [
+        {
+            "group_name": "SettingsText"
+        }
+    ],
     "DocumentWriteEvaluator": [
         {
             "enable_features": [
@@ -70,6 +75,16 @@
     "EnableGoogleCachedCopyTextExperiment": [
         {
             "group_name": "Button"
+        }
+    ],
+    "EnableMediaRouter": [
+        {
+            "group_name": "Enabled"
+        }
+    ],
+    "EnableMediaRouterWithCastExtension": [
+        {
+            "group_name": "Enabled"
         }
     ],
     "EnableSessionCrashedBubbleUI": [
@@ -228,10 +243,10 @@
     ],
     "ResourcePriorities": [
         {
-            "group_name": "AllExceptAsyncScripts_11011_1_1_10"
+            "group_name": "Launch50pct_11011_1_1_10"
         },
         {
-            "group_name": "Control"
+            "group_name": "Control50pct"
         }
     ],
     "SRTPromptFieldTrial": [
@@ -242,6 +257,38 @@
     "SSLCommonNameMismatchHandling": [
         {
             "group_name": "Enabled"
+        }
+    ],
+    "SafeBrowsingIncidentReportingService": [
+        {
+            "enable_features": [
+                "IncidentReportingDisableUpload"
+            ],
+            "group_name": "Enabled",
+            "params": {
+                "collect_reg_data": "true"
+            }
+        },
+        {
+            "group_name": "Default"
+        }
+    ],
+    "SafeBrowsingIncidentReportingServiceFeatures": [
+        {
+            "enable_features": [
+                "IncidentReportingModuleLoadAnalysis",
+                "IncidentReportingSuspiciousModuleReporting"
+            ],
+            "group_name": "WithSuspiciousModuleReporting"
+        },
+        {
+            "enable_features": [
+                "IncidentReportingModuleLoadAnalysis"
+            ],
+            "group_name": "WithModuleLoadAnalysis"
+        },
+        {
+            "group_name": "Default"
         }
     ],
     "SafeBrowsingReportPhishingErrorLink": [

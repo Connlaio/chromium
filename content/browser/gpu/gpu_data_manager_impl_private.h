@@ -29,6 +29,7 @@ class CommandLine;
 }
 
 namespace gpu {
+struct GpuPreferences;
 struct VideoMemoryUsageStats;
 }
 
@@ -74,7 +75,8 @@ class CONTENT_EXPORT GpuDataManagerImplPrivate {
 
   void AppendRendererCommandLine(base::CommandLine* command_line) const;
 
-  void AppendGpuCommandLine(base::CommandLine* command_line) const;
+  void AppendGpuCommandLine(base::CommandLine* command_line,
+                            gpu::GpuPreferences* gpu_preferences) const;
 
   void UpdateRendererWebPrefs(WebPreferences* prefs) const;
 
@@ -234,8 +236,8 @@ class CONTENT_EXPORT GpuDataManagerImplPrivate {
 
   gpu::GPUInfo gpu_info_;
 
-  scoped_ptr<gpu::GpuBlacklist> gpu_blacklist_;
-  scoped_ptr<gpu::GpuDriverBugList> gpu_driver_bug_list_;
+  std::unique_ptr<gpu::GpuBlacklist> gpu_blacklist_;
+  std::unique_ptr<gpu::GpuDriverBugList> gpu_driver_bug_list_;
 
   const scoped_refptr<GpuDataManagerObserverList> observer_list_;
 
@@ -252,9 +254,6 @@ class CONTENT_EXPORT GpuDataManagerImplPrivate {
   // We disable histogram stuff in testing, especially in unit tests because
   // they cause random failures.
   bool update_histograms_;
-
-  // Number of currently open windows, to be used in gpu memory allocation.
-  int window_count_;
 
   DomainBlockMap blocked_domains_;
   mutable std::list<base::Time> timestamps_of_gpu_resets_;

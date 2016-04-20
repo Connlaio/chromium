@@ -8,7 +8,6 @@
 #include <stdint.h>
 
 #include "base/macros.h"
-#include "cc/raster/tile_task_runner.h"
 #include "cc/raster/tile_task_worker_pool.h"
 
 namespace cc {
@@ -17,12 +16,11 @@ class GpuRasterizer;
 class ResourceProvider;
 
 class CC_EXPORT GpuTileTaskWorkerPool : public TileTaskWorkerPool,
-                                        public TileTaskRunner,
-                                        public TileTaskClient {
+                                        public RasterBufferProvider {
  public:
   ~GpuTileTaskWorkerPool() override;
 
-  static scoped_ptr<TileTaskWorkerPool> Create(
+  static std::unique_ptr<TileTaskWorkerPool> Create(
       base::SequencedTaskRunner* task_runner,
       TaskGraphRunner* task_graph_runner,
       ContextProvider* context_provider,
@@ -31,21 +29,19 @@ class CC_EXPORT GpuTileTaskWorkerPool : public TileTaskWorkerPool,
       int gpu_rasterization_msaa_sample_count);
 
   // Overridden from TileTaskWorkerPool:
-  TileTaskRunner* AsTileTaskRunner() override;
-
-  // Overridden from TileTaskRunner:
   void Shutdown() override;
   void ScheduleTasks(TaskGraph* graph) override;
   void CheckForCompletedTasks() override;
   ResourceFormat GetResourceFormat(bool must_support_alpha) const override;
   bool GetResourceRequiresSwizzle(bool must_support_alpha) const override;
+  RasterBufferProvider* AsRasterBufferProvider() override;
 
-  // Overridden from TileTaskClient:
-  scoped_ptr<RasterBuffer> AcquireBufferForRaster(
+  // Overridden from RasterBufferProvider:
+  std::unique_ptr<RasterBuffer> AcquireBufferForRaster(
       const Resource* resource,
       uint64_t resource_content_id,
       uint64_t previous_content_id) override;
-  void ReleaseBufferForRaster(scoped_ptr<RasterBuffer> buffer) override;
+  void ReleaseBufferForRaster(std::unique_ptr<RasterBuffer> buffer) override;
 
  private:
   GpuTileTaskWorkerPool(base::SequencedTaskRunner* task_runner,
@@ -60,7 +56,7 @@ class CC_EXPORT GpuTileTaskWorkerPool : public TileTaskWorkerPool,
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
   TaskGraphRunner* task_graph_runner_;
   const NamespaceToken namespace_token_;
-  scoped_ptr<GpuRasterizer> rasterizer_;
+  std::unique_ptr<GpuRasterizer> rasterizer_;
 
   Task::Vector completed_tasks_;
 

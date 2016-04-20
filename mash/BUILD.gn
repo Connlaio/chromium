@@ -12,6 +12,7 @@ group("all") {
   deps = [
     ":mash_unittests",
     "//components/leveldb",
+    "//mash/catalog_viewer",
     "//mash/example",
     "//mash/init",
     "//mash/login",
@@ -28,8 +29,8 @@ test("mash_unittests") {
     "//base/test:test_support",
     "//mash/wm:unittests",
     "//mojo/platform_handle:platform_handle_impl",
-    "//mojo/shell/background:main",
-    "//mojo/shell/public/cpp/test:run_all_shelltests",
+    "//services/shell/background:main",
+    "//services/shell/public/cpp/test:run_all_shelltests",
   ]
   data_deps = [
     ":unittests_manifest",

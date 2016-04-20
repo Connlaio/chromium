@@ -5,7 +5,8 @@
 #include "content/renderer/webgraphicscontext3d_provider_impl.h"
 
 #include "cc/blink/context_provider_web_context.h"
-#include "third_party/WebKit/public/platform/callback/WebClosure.h"
+#include "gpu/command_buffer/client/context_support.h"
+#include "third_party/WebKit/public/platform/functional/WebFunction.h"
 
 namespace content {
 
@@ -28,9 +29,18 @@ GrContext* WebGraphicsContext3DProviderImpl::grContext() {
   return provider_->GrContext();
 }
 
+gpu::Capabilities WebGraphicsContext3DProviderImpl::getCapabilities() {
+  return provider_->ContextCapabilities();
+}
+
 void WebGraphicsContext3DProviderImpl::setLostContextCallback(
     blink::WebClosure c) {
-  provider_->SetLostContextCallback(c.TakeBaseClosure());
+  provider_->SetLostContextCallback(c.TakeBaseCallback());
+}
+
+void WebGraphicsContext3DProviderImpl::setErrorMessageCallback(
+    blink::WebFunction<void(const char*, int32_t)> c) {
+  provider_->ContextSupport()->SetErrorMessageCallback(c.TakeBaseCallback());
 }
 
 }  // namespace content

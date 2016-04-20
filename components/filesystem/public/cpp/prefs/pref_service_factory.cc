@@ -12,7 +12,7 @@
 #include "components/prefs/pref_value_store.h"
 #include "components/prefs/value_map_pref_store.h"
 #include "components/prefs/writeable_pref_store.h"
-#include "mojo/shell/public/cpp/connector.h"
+#include "services/shell/public/cpp/connector.h"
 
 namespace filesystem {
 
@@ -23,7 +23,7 @@ void DoNothingHandleReadError(PersistentPrefStore::PrefReadError error) {}
 
 }  // namespace
 
-scoped_ptr<PrefService> CreatePrefService(mojo::Connector* connector,
+scoped_ptr<PrefService> CreatePrefService(shell::Connector* connector,
                                           PrefRegistry* pref_registry) {
   filesystem::FileSystemPtr filesystem;
   connector->ConnectToInterface("mojo:filesystem", &filesystem);

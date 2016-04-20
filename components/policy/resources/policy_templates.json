@@ -137,7 +137,7 @@
 #   persistent IDs for all fields (but not for groups!) are needed. These are
 #   specified by the 'id' keys of each policy. NEVER CHANGE EXISTING IDs,
 #   because doing so would break the deployed wire format!
-#   For your editing convenience: highest ID currently used: 325
+#   For your editing convenience: highest ID currently used: 327
 #
 # Placeholders:
 #   The following placeholder strings are automatically substituted:
@@ -1554,7 +1554,7 @@
       'caption': '''Proxy server''',
       'desc': '''Allows you to specify the proxy server used by <ph name="PRODUCT_NAME">$1<ex>Google Chrome</ex></ph> and ARC-apps and prevents users from changing proxy settings.
 
-      If you choose to never use a proxy server and always connect directly, all other options are ignored. ARC-apps will use the current network's default proxy server if any.
+      If you choose to never use a proxy server and always connect directly, all other options are ignored.
 
       If you choose to auto detect the proxy server, all other options are ignored.
 
@@ -1621,9 +1621,9 @@
           'tags': [],
           'desc': '''Allows you to specify the proxy server used by <ph name="PRODUCT_NAME">$1<ex>Google Chrome</ex></ph> and ARC-apps and prevents users from changing proxy settings.
 
-          If you choose to never use a proxy server and always connect directly, all other options are ignored. ARC-apps will use the current network's default proxy server if any.
+          If you choose to never use a proxy server and always connect directly, all other options are ignored.
 
-          If you choose to use system proxy settings, all other options are ignored. ARC-apps will use the current network's default proxy server if any.
+          If you choose to use system proxy settings, all other options are ignored.
 
           If you choose to auto detect the proxy server, all other options are ignored.
 
@@ -8241,7 +8241,7 @@
       unable to use ARC.''',
     },
     {
-      'name': 'ArcApplicationPolicy',
+      'name': 'ArcPolicy',
       'type': 'string',
       'schema': { 'type': 'string' },
       'supported_on': ['chrome_os:50-'],
@@ -8251,14 +8251,10 @@
       },
       'example_value': '',
       'id': 318,
-      'caption': '''Configure ARC apps''',
+      'caption': '''Configure ARC''',
       'tags': [],
       'desc':
-      '''Specifies the ARC application policy as JSON string which can be
-      handed-off as-is to the ARC runtime. At the moment, this setting is used
-      solely to specify force-installation of the apps.
-
-      If this policy is left not set, no apps are installed automatically.'''
+      '''Specifies a set of policies that will be handed over to the ARC runtime. The value must be valid JSON.'''
     },
     {
       'name': 'AllowKioskAppControlChromeVersion',
@@ -8355,10 +8351,10 @@
       'name': 'DeviceAllowBluetooth',
       'type': 'main',
       'schema': { 'type': 'boolean' },
-      'supported_on': ['chrome_os:51-'],
+      'supported_on': ['chrome_os:52-'],
       'device_only': True,
       'features': {
-        'dynamic_refresh': True,
+        'dynamic_refresh': False,
       },
       'example_value': True,
       'id': 323,
@@ -8368,7 +8364,9 @@
 
       If this policy is set to true or left unset, the user will be able to enable or disable Bluetooth as he wishes.
 
-      If this policy is set, the user cannot change or override it.''',
+      If this policy is set, the user cannot change or override it.
+
+      After enabling Bluetooth, the device must be rebooted for the changes to take effect (no need to reboot the device when disabling Bluetooth).''',
     },
     {
       'name': 'SuppressUnsupportedOSWarning',
@@ -8462,6 +8460,25 @@
       If this policy is not set, it will behave as if TimezoneAutomaticDetectionUsersDecide is set.
 
       If SystemTimezone policy is set, it overrides this policy. In this case automatic timezone detection is completely disabled.''',
+    },
+    {
+      'name': 'TaskManagerEndProcessEnabled',
+      'caption': '''Enables ending processes in Task Manager''',
+      'desc': '''Enables ending processes in <ph name="PRODUCT_NAME">$1<ex>Google Chrome</ex></ph>'s  Task Manager.
+
+      If set to false, the 'End process' button is disabled in the Task Manager.
+
+      If set to true or not configured, the user can end processes in the Task Manager.''',
+      'type': 'main',
+      'schema': { 'type': 'boolean' },
+      'supported_on': ['chrome.*:52-','chrome_os:52-'],
+      'features': {
+        'dynamic_refresh': True,
+        'per_profile': False,
+      },
+      'example_value': True,
+      'tags': [],
+      'id': 327,
     },
   ],
   'messages': {

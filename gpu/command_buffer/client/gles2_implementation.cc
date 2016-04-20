@@ -32,6 +32,7 @@
 #include "gpu/command_buffer/client/gpu_control.h"
 #include "gpu/command_buffer/client/program_info_manager.h"
 #include "gpu/command_buffer/client/query_tracker.h"
+#include "gpu/command_buffer/client/shared_memory_limits.h"
 #include "gpu/command_buffer/client/transfer_buffer.h"
 #include "gpu/command_buffer/client/vertex_array_object_manager.h"
 #include "gpu/command_buffer/common/gles2_cmd_utils.h"
@@ -161,7 +162,6 @@ GLES2Implementation::GLES2Implementation(
                     base::SysInfo::AmountOfPhysicalMemory() / 20)
               : 0),
 #endif
-      error_message_callback_(NULL),
       current_trace_stack_(0),
       gpu_control_(gpu_control),
       capabilities_(gpu_control->GetCapabilities()),
@@ -201,6 +201,8 @@ bool GLES2Implementation::Initialize(
   DCHECK_LE(starting_transfer_buffer_size, max_transfer_buffer_size);
   DCHECK_GE(min_transfer_buffer_size, kStartingOffset);
 
+  gpu_control_->SetGpuControlClient(this);
+
   if (!transfer_buffer_->Initialize(
       starting_transfer_buffer_size,
       kStartingOffset,
@@ -214,7 +216,7 @@ bool GLES2Implementation::Initialize(
   mapped_memory_.reset(new MappedMemoryManager(helper_, mapped_memory_limit));
 
   unsigned chunk_size = 2 * 1024 * 1024;
-  if (mapped_memory_limit != kNoLimit) {
+  if (mapped_memory_limit != SharedMemoryLimits::kNoLimit) {
     // Use smaller chunks if the client is very memory conscientious.
     chunk_size = std::min(mapped_memory_limit / 4, chunk_size);
   }
@@ -299,6 +301,10 @@ GLES2Implementation::~GLES2Implementation() {
 
   // Make sure the commands make it the service.
   WaitForCmd();
+
+  // The gpu_control_ outlives this class, so clear the client on it before we
+  // self-destruct.
+  gpu_control_->SetGpuControlClient(nullptr);
 }
 
 GLES2CmdHelper* GLES2Implementation::helper() const {
@@ -319,6 +325,22 @@ IdAllocator* GLES2Implementation::GetIdAllocator(int namespace_id) const {
     return query_id_allocator_.get();
   NOTREACHED();
   return NULL;
+}
+
+void GLES2Implementation::OnGpuControlLostContext() {
+#if DCHECK_IS_ON()
+  // This should never occur more than once.
+  DCHECK(!lost_context_);
+  lost_context_ = true;
+#endif
+  if (!lost_context_callback_.is_null())
+    lost_context_callback_.Run();
+}
+
+void GLES2Implementation::OnGpuControlErrorMessage(const char* message,
+                                                   int32_t id) {
+  if (!error_message_callback_.is_null())
+    error_message_callback_.Run(message, id);
 }
 
 void* GLES2Implementation::GetResultBuffer() {
@@ -549,10 +571,10 @@ void GLES2Implementation::SetGLError(
   if (msg) {
     last_error_ = msg;
   }
-  if (error_message_callback_) {
+  if (!error_message_callback_.is_null()) {
     std::string temp(GLES2Util::GetStringError(error)  + " : " +
                      function_name + ": " + (msg ? msg : ""));
-    error_message_callback_->OnErrorMessage(temp.c_str(), 0);
+    error_message_callback_.Run(temp.c_str(), 0);
   }
   error_bits_ |= GLES2Util::GLErrorToErrorBit(error);
 
@@ -4747,7 +4769,8 @@ void GLES2Implementation::ScheduleCALayerCHROMIUM(GLuint contents_texture_id,
                                                   GLboolean is_clipped,
                                                   const GLfloat* clip_rect,
                                                   GLint sorting_context_id,
-                                                  const GLfloat* transform) {
+                                                  const GLfloat* transform,
+                                                  GLuint filter) {
   size_t shm_size = 28 * sizeof(GLfloat);
   ScopedTransferBufferPtr buffer(shm_size, helper_, transfer_buffer_);
   if (!buffer.valid() || buffer.size() < shm_size) {
@@ -4762,7 +4785,7 @@ void GLES2Implementation::ScheduleCALayerCHROMIUM(GLuint contents_texture_id,
   memcpy(mem + 12, transform, 16 * sizeof(GLfloat));
   helper_->ScheduleCALayerCHROMIUM(contents_texture_id, opacity,
                                    background_color, edge_aa_mask, is_clipped,
-                                   sorting_context_id, buffer.shm_id(),
+                                   sorting_context_id, filter, buffer.shm_id(),
                                    buffer.offset());
 }
 
@@ -5816,6 +5839,16 @@ GLboolean GLES2Implementation::UnmapBufferCHROMIUM(GLuint target) {
 
 uint64_t GLES2Implementation::ShareGroupTracingGUID() const {
   return share_group_->TracingGUID();
+}
+
+void GLES2Implementation::SetErrorMessageCallback(
+    const base::Callback<void(const char*, int32_t)>& callback) {
+  error_message_callback_ = callback;
+}
+
+void GLES2Implementation::SetLostContextCallback(
+    const base::Closure& callback) {
+  lost_context_callback_ = callback;
 }
 
 GLuint64 GLES2Implementation::InsertFenceSyncCHROMIUM() {

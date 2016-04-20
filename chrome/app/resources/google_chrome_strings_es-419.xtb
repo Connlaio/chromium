@@ -69,7 +69,6 @@ Si accedes de todos modos, se fusionará la información de Google Chrome, como 
 <translation id="3080151273017101988">Seguir ejecutando aplicaciones en segundo plano al cerrar Google Chrome</translation>
 <translation id="3089968997497233615">Hay disponible una versión de Google Chrome más nueva y más segura.</translation>
 <translation id="3149510190863420837">Aplicaciones de Chrome</translation>
-<translation id="3197823471738295152">El dispositivo está actualizado.</translation>
 <translation id="3282568296779691940">Acceder a Chrome</translation>
 <translation id="3311976847535831054">Esta computadora ya no recibirá actualizaciones de Google Chrome de 32 bits. Actualiza a Google Chrome de 64 bits.</translation>
 <translation id="3360895254066713204">Ayuda de Chrome</translation>
@@ -205,13 +204,13 @@ Si accedes de todos modos, se fusionará la información de Google Chrome, como 
 <translation id="7808348361785373670">Eliminar de Chrome…</translation>
 <translation id="7825851276765848807">La instalación falló debido a un error no especificado. Descarga Google Chrome otra vez.</translation>
 <translation id="7890208801193284374">Si compartes una computadora, tus amigos y familiares pueden navegar de forma independiente y configurar Chrome según los gustos individuales.</translation>
-<translation id="8000275528373650868">Para usar Google Chrome, se necesita Windows Vista o Windows XP con SP2 o superior.</translation>
 <translation id="8005540215158006229">Chrome ya está casi listo.</translation>
 <translation id="8008534537613507642">Reinstalar Chrome</translation>
 <translation id="8030318113982266900">Actualizando el dispositivo al canal <ph name="CHANNEL_NAME" />…</translation>
 <translation id="8032142183999901390">Luego de eliminar la cuenta de Chrome, es posible que debas volver a cargar las pestañas abiertas para que se aplique el cambio.</translation>
 <translation id="8037887340639533879">No se encontraron actualizaciones de Google Chrome.</translation>
 <translation id="8129812357326543296">Acerca de &amp;Google Chrome</translation>
+<translation id="8183957050892517584">Chromium almacenará de forma segura tus datos personales para que no tengas que volver a escribirlos.</translation>
 <translation id="8205111949707227942">Opcional: Ayúdanos a mejorar Chrome SO enviando estadísticas de uso e informes sobre fallos automáticamente a Google.</translation>
 <translation id="8227755444512189073">Google Chrome debe iniciar una aplicación externa para administrar <ph name="SCHEME" /> enlaces. El enlace solicitado es <ph name="PROTOLINK" />.</translation>
 <translation id="8255190535488645436">Google Chrome está usando tu cámara y tu micrófono.</translation>
@@ -234,6 +233,7 @@ Si accedes de todos modos, se fusionará la información de Google Chrome, como 
 <translation id="8851136666856101339">ppal</translation>
 <translation id="8862326446509486874">No tienes los derechos que se requieren para realizar la instalación al nivel del sistema. Intenta ejecutar el instalador nuevamente como Administrador.</translation>
 <translation id="9026991721384951619">El Sistema operativo Chrome no pudo sincronizar los datos porque la información de acceso de la cuenta está desactualizada.</translation>
+<translation id="9067395829937117663">Para usar Google Chrome, se requiere Windows 7 o versiones superiores.</translation>
 <translation id="9102715433345326100">Chrome bloqueó este archivo porque es malicioso.</translation>
 <translation id="9107728822479888688"><ph name="BEGIN_BOLD" />Advertencia:<ph name="END_BOLD" /> Google Chrome no puede evitar que las extensiones registren tu historial de búsqueda. Para desactivar la extensión en modo incógnito, desactiva la casilla de esta opción.</translation>
 <translation id="911206726377975832">¿También eliminar datos de navegación?</translation>

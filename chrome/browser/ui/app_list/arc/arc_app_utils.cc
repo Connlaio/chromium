@@ -29,7 +29,7 @@ class LaunchAppWithoutSize {
   // This will launch the request and after the return the creator does not
   // need to delete the object anymore.
   bool LaunchAndRelease() {
-    landscape_ = gfx::Rect(0, 0, NEXUS7_WIDTH, NEXUS7_HEIGHT);
+    landscape_ = gfx::Rect(0, 0, NEXUS5_WIDTH, NEXUS5_HEIGHT);
     if (!ash::Shell::HasInstance()) {
       // Skip this if there is no Ash shell.
       LaunchAppWithRect(context_, app_id_, landscape_);
@@ -45,10 +45,10 @@ class LaunchAppWithoutSize {
 
  private:
   // Default sizes to use.
-  static const int NEXUS7_WIDTH = 1170;
-  static const int NEXUS7_HEIGHT = 800;
-  static const int NEXUS6_WIDTH = 410;
-  static const int NEXUS6_HEIGHT = 730;
+  static const int NEXUS7_WIDTH = 960;
+  static const int NEXUS7_HEIGHT = 600;
+  static const int NEXUS5_WIDTH = 360;
+  static const int NEXUS5_HEIGHT = 640;
 
   // Constants which are (for now) defined by constants coming from Wayland.
   static const int WINDOW_TITLE_HEIGHT = 30;
@@ -61,7 +61,7 @@ class LaunchAppWithoutSize {
   // function.
   void Callback(bool can_handle) {
     gfx::Size target_size = can_handle ? landscape_.size() :
-        gfx::Size(NEXUS6_WIDTH, NEXUS6_HEIGHT);
+        gfx::Size(NEXUS7_WIDTH, NEXUS7_HEIGHT);
     LaunchAppWithRect(context_, app_id_, getTargetRect(target_size));
     // Now that we are done, we can delete ourselves.
     delete this;
@@ -143,14 +143,14 @@ bool LaunchAppWithRect(content::BrowserContext* context,
             << app_id << ".";
     return false;
   }
-  arc::AppInstance* app_instance = bridge_service->app_instance();
+  arc::mojom::AppInstance* app_instance = bridge_service->app_instance();
   if (!app_instance) {
     VLOG(2) << "Request to launch app when bridge service is not ready: "
             << app_id << ".";
     return false;
   }
 
-  arc::ScreenRectPtr rect = arc::ScreenRect::New();
+  arc::mojom::ScreenRectPtr rect = arc::mojom::ScreenRect::New();
   rect->left = target_rect.x();
   rect->right = target_rect.right();
   rect->top = target_rect.y();
@@ -180,7 +180,7 @@ bool CanHandleResolution(content::BrowserContext* context,
   }
 
   arc::ArcBridgeService* bridge_service = arc::ArcBridgeService::Get();
-  arc::AppInstance* app_instance =
+  arc::mojom::AppInstance* app_instance =
       bridge_service ? bridge_service->app_instance() : nullptr;
   if (!app_instance) {
     VLOG(2) << "Request to get resolution capability when bridge service is "
@@ -195,7 +195,7 @@ bool CanHandleResolution(content::BrowserContext* context,
     return false;
   }
 
-  arc::ScreenRectPtr screen_rect = arc::ScreenRect::New();
+  arc::mojom::ScreenRectPtr screen_rect = arc::mojom::ScreenRect::New();
   screen_rect->left = rect.x();
   screen_rect->right = rect.right();
   screen_rect->top = rect.y();
@@ -215,7 +215,7 @@ void UninstallPackage(const std::string& package_name) {
             << package_name << ".";
     return;
   }
-  arc::AppInstance* app_instance = bridge_service->app_instance();
+  arc::mojom::AppInstance* app_instance = bridge_service->app_instance();
   if (!app_instance) {
     VLOG(2) << "Request to uninstall package when bridge service is not ready: "
             << package_name << ".";

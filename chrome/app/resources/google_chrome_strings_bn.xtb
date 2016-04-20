@@ -71,7 +71,6 @@
 <translation id="3080151273017101988">Google Chrome বন্ধ হলে পশ্চাদপট অ্যাপ্লিকেশানের চলা অবিরত রাখুন</translation>
 <translation id="3089968997497233615">Google Chrome-এর একটি নতুন, তুলনামূলক নিরাপদ সংস্করণ উপলব্ধ৷</translation>
 <translation id="3149510190863420837">Chrome অ্যাপ্লিকেশানগুলি</translation>
-<translation id="3197823471738295152">আপনার ডিভাইসটি আপ-টু-ডেট আছে৷</translation>
 <translation id="3282568296779691940">Chrome-এ সাইন ইন করুন</translation>
 <translation id="3311976847535831054">এই কম্পিউটারটি আর ৩২-বিট Google Chrome আপডেট পাবে না। দয়া করে ৬৪-বিট Google Chrome এ আপগ্রেড করুন।</translation>
 <translation id="3360895254066713204">Chrome সহায়তাকারী</translation>
@@ -209,13 +208,13 @@
 <translation id="7808348361785373670">Chrome থেকে সরান...</translation>
 <translation id="7825851276765848807">অনির্দিষ্ট ত্রুটির জন্য ইনস্টলেশন ব্যর্থ হয়েছে৷ দয়া করে পুনরায় Google Chrome ডাউনলোড করুন৷</translation>
 <translation id="7890208801193284374">যদি আপনি একটি কম্পিউটার ভাগ করেন, তাহলে বন্ধু ও পরিবারের লোকজন পৃথকভাবে ব্রাউজ করতে পারবেন এবং তাদের ইচ্ছা অনুযায়ী Chrome এর সেটআপ করতে পারবেন৷</translation>
-<translation id="8000275528373650868">Google Chrome-এর জন্য SP2 বা উচ্চতর সহ Windows Vista বা Windows XP প্রয়োজন৷</translation>
 <translation id="8005540215158006229">Chrome প্রায় প্রস্তুত৷</translation>
 <translation id="8008534537613507642">Chrome পুনরায় ইন্সটল করুন</translation>
 <translation id="8030318113982266900">আপনার ডিভাইস <ph name="CHANNEL_NAME" /> চ্যানেলে আপডেট করা হচ্ছে...</translation>
 <translation id="8032142183999901390">Chrome থেকে আপনার অ্যাকাউন্ট সরানোর পরে, কার্য়করী করতে আপনাকে খোলা ট্যাবগুলিকে  পুনরায় লোড করার প্রয়োজন হতে পারে।</translation>
 <translation id="8037887340639533879">আপডেট করার জন্য Google Chrome এর কোনো ইনস্টলশান পাওয়া যায়নি৷</translation>
 <translation id="8129812357326543296">&amp;Google Chrome সম্বন্ধে</translation>
+<translation id="8183957050892517584">Chrome আপনার ব্যক্তিগত বিবরণ সুরক্ষিত ভাবে সঞ্চয় করবে, তাই আপনার আর টাইপ করার প্রয়োজন হবে না।</translation>
 <translation id="8205111949707227942">ঐচ্ছিক: Google-এ ব্যবহার পরিসংখ্যান এবং ক্র্যাশ প্রতিবেদন স্বয়ংক্রিয়ভাবে পাঠিয়ে  Chrome-কে সর্বোত্তম করে তুলতে সাহায্য করুন৷</translation>
 <translation id="8227755444512189073"><ph name="SCHEME" /> লিঙ্কগুলি নিয়ন্ত্রণ করার জন্য Google Chrome-এর একটি বহিরাগত অ্যাপ্লিকেশন প্রবর্তন করা দরকার৷ অনুরোধ করা লিঙ্কটি হল <ph name="PROTOLINK" />৷</translation>
 <translation id="8255190535488645436">Google Chrome আপনার ক্যামেরা এবং মাইক্রোফোন ব্যবহার করছে৷</translation>
@@ -238,6 +237,7 @@
 <translation id="8851136666856101339">প্রধান</translation>
 <translation id="8862326446509486874">সিস্টেম-স্তরীয় ইনস্টলের জন্য আপনার কাছে যথাযথ অধিকারগুলি নেই৷ প্রশাসক হিসাবে আবার ইনস্টলারটি চালনার চেষ্টা করুন৷</translation>
 <translation id="9026991721384951619">আপনার অ্যাকাউন্টের সাইন ইনের বিবরণটি সেকেলে হওয়ায় Chrome OS আপনার ডেটা সিঙ্ক করতে পারেনি৷</translation>
+<translation id="9067395829937117663">Google Chrome এর জন্য Windows 7 বা উচ্চতর সংস্করণ প্রয়োজন।</translation>
 <translation id="9102715433345326100">এই ফাইলটি ক্ষতিকারক, এবং Chrome এটিকে অবরুদ্ধ করেছে৷</translation>
 <translation id="9107728822479888688"><ph name="BEGIN_BOLD" /> সতর্কতা: <ph name="END_BOLD" /> Google Chrome আপনার ব্রাউজিং ইতিহাস নথিবদ্ধ থেকে এক্সটেনশনগুলি সংরক্ষণ করতে পারেনা৷ এই এক্সটেনশন অজ্ঞাত মোডে অক্ষম করতে, এই বিকল্প নির্বাচন মুক্ত করুন৷</translation>
 <translation id="911206726377975832">আপনার ব্রাউজিং ডেটাও মুছে দেবেন?</translation>

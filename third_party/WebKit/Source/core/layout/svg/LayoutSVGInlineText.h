@@ -37,12 +37,12 @@ public:
     SVGTextLayoutAttributes* layoutAttributes() { return &m_layoutAttributes; }
     const SVGTextLayoutAttributes* layoutAttributes() const { return &m_layoutAttributes; }
 
-    Vector<SVGTextMetrics>& metricsList() { return m_metrics; }
     const Vector<SVGTextMetrics>& metricsList() const { return m_metrics; }
 
     float scalingFactor() const { return m_scalingFactor; }
     const Font& scaledFont() const { return m_scaledFont; }
     void updateScaledFont();
+    void updateMetricsList(bool& lastCharacterWasWhiteSpace);
     static void computeNewScaledFontForStyle(LayoutObject*, float& scalingFactor, Font& scaledFont);
 
     // Preserves floating point precision for the use in DRT. It knows how to round and does a better job than enclosingIntRect.
@@ -55,6 +55,8 @@ public:
 private:
     void setTextInternal(PassRefPtr<StringImpl>) override;
     void styleDidChange(StyleDifference, const ComputedStyle*) override;
+
+    void addMetricsFromRun(const TextRun&, bool& lastCharacterWasWhiteSpace);
 
     FloatRect objectBoundingBox() const override { return floatLinesBoundingBox(); }
 

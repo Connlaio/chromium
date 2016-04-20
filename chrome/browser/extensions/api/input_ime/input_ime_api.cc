@@ -264,7 +264,7 @@ void InputImeEventRouterFactory::RemoveProfile(Profile* profile) {
   if (!profile || router_map_.empty())
     return;
   auto it = router_map_.find(profile);
-  if (it != router_map_.end()) {
+  if (it != router_map_.end() && it->first == profile) {
     delete it->second;
     router_map_.erase(it);
   }
@@ -400,21 +400,6 @@ void InputImeAPI::Observe(int type,
 InputImeAPI::~InputImeAPI() {
   EventRouter::Get(browser_context_)->UnregisterObserver(this);
   registrar_.RemoveAll();
-}
-
-void InputImeAPI::OnListenerAdded(const EventListenerInfo& details) {
-  if (!details.browser_context)
-    return;
-  InputImeEventRouter* event_router =
-      GetInputImeEventRouter(Profile::FromBrowserContext(
-          Profile::FromBrowserContext(details.browser_context)));
-  InputMethodEngineBase* engine =
-      event_router ? event_router->GetActiveEngine(details.extension_id)
-                   : nullptr;
-
-  // Notifies the IME extension for IME ready with onActivate/onFocus events.
-  if (engine)
-    engine->Enable(engine->GetActiveComponentId());
 }
 
 static base::LazyInstance<BrowserContextKeyedAPIFactory<InputImeAPI> >

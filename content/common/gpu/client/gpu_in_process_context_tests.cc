@@ -3,7 +3,9 @@
 // found in the LICENSE file.
 
 #include <stdio.h>
+
 #include <cmath>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -50,7 +52,7 @@ class ContextTestBase : public testing::Test {
   gpu::ContextSupport* context_support_;
 
  private:
-  scoped_ptr<gpu::GLInProcessContext> context_;
+  std::unique_ptr<gpu::GLInProcessContext> context_;
 };
 
 }  // namespace

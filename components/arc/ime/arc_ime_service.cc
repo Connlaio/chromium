@@ -206,7 +206,22 @@ ui::TextInputType ArcImeService::GetTextInputType() const {
 }
 
 gfx::Rect ArcImeService::GetCaretBounds() const {
-  return cursor_rect_;
+  if (!focused_arc_window_.has_windows())
+    return gfx::Rect();
+  aura::Window* window = focused_arc_window_.windows().front();
+
+  // |cursor_rect_| holds the rectangle reported from ARC apps, in the "screen
+  // coordinates" in ARC, counted by physical pixels.
+  // Chrome OS input methods expect the coordinates in Chrome OS screen, within
+  // device independent pixels. Two factors are involved for the conversion.
+
+  // Divide by the scale factor. To convert from physical pixels to DIP.
+  gfx::Rect converted = gfx::ScaleToEnclosingRect(
+      cursor_rect_, 1 / window->layer()->device_scale_factor());
+
+  // Add the offset of the window showing the ARC app.
+  converted.Offset(window->GetBoundsInScreen().OffsetFromOrigin());
+  return converted;
 }
 
 ui::TextInputMode ArcImeService::GetTextInputMode() const {

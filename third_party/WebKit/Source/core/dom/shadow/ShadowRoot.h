@@ -32,6 +32,7 @@
 #include "core/dom/DocumentFragment.h"
 #include "core/dom/Element.h"
 #include "core/dom/TreeScope.h"
+#include "core/dom/shadow/SlotAssignment.h"
 #include "wtf/DoublyLinkedList.h"
 
 namespace blink {
@@ -59,7 +60,7 @@ public:
     // FIXME: Current implementation does not work well if a shadow root is dynamically created.
     // So multiple shadow subtrees in several elements are prohibited.
     // See https://github.com/w3c/webcomponents/issues/102 and http://crbug.com/234020
-    static RawPtr<ShadowRoot> create(Document& document, ShadowRootType type)
+    static ShadowRoot* create(Document& document, ShadowRootType type)
     {
         return new ShadowRoot(document, type);
     }
@@ -108,7 +109,7 @@ public:
     unsigned numberOfStyles() const { return m_numberOfStyles; }
 
     HTMLShadowElement* shadowInsertionPointOfYoungerShadowRoot() const;
-    void setShadowInsertionPointOfYoungerShadowRoot(RawPtr<HTMLShadowElement>);
+    void setShadowInsertionPointOfYoungerShadowRoot(HTMLShadowElement*);
 
     void didAddInsertionPoint(InsertionPoint*);
     void didRemoveInsertionPoint(InsertionPoint*);
@@ -119,6 +120,14 @@ public:
     void didAddSlot();
     void didRemoveSlot();
     const HeapVector<Member<HTMLSlotElement>>& descendantSlots();
+
+    void distributeV1();
+
+    HTMLSlotElement* assignedSlotFor(const Node& node) const
+    {
+        DCHECK(m_slotAssignment);
+        return m_slotAssignment->assignedSlotFor(node);
+    }
 
     // Make protected methods from base class public here.
     using TreeScope::setDocument;
@@ -132,7 +141,7 @@ public:
     String innerHTML() const;
     void setInnerHTML(const String&, ExceptionState&);
 
-    RawPtr<Node> cloneNode(bool, ExceptionState&);
+    Node* cloneNode(bool, ExceptionState&);
 
     StyleSheetList* styleSheets();
 
@@ -145,10 +154,6 @@ private:
     ShadowRoot(Document&, ShadowRootType);
     ~ShadowRoot() override;
 
-#if !ENABLE(OILPAN)
-    void dispose() override;
-#endif
-
     void childrenChanged(const ChildrenChange&) override;
 
     ShadowRootRareData* ensureShadowRootRareData();
@@ -158,7 +163,7 @@ private:
     void invalidateDescendantInsertionPoints();
 
     // ShadowRoots should never be cloned.
-    RawPtr<Node> cloneNode(bool) override { return nullptr; }
+    Node* cloneNode(bool) override { return nullptr; }
 
     // FIXME: This shouldn't happen. https://bugs.webkit.org/show_bug.cgi?id=88834
     bool isOrphan() const { return !host(); }
@@ -169,6 +174,7 @@ private:
     Member<ShadowRoot> m_prev;
     Member<ShadowRoot> m_next;
     Member<ShadowRootRareData> m_shadowRootRareData;
+    Member<SlotAssignment> m_slotAssignment;
     unsigned m_numberOfStyles : 26;
     unsigned m_type : 2;
     unsigned m_registeredWithParentShadowRoot : 1;
@@ -180,6 +186,14 @@ private:
 inline Element* ShadowRoot::activeElement() const
 {
     return adjustedFocusedElement();
+}
+
+inline ShadowRoot* Element::shadowRootIfV1() const
+{
+    ShadowRoot* root = this->shadowRoot();
+    if (root && root->isV1())
+        return root;
+    return nullptr;
 }
 
 DEFINE_NODE_TYPE_CASTS(ShadowRoot, isShadowRoot());

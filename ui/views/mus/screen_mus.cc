@@ -5,8 +5,8 @@
 #include "ui/views/mus/screen_mus.h"
 
 #include "mojo/converters/geometry/geometry_type_converters.h"
-#include "mojo/shell/public/cpp/connection.h"
-#include "mojo/shell/public/cpp/connector.h"
+#include "services/shell/public/cpp/connection.h"
+#include "services/shell/public/cpp/connector.h"
 #include "ui/gfx/display_finder.h"
 #include "ui/gfx/display_observer.h"
 #include "ui/views/mus/screen_mus_delegate.h"
@@ -17,9 +17,19 @@ namespace mojo {
 template <>
 struct TypeConverter<gfx::Display, mus::mojom::DisplayPtr> {
   static gfx::Display Convert(const mus::mojom::DisplayPtr& input) {
-    gfx::Display result(input->id, input->bounds.To<gfx::Rect>());
-    result.set_work_area(input->work_area.To<gfx::Rect>());
+    gfx::Display result(input->id);
+    gfx::Rect pixel_bounds = input->bounds.To<gfx::Rect>();
+    gfx::Rect pixel_work_area = input->work_area.To<gfx::Rect>();
+    float pixel_ratio = input->device_pixel_ratio;
+
+    gfx::Rect dip_bounds =
+        gfx::ScaleToEnclosingRect(pixel_bounds, 1.f / pixel_ratio);
+    gfx::Rect dip_work_area =
+        gfx::ScaleToEnclosingRect(pixel_work_area, 1.f / pixel_ratio);
+    result.set_bounds(dip_bounds);
+    result.set_work_area(dip_work_area);
     result.set_device_scale_factor(input->device_pixel_ratio);
+
     switch (input->rotation) {
       case mus::mojom::Rotation::VALUE_0:
         result.set_rotation(gfx::Display::ROTATE_0);
@@ -74,7 +84,7 @@ ScreenMus::ScreenMus(ScreenMusDelegate* delegate)
 
 ScreenMus::~ScreenMus() {}
 
-void ScreenMus::Init(mojo::Connector* connector) {
+void ScreenMus::Init(shell::Connector* connector) {
   gfx::Screen::SetScreenInstance(this);
 
   connector->ConnectToInterface("mojo:mus", &display_manager_);

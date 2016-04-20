@@ -7,8 +7,9 @@
 
 #include <stdint.h>
 
+#include <memory>
+
 #include "base/macros.h"
-#include "base/memory/scoped_ptr.h"
 #include "base/synchronization/lock.h"
 #include "base/threading/non_thread_safe.h"
 #include "cc/output/context_provider.h"
@@ -39,9 +40,10 @@ class SurfacesContextProvider : public cc::ContextProvider,
                                 public CommandBufferLocalClient,
                                 public base::NonThreadSafe {
  public:
-  SurfacesContextProvider(SurfacesContextProviderDelegate* delegate,
-                          gfx::AcceleratedWidget widget,
+  SurfacesContextProvider(gfx::AcceleratedWidget widget,
                           const scoped_refptr<GpuState>& state);
+
+  void SetDelegate(SurfacesContextProviderDelegate* delegate);
 
   // cc::ContextProvider implementation.
   bool BindToCurrentThread() override;
@@ -49,7 +51,7 @@ class SurfacesContextProvider : public cc::ContextProvider,
   gpu::ContextSupport* ContextSupport() override;
   class GrContext* GrContext() override;
   void InvalidateGrContext(uint32_t state) override;
-  Capabilities ContextCapabilities() override;
+  gpu::Capabilities ContextCapabilities() override;
   void DeleteCachedResources() override {}
   void SetLostContextCallback(
       const LostContextCallback& lost_context_callback) override;
@@ -67,16 +69,15 @@ class SurfacesContextProvider : public cc::ContextProvider,
  private:
   // CommandBufferLocalClient:
   void UpdateVSyncParameters(int64_t timebase, int64_t interval) override;
-  void DidLoseContext() override;
   void GpuCompletedSwapBuffers(gfx::SwapResult result) override;
 
   // From GLES2Context:
   // Initialized in BindToCurrentThread.
-  scoped_ptr<gpu::gles2::GLES2CmdHelper> gles2_helper_;
-  scoped_ptr<gpu::TransferBuffer> transfer_buffer_;
-  scoped_ptr<gpu::gles2::GLES2Implementation> implementation_;
+  std::unique_ptr<gpu::gles2::GLES2CmdHelper> gles2_helper_;
+  std::unique_ptr<gpu::TransferBuffer> transfer_buffer_;
+  std::unique_ptr<gpu::gles2::GLES2Implementation> implementation_;
 
-  cc::ContextProvider::Capabilities capabilities_;
+  gpu::Capabilities capabilities_;
   LostContextCallback lost_context_callback_;
 
   SurfacesContextProviderDelegate* delegate_;

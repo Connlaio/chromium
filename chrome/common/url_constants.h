@@ -251,6 +251,7 @@ extern const char kChromeUISandboxHost[];
 extern const char kChromeUIContextualSearchPromoHost[];
 extern const char kChromeUIPhysicalWebHost[];
 extern const char kChromeUIPopularSitesInternalsHost[];
+extern const char kChromeUISnippetsInternalsHost[];
 #endif
 
 #if defined(OS_CHROMEOS)
@@ -340,6 +341,9 @@ extern const char kExtensionInvalidRequestURL[];
 extern const char kExtensionResourceInvalidRequestURL[];
 
 extern const char kSyncGoogleDashboardURL[];
+
+// URL of the 'Activity controls' section of the privacy settings page.
+extern const char kGoogleAccountActivityControlsURL[];
 
 extern const char kPasswordManagerLearnMoreURL[];
 extern const char kUpgradeHelpCenterBaseURL[];

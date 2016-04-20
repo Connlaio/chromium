@@ -4,8 +4,10 @@
 
 #include "chrome/browser/page_load_metrics/observers/page_load_metrics_observer_test_harness.h"
 
+#include <memory>
+
 #include "base/macros.h"
-#include "base/memory/scoped_ptr.h"
+#include "base/memory/ptr_util.h"
 #include "components/page_load_metrics/common/page_load_metrics_messages.h"
 
 namespace page_load_metrics {
@@ -84,10 +86,9 @@ void PageLoadMetricsObserverTestHarness::SetUp() {
   ChromeRenderViewHostTestHarness::SetUp();
   SetContents(CreateTestWebContents());
   NavigateAndCommit(GURL("http://www.google.com"));
-  observer_ =
-      MetricsWebContentsObserver::CreateForWebContents(
-          web_contents(),
-          make_scoped_ptr(new TestPageLoadMetricsEmbedderInterface(this)));
+  observer_ = MetricsWebContentsObserver::CreateForWebContents(
+      web_contents(),
+      base::WrapUnique(new TestPageLoadMetricsEmbedderInterface(this)));
   web_contents()->WasShown();
 }
 
@@ -99,9 +100,15 @@ void PageLoadMetricsObserverTestHarness::StartNavigation(const GURL& gurl) {
 
 void PageLoadMetricsObserverTestHarness::SimulateTimingUpdate(
     const PageLoadTiming& timing) {
-  observer_->OnMessageReceived(
-      PageLoadMetricsMsg_TimingUpdated(observer_->routing_id(), timing),
-      web_contents()->GetMainFrame());
+  SimulateTimingAndMetadataUpdate(timing, PageLoadMetadata());
+}
+
+void PageLoadMetricsObserverTestHarness::SimulateTimingAndMetadataUpdate(
+    const PageLoadTiming& timing,
+    const PageLoadMetadata& metadata) {
+  observer_->OnMessageReceived(PageLoadMetricsMsg_TimingUpdated(
+                                   observer_->routing_id(), timing, metadata),
+                               web_contents()->GetMainFrame());
 }
 
 const base::HistogramTester&

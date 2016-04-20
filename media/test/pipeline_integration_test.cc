@@ -27,6 +27,7 @@
 #include "media/cdm/aes_decryptor.h"
 #include "media/cdm/json_web_key.h"
 #include "media/filters/chunk_demuxer.h"
+#include "media/media_features.h"
 #include "media/renderers/renderer_impl.h"
 #include "media/test/pipeline_integration_test_base.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -36,8 +37,8 @@
 #include "media/mojo/interfaces/renderer.mojom.h"
 #include "media/mojo/interfaces/service_factory.mojom.h"
 #include "media/mojo/services/mojo_renderer_impl.h"
-#include "mojo/shell/public/cpp/application_test_base.h"
-#include "mojo/shell/public/cpp/connect.h"
+#include "services/shell/public/cpp/application_test_base.h"
+#include "services/shell/public/cpp/connect.h"
 
 // TODO(dalecurtis): The mojo renderer is in another process, so we have no way
 // currently to get hashes for video and audio samples.  This also means that
@@ -100,6 +101,9 @@ const char kVideoOnlyWebM[] = "video/webm; codecs=\"vp8\"";
 const char kADTS[] = "audio/aac";
 const char kMP4[] = "video/mp4; codecs=\"avc1.4D4041,mp4a.40.2\"";
 const char kMP4VideoAVC3[] = "video/mp4; codecs=\"avc3.64001f\"";
+#if BUILDFLAG(ENABLE_MP4_VP9_DEMUXING)
+const char kMP4VideoVP9[] = "video/mp4; codecs=\"vp09.00.00.08.01.01.00.00\"";
+#endif
 const char kMP4Video[] = "video/mp4; codecs=\"avc1.4D4041\"";
 const char kMP4Audio[] = "audio/mp4; codecs=\"mp4a.40.2\"";
 const char kMP3[] = "audio/mpeg";
@@ -653,7 +657,7 @@ class MockMediaSource {
 };
 
 #if defined(MOJO_RENDERER)
-class PipelineIntegrationTestHost : public mojo::test::ApplicationTestBase,
+class PipelineIntegrationTestHost : public shell::test::ApplicationTestBase,
                                     public PipelineIntegrationTestBase {
  public:
   bool ShouldCreateDefaultRunLoop() override { return false; }
@@ -1847,6 +1851,24 @@ TEST_F(PipelineIntegrationTest,
   Stop();
 }
 
+#if BUILDFLAG(ENABLE_MP4_VP9_DEMUXING)
+TEST_F(PipelineIntegrationTest, EncryptedPlayback_MP4_VP9_CENC_VideoOnly) {
+  MockMediaSource source("bear-320x240-v_frag-vp9-cenc.mp4", kMP4VideoVP9,
+                         kAppendWholeFile);
+  FakeEncryptedMedia encrypted_media(new KeyProvidingApp());
+  StartPipelineWithEncryptedMedia(&source, &encrypted_media);
+
+  source.EndOfStream();
+  ASSERT_EQ(PIPELINE_OK, pipeline_status_);
+
+  Play();
+
+  ASSERT_TRUE(WaitUntilOnEnded());
+  source.Shutdown();
+  Stop();
+}
+#endif  // #if BUILDFLAG(ENABLE_MP4_VP9_DEMUXING)
+
 TEST_F(PipelineIntegrationTest, BasicPlayback_MediaSource_VideoOnly_MP4_AVC3) {
   MockMediaSource source("bear-1280x720-v_frag-avc3.mp4", kMP4VideoAVC3,
                          kAppendWholeFile);
@@ -1864,6 +1886,22 @@ TEST_F(PipelineIntegrationTest, BasicPlayback_MediaSource_VideoOnly_MP4_AVC3) {
   source.Shutdown();
   Stop();
 }
+
+#if BUILDFLAG(ENABLE_MP4_VP9_DEMUXING)
+TEST_F(PipelineIntegrationTest, BasicPlayback_MediaSource_VideoOnly_MP4_VP9) {
+  MockMediaSource source("bear-320x240-v_frag-vp9.mp4", kMP4VideoVP9,
+                         kAppendWholeFile);
+  StartPipelineWithMediaSource(&source);
+  source.EndOfStream();
+  ASSERT_EQ(PIPELINE_OK, pipeline_status_);
+
+  Play();
+
+  ASSERT_TRUE(WaitUntilOnEnded());
+  source.Shutdown();
+  Stop();
+}
+#endif  // #if BUILDFLAG(ENABLE_MP4_VP9_DEMUXING)
 
 #endif  // defined(USE_PROPRIETARY_CODECS)
 

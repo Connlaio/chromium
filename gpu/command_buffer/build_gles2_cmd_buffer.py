@@ -3411,6 +3411,7 @@ _FUNCTION_INFO = {
   'InvalidateFramebuffer': {
     'type': 'PUTn',
     'count': 1,
+    'decoder_func': 'DoInvalidateFramebuffer',
     'client_test': False,
     'unit_test': False,
     'unsafe': True,
@@ -3418,6 +3419,7 @@ _FUNCTION_INFO = {
   'InvalidateSubFramebuffer': {
     'type': 'PUTn',
     'count': 1,
+    'decoder_func': 'DoInvalidateSubFramebuffer',
     'client_test': False,
     'unit_test': False,
     'unsafe': True,
@@ -4458,7 +4460,7 @@ _FUNCTION_INFO = {
     'cmd_args': 'GLuint contents_texture_id, GLfloat opacity, '
                 'GLuint background_color, GLuint edge_aa_mask, '
                 'GLboolean is_clipped, GLint sorting_context_id, '
-                'GLuint shm_id, GLuint shm_offset',
+                'GLuint filter, GLuint shm_id, GLuint shm_offset',
     'extension': 'CHROMIUM_schedule_ca_layer',
     'chromium': True,
   },
@@ -6159,7 +6161,7 @@ class GENnHandler(TypeHandler):
       return error::kInvalidArguments;
     }
   }
-  scoped_ptr<GLuint[]> service_ids(new GLuint[n]);
+  std::unique_ptr<GLuint[]> service_ids(new GLuint[n]);
   gl%(func_name)s(n, service_ids.get());
   for (GLsizei ii = 0; ii < n; ++ii) {
     group_->Add%(resource_name)sId(%(last_arg_name)s[ii], service_ids[ii]);
@@ -7598,11 +7600,17 @@ TEST_P(%(test_name)s, %(name)sInvalidArgs%(arg_index)d_%(value_index)d) {
   def WriteGetDataSizeCode(self, func, f):
     """Overrriden from TypeHandler."""
     code = """  uint32_t data_size;
+  if (count < 0) {
+    LOCAL_SET_GL_ERROR(GL_INVALID_VALUE, "%s", "negative count");
+    return error::kNoError;
+  }
   if (!ComputeDataSize(count, sizeof(%s), %d, &data_size)) {
     return error::kOutOfBounds;
   }
 """
-    f.write(code % (self.GetArrayType(func), self.GetArrayCount(func)))
+    f.write(code % (func.name,
+                    self.GetArrayType(func),
+                    self.GetArrayCount(func)))
     if func.IsImmediate():
       f.write("  if (data_size > immediate_data_size) {\n")
       f.write("    return error::kOutOfBounds;\n")
@@ -10928,6 +10936,8 @@ extern const NameToFunc g_gles2_function_table[] = {
     comment = ("// This file is included by gles2_interface.h to declare the\n"
                "// GL api functions.\n")
     code = """
+#include <memory>
+
 #include "gpu/command_buffer/client/gles2_interface.h"
 #include "mojo/public/c/gles2/gles2.h"
 

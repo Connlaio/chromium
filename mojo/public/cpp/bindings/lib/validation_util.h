@@ -79,7 +79,7 @@ bool ValidateInterfaceIdNonNullable(InterfaceId input,
                                     const char* error_message);
 
 template <typename T>
-bool ValidateArray(const ArrayPointer<T>& input,
+bool ValidateArray(const Pointer<Array_Data<T>>& input,
                    BoundsChecker* bounds_checker,
                    const ArrayValidateParams* validate_params) {
   if (!ValidateEncodedPointer(&input.offset)) {
@@ -92,7 +92,7 @@ bool ValidateArray(const ArrayPointer<T>& input,
 }
 
 template <typename T>
-bool ValidateMap(const StructPointer<T>& input,
+bool ValidateMap(const Pointer<T>& input,
                  BoundsChecker* bounds_checker,
                  const ArrayValidateParams* value_validate_params) {
   if (!ValidateEncodedPointer(&input.offset)) {
@@ -105,8 +105,7 @@ bool ValidateMap(const StructPointer<T>& input,
 }
 
 template <typename T>
-bool ValidateStruct(const StructPointer<T>& input,
-                    BoundsChecker* bounds_checker) {
+bool ValidateStruct(const Pointer<T>& input, BoundsChecker* bounds_checker) {
   if (!ValidateEncodedPointer(&input.offset)) {
     ReportValidationError(VALIDATION_ERROR_ILLEGAL_POINTER);
     return false;
@@ -123,21 +122,6 @@ bool ValidateInlinedUnion(const T& input, BoundsChecker* bounds_checker) {
 bool ValidateHandle(const Handle& input, BoundsChecker* bounds_checker);
 
 bool ValidateAssociatedInterfaceId(InterfaceId input);
-
-// Checks whether the given enum value is valid. Please note that any value is
-// valid for an extensible enum, although it may be from a newer version and
-// thus unknown.
-template <typename T>
-bool ValidateEnum(const T& input) {
-  if (T::kIsExtensible)
-    return true;
-
-  if (T::IsKnownValue(input.value))
-    return true;
-
-  ReportValidationError(VALIDATION_ERROR_UNKNOWN_ENUM_VALUE);
-  return false;
-}
 
 }  // namespace internal
 }  // namespace mojo

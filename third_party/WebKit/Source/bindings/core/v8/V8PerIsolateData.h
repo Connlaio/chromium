@@ -59,6 +59,31 @@ public:
         virtual void run() = 0;
     };
 
+    // Disables the UseCounter.
+    // UseCounter depends on the current context, but it's not available during
+    // the initialization of v8::Context and the global object.  So we need to
+    // disable the UseCounter while the initialization of the context and global
+    // object.
+    // TODO(yukishiino): Come up with an idea to remove this hack.
+    class UseCounterDisabledScope {
+        STACK_ALLOCATED();
+    public:
+        explicit UseCounterDisabledScope(V8PerIsolateData* perIsolateData)
+            : m_perIsolateData(perIsolateData)
+            , m_originalUseCounterDisabled(m_perIsolateData->m_useCounterDisabled)
+        {
+            m_perIsolateData->m_useCounterDisabled = true;
+        }
+        ~UseCounterDisabledScope()
+        {
+            m_perIsolateData->m_useCounterDisabled = m_originalUseCounterDisabled;
+        }
+
+    private:
+        V8PerIsolateData* m_perIsolateData;
+        const bool m_originalUseCounterDisabled;
+    };
+
     static v8::Isolate* initialize();
 
     static V8PerIsolateData* from(v8::Isolate* isolate)
@@ -88,9 +113,13 @@ public:
 
     V8HiddenValue* hiddenValue() { return m_hiddenValue.get(); }
 
-    v8::Local<v8::FunctionTemplate> domTemplate(const void* domTemplateKey, v8::FunctionCallback = 0, v8::Local<v8::Value> data = v8::Local<v8::Value>(), v8::Local<v8::Signature> = v8::Local<v8::Signature>(), int length = 0);
-    v8::Local<v8::FunctionTemplate> existingDOMTemplate(const void* domTemplateKey);
-    void setDOMTemplate(const void* domTemplateKey, v8::Local<v8::FunctionTemplate>);
+    // Accessors to the cache of interface templates.
+    v8::Local<v8::FunctionTemplate> findInterfaceTemplate(const DOMWrapperWorld&, const void* key);
+    void setInterfaceTemplate(const DOMWrapperWorld&, const void* key, v8::Local<v8::FunctionTemplate>);
+
+    // Accessor to the cache of cross-origin accessible operation's templates.
+    // Created templates get automatically cached.
+    v8::Local<v8::FunctionTemplate> findOrCreateOperationTemplate(const DOMWrapperWorld&, const void* key, v8::FunctionCallback, v8::Local<v8::Value> data, v8::Local<v8::Signature>, int length);
 
     bool hasInstance(const WrapperTypeInfo* untrusted, v8::Local<v8::Value>);
     v8::Local<v8::Object> findInstanceInPrototypeChain(const WrapperTypeInfo*, v8::Local<v8::Value>);
@@ -113,14 +142,25 @@ private:
     V8PerIsolateData();
     ~V8PerIsolateData();
 
-    typedef HashMap<const void*, v8::Eternal<v8::FunctionTemplate>> DOMTemplateMap;
-    DOMTemplateMap& currentDOMTemplateMap();
-    bool hasInstance(const WrapperTypeInfo* untrusted, v8::Local<v8::Value>, DOMTemplateMap&);
-    v8::Local<v8::Object> findInstanceInPrototypeChain(const WrapperTypeInfo*, v8::Local<v8::Value>, DOMTemplateMap&);
+    static void useCounterCallback(v8::Isolate*, v8::Isolate::UseCounterFeature);
+
+    typedef HashMap<const void*, v8::Eternal<v8::FunctionTemplate>> V8FunctionTemplateMap;
+    V8FunctionTemplateMap& selectInterfaceTemplateMap(const DOMWrapperWorld&);
+    V8FunctionTemplateMap& selectOperationTemplateMap(const DOMWrapperWorld&);
+    bool hasInstance(const WrapperTypeInfo* untrusted, v8::Local<v8::Value>, V8FunctionTemplateMap&);
+    v8::Local<v8::Object> findInstanceInPrototypeChain(const WrapperTypeInfo*, v8::Local<v8::Value>, V8FunctionTemplateMap&);
 
     OwnPtr<gin::IsolateHolder> m_isolateHolder;
-    DOMTemplateMap m_domTemplateMapForMainWorld;
-    DOMTemplateMap m_domTemplateMapForNonMainWorld;
+
+    // m_interfaceTemplateMapFor{,Non}MainWorld holds function templates for
+    // the inerface objects.
+    V8FunctionTemplateMap m_interfaceTemplateMapForMainWorld;
+    V8FunctionTemplateMap m_interfaceTemplateMapForNonMainWorld;
+    // m_operationTemplateMapFor{,Non}MainWorld holds function templates for
+    // the cross-origin accessible DOM operations.
+    V8FunctionTemplateMap m_operationTemplateMapForMainWorld;
+    V8FunctionTemplateMap m_operationTemplateMapForNonMainWorld;
+
     OwnPtr<StringCache> m_stringCache;
     OwnPtr<V8HiddenValue> m_hiddenValue;
     ScopedPersistent<v8::Value> m_liveRoot;
@@ -128,6 +168,9 @@ private:
 
     bool m_constructorMode;
     friend class ConstructorMode;
+
+    bool m_useCounterDisabled;
+    friend class UseCounterDisabledScope;
 
     bool m_isHandlingRecursionLevelError;
     bool m_isReportingException;

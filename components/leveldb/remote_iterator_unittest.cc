@@ -8,16 +8,16 @@
 #include "components/leveldb/public/cpp/remote_iterator.h"
 #include "components/leveldb/public/interfaces/leveldb.mojom.h"
 #include "mojo/common/common_type_converters.h"
-#include "mojo/shell/public/cpp/shell_connection.h"
-#include "mojo/shell/public/cpp/shell_test.h"
 #include "mojo/util/capture_util.h"
+#include "services/shell/public/cpp/shell_connection.h"
+#include "services/shell/public/cpp/shell_test.h"
 
 using mojo::Capture;
 
 namespace leveldb {
 namespace {
 
-class RemoteIteratorTest : public mojo::test::ShellTest {
+class RemoteIteratorTest : public shell::test::ShellTest {
  public:
   RemoteIteratorTest() : ShellTest("exe:leveldb_service_unittests") {}
   ~RemoteIteratorTest() override {}

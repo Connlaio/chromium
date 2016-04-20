@@ -7,12 +7,12 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "base/macros.h"
 #include "base/memory/ref_counted.h"
-#include "base/memory/scoped_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/threading/thread_checker.h"
 #include "base/time/default_tick_clock.h"
@@ -79,7 +79,6 @@ class RendererMediaPlayerManager;
 class WebMediaPlayerAndroid
     : public blink::WebMediaPlayer,
       public cc::VideoFrameProvider,
-      public StreamTextureFactoryContextObserver,
       public media::RendererMediaPlayerInterface,
       public NON_EXPORTED_BASE(media::WebMediaPlayerDelegate::Observer) {
  public:
@@ -107,7 +106,7 @@ class WebMediaPlayerAndroid
 
   // Resource loading.
   void load(LoadType load_type,
-            const blink::WebURL& url,
+            const blink::WebMediaPlayerSource& source,
             CORSMode cors_mode) override;
 
   // Playback controls.
@@ -214,9 +213,6 @@ class WebMediaPlayerAndroid
   void OnMediaPlayerPlay() override;
   void OnMediaPlayerPause() override;
   void OnRemoteRouteAvailabilityChanged(bool routes_available) override;
-
-  // StreamTextureFactoryContextObserver implementation.
-  void ResetStreamTextureProxy() override;
 
   // Called when the player is released.
   void OnPlayerReleased() override;
@@ -450,7 +446,7 @@ class WebMediaPlayerAndroid
   // blocked.
   cc::VideoFrameProvider::Client* video_frame_provider_client_;
 
-  scoped_ptr<cc_blink::WebLayerImpl> video_weblayer_;
+  std::unique_ptr<cc_blink::WebLayerImpl> video_weblayer_;
 
 #if defined(VIDEO_HOLE)
   // A rectangle represents the geometry of video frame, when computed last
@@ -469,7 +465,7 @@ class WebMediaPlayerAndroid
 
   scoped_refptr<media::MediaLog> media_log_;
 
-  scoped_ptr<MediaInfoLoader> info_loader_;
+  std::unique_ptr<MediaInfoLoader> info_loader_;
 
   // Non-owned pointer to the CdmContext. Updated in the constructor,
   // generateKeyRequest() or setContentDecryptionModule().
@@ -496,7 +492,7 @@ class WebMediaPlayerAndroid
   // as playback progresses.
   media::TimeDeltaInterpolator interpolator_;
 
-  scoped_ptr<MediaSourceDelegate> media_source_delegate_;
+  std::unique_ptr<MediaSourceDelegate> media_source_delegate_;
 
   int frame_id_;
 

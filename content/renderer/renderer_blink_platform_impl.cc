@@ -11,6 +11,7 @@
 #include "base/lazy_instance.h"
 #include "base/location.h"
 #include "base/logging.h"
+#include "base/memory/ptr_util.h"
 #include "base/memory/shared_memory.h"
 #include "base/metrics/histogram.h"
 #include "base/numerics/safe_conversions.h"
@@ -74,6 +75,7 @@
 #include "content/renderer/webclipboard_impl.h"
 #include "content/renderer/webgraphicscontext3d_provider_impl.h"
 #include "content/renderer/webpublicsuffixlist_impl.h"
+#include "gpu/command_buffer/client/gles2_interface.h"
 #include "gpu/config/gpu_info.h"
 #include "gpu/ipc/client/gpu_channel_host.h"
 #include "ipc/ipc_sync_message_filter.h"
@@ -101,11 +103,6 @@
 #include "third_party/WebKit/public/platform/modules/device_orientation/WebDeviceOrientationListener.h"
 #include "ui/gfx/color_profile.h"
 #include "url/gurl.h"
-
-#if defined(OS_ANDROID)
-#include "content/renderer/android/synchronous_compositor_factory.h"
-#include "gpu/blink/webgraphicscontext3d_in_process_command_buffer_impl.h"
-#endif
 
 #if defined(OS_MACOSX)
 #include "content/common/mac/font_descriptor.h"
@@ -300,7 +297,7 @@ blink::WebURLLoader* RendererBlinkPlatformImpl::createURLLoader() {
   // data URLs to bypass the ResourceDispatcher.
   return new content::WebURLLoaderImpl(
       child_thread ? child_thread->resource_dispatcher() : NULL,
-      make_scoped_ptr(currentThread()->getWebTaskRunner()->clone()));
+      base::WrapUnique(currentThread()->getWebTaskRunner()->clone()));
 }
 
 blink::WebThread* RendererBlinkPlatformImpl::currentThread() {
@@ -974,36 +971,31 @@ static void Collect3DContextInformationOnFailure(
     gpu::GpuChannelHost* host) {
   DCHECK(gl_info);
   std::string error_message("OffscreenContext Creation failed, ");
-  if (host) {
-    const gpu::GPUInfo& gpu_info = host->gpu_info();
-    gl_info->vendorId = gpu_info.gpu.vendor_id;
-    gl_info->deviceId = gpu_info.gpu.device_id;
-    switch (gpu_info.context_info_state) {
-      case gpu::kCollectInfoSuccess:
-      case gpu::kCollectInfoNonFatalFailure:
-        gl_info->rendererInfo = WebString::fromUTF8(gpu_info.gl_renderer);
-        gl_info->vendorInfo = WebString::fromUTF8(gpu_info.gl_vendor);
-        gl_info->driverVersion = WebString::fromUTF8(gpu_info.driver_version);
-        gl_info->resetNotificationStrategy =
-            gpu_info.gl_reset_notification_strategy;
-        gl_info->sandboxed = gpu_info.sandboxed;
-        gl_info->processCrashCount = gpu_info.process_crash_count;
-        gl_info->amdSwitchable = gpu_info.amd_switchable;
-        gl_info->optimus = gpu_info.optimus;
-        break;
-      case gpu::kCollectInfoFatalFailure:
-      case gpu::kCollectInfoNone:
-        error_message.append(
-            "Failed to collect gpu information, GLSurface or GLContext "
-            "creation failed");
-        gl_info->errorMessage = WebString::fromUTF8(error_message);
-        break;
-      default:
-        NOTREACHED();
-    }
-  } else {
-    error_message.append("GpuChannelHost creation failed");
-    gl_info->errorMessage = WebString::fromUTF8(error_message);
+  const gpu::GPUInfo& gpu_info = host->gpu_info();
+  gl_info->vendorId = gpu_info.gpu.vendor_id;
+  gl_info->deviceId = gpu_info.gpu.device_id;
+  switch (gpu_info.context_info_state) {
+    case gpu::kCollectInfoSuccess:
+    case gpu::kCollectInfoNonFatalFailure:
+      gl_info->rendererInfo = WebString::fromUTF8(gpu_info.gl_renderer);
+      gl_info->vendorInfo = WebString::fromUTF8(gpu_info.gl_vendor);
+      gl_info->driverVersion = WebString::fromUTF8(gpu_info.driver_version);
+      gl_info->resetNotificationStrategy =
+          gpu_info.gl_reset_notification_strategy;
+      gl_info->sandboxed = gpu_info.sandboxed;
+      gl_info->processCrashCount = gpu_info.process_crash_count;
+      gl_info->amdSwitchable = gpu_info.amd_switchable;
+      gl_info->optimus = gpu_info.optimus;
+      break;
+    case gpu::kCollectInfoFatalFailure:
+    case gpu::kCollectInfoNone:
+      error_message.append(
+          "Failed to collect gpu information, GLSurface or GLContext "
+          "creation failed");
+      gl_info->errorMessage = WebString::fromUTF8(error_message);
+      break;
+    default:
+      NOTREACHED();
   }
 }
 
@@ -1023,6 +1015,21 @@ RendererBlinkPlatformImpl::createOffscreenGraphicsContext3DProvider(
   scoped_refptr<gpu::GpuChannelHost> gpu_channel_host(
       RenderThreadImpl::current()->EstablishGpuChannelSync(
           CAUSE_FOR_GPU_LAUNCH_WEBGRAPHICSCONTEXT3DCOMMANDBUFFERIMPL_INITIALIZE));
+  if (!gpu_channel_host) {
+    std::string error_message(
+        "OffscreenContext Creation failed, GpuChannelHost creation failed");
+    gl_info->errorMessage = WebString::fromUTF8(error_message);
+    return nullptr;
+  }
+
+  // WebGL contexts must fail creation if the share group is lost.
+  if (share_provider &&
+      share_provider->contextGL()->GetGraphicsResetStatusKHR() != GL_NO_ERROR) {
+    std::string error_message(
+        "OffscreenContext Creation failed, Shared context is lost");
+    gl_info->errorMessage = WebString::fromUTF8(error_message);
+    return nullptr;
+  }
 
   WebGraphicsContext3DCommandBufferImpl* share_context =
       share_provider ? static_cast<WebGraphicsContext3DCommandBufferImpl*>(
@@ -1051,17 +1058,15 @@ RendererBlinkPlatformImpl::createOffscreenGraphicsContext3DProvider(
   bool automatic_flushes = true;
   // Prefer discrete GPU for WebGL.
   gfx::GpuPreference gpu_preference = gfx::PreferDiscreteGpu;
-  WebGraphicsContext3DCommandBufferImpl::SharedMemoryLimits limits;
 
-  scoped_ptr<WebGraphicsContext3DCommandBufferImpl> context(
-      WebGraphicsContext3DCommandBufferImpl::CreateOffscreenContext(
-          gpu_channel_host.get(), attributes, gpu_preference, share_resources,
-          automatic_flushes, GURL(top_document_web_url), limits,
-          share_context));
-  scoped_refptr<ContextProviderCommandBuffer> provider =
-      ContextProviderCommandBuffer::Create(std::move(context),
-                                           RENDERER_MAINTHREAD_CONTEXT);
-  if (!provider || !provider->BindToCurrentThread()) {
+  scoped_refptr<ContextProviderCommandBuffer> provider(
+      new ContextProviderCommandBuffer(
+          base::WrapUnique(new WebGraphicsContext3DCommandBufferImpl(
+              gpu::kNullSurfaceHandle, GURL(top_document_web_url),
+              gpu_channel_host.get(), attributes, gpu_preference,
+              share_resources, automatic_flushes, share_context)),
+          gpu::SharedMemoryLimits(), RENDERER_MAINTHREAD_CONTEXT));
+  if (!provider->BindToCurrentThread()) {
     // Collect Graphicsinfo if there is a context failure or it is failed
     // purposefully in case of layout tests.
     Collect3DContextInformationOnFailure(gl_info, gpu_channel_host.get());
@@ -1190,7 +1195,7 @@ RendererBlinkPlatformImpl::CreatePlatformEventObserverFromType(
 
 void RendererBlinkPlatformImpl::SetPlatformEventObserverForTesting(
     blink::WebPlatformEventType type,
-    scoped_ptr<PlatformEventObserverBase> observer) {
+    std::unique_ptr<PlatformEventObserverBase> observer) {
   if (platform_event_observers_.Lookup(type))
     platform_event_observers_.Remove(type);
   platform_event_observers_.AddWithID(observer.release(), type);

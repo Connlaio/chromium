@@ -74,6 +74,11 @@ public:
 
     LayoutUnit guttersSize(GridTrackSizingDirection, size_t span) const;
 
+    LayoutUnit offsetBetweenTracks(GridTrackSizingDirection direction) const
+    {
+        return direction == ForColumns ? m_offsetBetweenColumns : m_offsetBetweenRows;
+    }
+
     typedef Vector<LayoutBox*, 1> GridCell;
     const GridCell& gridCell(int row, int column) const
     {
@@ -92,6 +97,13 @@ public:
         ASSERT_WITH_SECURITY_IMPLICATION(!m_gridIsDirty);
         return m_gridItemsIndexesMap.get(layoutBox);
     }
+
+    size_t autoRepeatCountForDirection(GridTrackSizingDirection direction) const
+    {
+        return direction == ForColumns ? m_autoRepeatColumns : m_autoRepeatRows;
+    }
+
+    LayoutUnit translateRTLCoordinate(LayoutUnit) const;
 
 private:
     bool isOfType(LayoutObjectType type) const override { return type == LayoutObjectLayoutGrid || LayoutBlock::isOfType(type); }
@@ -117,6 +129,9 @@ private:
 
     void ensureGridSize(size_t maximumRowSize, size_t maximumColumnSize);
     void insertItemIntoGrid(LayoutBox&, const GridArea&);
+
+    size_t computeAutoRepeatTracksCount(GridTrackSizingDirection) const;
+
     void placeItemsOnGrid();
     void populateExplicitGridAndOrderIterator();
     PassOwnPtr<GridArea> createEmptyGridAreaAtSpecifiedPositionsOutsideGrid(const LayoutBox&, GridTrackSizingDirection, const GridSpan& specifiedPositions) const;
@@ -206,6 +221,8 @@ private:
     bool m_gridIsDirty;
     Vector<LayoutUnit> m_rowPositions;
     Vector<LayoutUnit> m_columnPositions;
+    LayoutUnit m_offsetBetweenColumns;
+    LayoutUnit m_offsetBetweenRows;
     HashMap<const LayoutBox*, GridArea> m_gridItemArea;
     OrderIterator m_orderIterator;
     Vector<LayoutBox*> m_gridItemsOverflowingGridArea;
@@ -216,6 +233,9 @@ private:
 
     int m_smallestRowStart;
     int m_smallestColumnStart;
+
+    size_t m_autoRepeatColumns { 0 };
+    size_t m_autoRepeatRows { 0 };
 };
 
 DEFINE_LAYOUT_OBJECT_TYPE_CASTS(LayoutGrid, isLayoutGrid());

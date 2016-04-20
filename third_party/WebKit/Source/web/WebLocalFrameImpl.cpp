@@ -166,7 +166,6 @@
 #include "modules/screen_orientation/ScreenOrientationController.h"
 #include "modules/vr/VRController.h"
 #include "modules/wake_lock/ScreenWakeLock.h"
-#include "modules/webusb/USBController.h"
 #include "platform/ScriptForbiddenScope.h"
 #include "platform/TraceEvent.h"
 #include "platform/UserGestureIndicator.h"
@@ -216,7 +215,6 @@
 #include "public/web/WebRange.h"
 #include "public/web/WebScriptSource.h"
 #include "public/web/WebSerializedScriptValue.h"
-#include "public/web/WebTestInterfaceFactory.h"
 #include "public/web/WebTreeScopeType.h"
 #include "skia/ext/platform_canvas.h"
 #include "web/AssociatedURLLoader.h"
@@ -304,6 +302,7 @@ public:
         if (!frame()->document() || !frame()->document()->layoutView())
             return 0;
 
+        // TODO(crbug.com/603230): Synchronized painting is unnecessary in this lifecycle update.
         frame()->view()->updateAllLifecyclePhases();
         if (!frame()->document() || !frame()->document()->layoutView())
             return 0;
@@ -323,6 +322,7 @@ public:
         if (!frame()->document() || !frame()->document()->layoutView())
             return;
 
+        // TODO(crbug.com/603230): Synchronized painting is unnecessary in this lifecycle update.
         frame()->view()->updateAllLifecyclePhases();
         if (!frame()->document() || !frame()->document()->layoutView())
             return;
@@ -467,7 +467,7 @@ public:
 
     void computePageRectsWithPageSize(const FloatSize& pageSizeInPixels) override
     {
-        ASSERT_NOT_REACHED();
+        NOTREACHED();
     }
 
 protected:
@@ -563,7 +563,7 @@ bool WebLocalFrameImpl::isWebRemoteFrame() const
 
 WebRemoteFrame* WebLocalFrameImpl::toWebRemoteFrame()
 {
-    ASSERT_NOT_REACHED();
+    NOTREACHED();
     return 0;
 }
 
@@ -576,11 +576,7 @@ void WebLocalFrameImpl::close()
         m_devToolsAgent.clear();
     }
 
-#if ENABLE(OILPAN)
     m_selfKeepAlive.clear();
-#else
-    deref(); // Balances ref() acquired in WebFrame::create
-#endif
 }
 
 WebString WebLocalFrameImpl::uniqueName() const
@@ -609,7 +605,7 @@ WebVector<WebIconURL> WebLocalFrameImpl::iconURLs(int iconTypesMask) const
 
 void WebLocalFrameImpl::setRemoteWebLayer(WebLayer* webLayer)
 {
-    ASSERT_NOT_REACHED();
+    NOTREACHED();
 }
 
 void WebLocalFrameImpl::setContentSettingsClient(WebContentSettingsClient* contentSettingsClient)
@@ -768,7 +764,7 @@ void WebLocalFrameImpl::addMessageToConsole(const WebConsoleMessage& message)
         webCoreMessageLevel = ErrorMessageLevel;
         break;
     default:
-        ASSERT_NOT_REACHED();
+        NOTREACHED();
         return;
     }
 
@@ -891,14 +887,6 @@ void WebLocalFrameImpl::loadRequest(const WebURLRequest& request)
     load(request, WebFrameLoadType::Standard, WebHistoryItem(), WebHistoryDifferentDocumentLoad, false);
 }
 
-void WebLocalFrameImpl::loadHistoryItem(const WebHistoryItem& item, WebHistoryLoadType loadType, WebCachePolicy cachePolicy)
-{
-    // TODO(clamy): Remove this function once RenderFrame calls load for all
-    // requests.
-    WebURLRequest request = requestFromHistoryItem(item, cachePolicy);
-    load(request, WebFrameLoadType::BackForward, item, loadType, false);
-}
-
 void WebLocalFrameImpl::loadHTMLString(const WebData& data, const WebURL& baseURL, const WebURL& unreachableURL, bool replace)
 {
     DCHECK(frame());
@@ -995,7 +983,7 @@ bool WebLocalFrameImpl::hasMarkedText() const
 
 WebRange WebLocalFrameImpl::markedRange() const
 {
-    return frame()->inputMethodController().compositionRange().get();
+    return frame()->inputMethodController().compositionRange();
 }
 
 bool WebLocalFrameImpl::firstRectForCharacterRange(unsigned location, unsigned length, WebRect& rectInViewport) const
@@ -1116,7 +1104,7 @@ bool WebLocalFrameImpl::hasSelection() const
 
 WebRange WebLocalFrameImpl::selectionRange() const
 {
-    return createRange(frame()->selection().selection().toNormalizedEphemeralRange()).get();
+    return createRange(frame()->selection().selection().toNormalizedEphemeralRange());
 }
 
 WebString WebLocalFrameImpl::selectionAsText() const
@@ -1348,23 +1336,6 @@ WebString WebLocalFrameImpl::pageProperty(const WebString& propertyName, int pag
     return m_printContext->pageProperty(frame(), propertyName.utf8().data(), pageIndex);
 }
 
-void WebLocalFrameImpl::registerTestInterface(const WebString& name, WebTestInterfaceFactory* factory)
-{
-    m_testInterfaces.set(name, adoptPtr(factory));
-}
-
-v8::Local<v8::Value> WebLocalFrameImpl::createTestInterface(const AtomicString& name)
-{
-    if (WebTestInterfaceFactory* factory = m_testInterfaces.get(name)) {
-        ScriptState* scriptState = ScriptState::forMainWorld(frame());
-        DCHECK(scriptState->contextIsValid());
-        v8::EscapableHandleScope handleScope(scriptState->isolate());
-        ScriptState::Scope scope(scriptState);
-        return handleScope.Escape(factory->createInstance(scriptState->context()));
-    }
-    return v8::Local<v8::Value>();
-}
-
 void WebLocalFrameImpl::printPagesWithBoundaries(WebCanvas* canvas, const WebSize& pageSizeInPixels)
 {
     DCHECK(m_printContext);
@@ -1408,11 +1379,7 @@ WebLocalFrameImpl* WebLocalFrameImpl::create(WebTreeScopeType scope, WebFrameCli
 {
     WebLocalFrameImpl* frame = new WebLocalFrameImpl(scope, client);
     frame->setOpener(opener);
-#if ENABLE(OILPAN)
     return frame;
-#else
-    return adoptRef(frame).leakRef();
-#endif
 }
 
 WebLocalFrameImpl* WebLocalFrameImpl::createProvisional(WebFrameClient* client, WebRemoteFrame* oldWebFrame, WebSandboxFlags flags, const WebFrameOwnerProperties& frameOwnerProperties)
@@ -1449,7 +1416,6 @@ WebLocalFrameImpl* WebLocalFrameImpl::createProvisional(WebFrameClient* client, 
     return webFrame;
 }
 
-
 WebLocalFrameImpl::WebLocalFrameImpl(WebTreeScopeType scope, WebFrameClient* client)
     : WebLocalFrame(scope)
     , m_frameLoaderClientImpl(FrameLoaderClientImpl::create(this))
@@ -1461,11 +1427,8 @@ WebLocalFrameImpl::WebLocalFrameImpl(WebTreeScopeType scope, WebFrameClient* cli
     , m_userMediaClientImpl(this)
     , m_geolocationClientProxy(GeolocationClientProxy::create(client ? client->geolocationClient() : 0))
     , m_webDevToolsFrontend(0)
-#if ENABLE(OILPAN)
     , m_selfKeepAlive(this)
-#endif
 {
-    setIndexedDBClientCreateFunction(IndexedDBClientImpl::create);
     frameCount++;
 }
 
@@ -1479,13 +1442,8 @@ WebLocalFrameImpl::~WebLocalFrameImpl()
     // The widget for the frame, if any, must have already been closed.
     DCHECK(!m_frameWidget);
     frameCount--;
-
-#if !ENABLE(OILPAN)
-    cancelPendingScopingEffort();
-#endif
 }
 
-#if ENABLE(OILPAN)
 DEFINE_TRACE(WebLocalFrameImpl)
 {
     visitor->trace(m_frameLoaderClientImpl);
@@ -1498,7 +1456,6 @@ DEFINE_TRACE(WebLocalFrameImpl)
     WebFrame::traceFrames(visitor, this);
     WebFrameImplBase::trace(visitor);
 }
-#endif
 
 void WebLocalFrameImpl::setCoreFrame(LocalFrame* frame)
 {
@@ -1516,12 +1473,9 @@ void WebLocalFrameImpl::setCoreFrame(LocalFrame* frame)
     provideGeolocationTo(*m_frame, m_geolocationClientProxy.get());
     m_geolocationClientProxy->setController(GeolocationController::from(m_frame.get()));
     provideMIDITo(*m_frame, MIDIClientProxy::create(m_client ? m_client->webMIDIClient() : nullptr));
+    provideIndexedDBClientTo(*m_frame, IndexedDBClientImpl::create());
     provideLocalFileSystemTo(*m_frame, LocalFileSystemClient::create());
     provideNavigatorContentUtilsTo(*m_frame, NavigatorContentUtilsClientImpl::create(this));
-
-    // Always provided so that availability of the API can be controlled by
-    // OriginTrials::webUSBEnabled().
-    USBController::provideTo(*m_frame, m_client ? m_client->usbClient() : nullptr);
 
     bool enableWebBluetooth = RuntimeEnabledFeatures::webBluetoothEnabled();
 #if OS(CHROMEOS) || OS(ANDROID)
@@ -1540,7 +1494,7 @@ void WebLocalFrameImpl::setCoreFrame(LocalFrame* frame)
     if (RuntimeEnabledFeatures::webVREnabled())
         VRController::provideTo(*m_frame, m_client ? m_client->webVRClient() : nullptr);
     if (RuntimeEnabledFeatures::wakeLockEnabled())
-        ScreenWakeLock::provideTo(*m_frame, m_client ? m_client->wakeLockClient() : nullptr);
+        ScreenWakeLock::provideTo(*m_frame, m_client ? m_client->serviceRegistry(): nullptr);
     if (RuntimeEnabledFeatures::audioOutputDevicesEnabled())
         provideAudioOutputDeviceClientTo(*m_frame, AudioOutputDeviceClientImpl::create());
     if (RuntimeEnabledFeatures::installedAppEnabled())

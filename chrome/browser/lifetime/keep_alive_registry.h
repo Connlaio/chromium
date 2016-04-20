@@ -40,8 +40,10 @@ class KeepAliveRegistry {
   friend struct base::DefaultSingletonTraits<KeepAliveRegistry>;
   // Friend to be able to use Register/Unregister
   friend class ScopedKeepAlive;
+#if !defined(NDEBUG) || defined(DCHECK_ALWAYS_ON)
   friend std::ostream& operator<<(std::ostream& out,
                                   const KeepAliveRegistry& registry);
+#endif
 
   KeepAliveRegistry();
   ~KeepAliveRegistry();
@@ -69,8 +71,8 @@ class KeepAliveRegistry {
   DISALLOW_COPY_AND_ASSIGN(KeepAliveRegistry);
 };
 
-#ifndef NDEBUG
+#if !defined(NDEBUG) || defined(DCHECK_ALWAYS_ON)
 std::ostream& operator<<(std::ostream& out, const KeepAliveRegistry& registry);
-#endif  // ndef NDEBUG
+#endif
 
 #endif  // CHROME_BROWSER_LIFETIME_KEEP_ALIVE_REGISTRY_H_

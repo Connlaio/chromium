@@ -42,6 +42,7 @@
 #include "bindings/modules/v8/UnionTypesModules.h"
 #include "bindings/modules/v8/V8RTCCertificate.h"
 #include "core/dom/DOMException.h"
+#include "core/dom/DOMTimeStamp.h"
 #include "core/dom/Document.h"
 #include "core/dom/ExceptionCode.h"
 #include "core/dom/ExecutionContext.h"
@@ -88,6 +89,7 @@
 #include "public/platform/WebRTCSessionDescriptionRequest.h"
 #include "public/platform/WebRTCStatsRequest.h"
 #include "public/platform/WebRTCVoidRequest.h"
+#include "wtf/CurrentTime.h"
 
 #include <memory>
 
@@ -321,7 +323,6 @@ RTCConfiguration* parseConfiguration(const Dictionary& configuration, ExceptionS
             rtcConfiguration->appendCertificate(certificate->certificateShallowCopy());
         }
     }
-
     return rtcConfiguration;
 }
 
@@ -388,6 +389,18 @@ RTCPeerConnection* RTCPeerConnection::create(ExecutionContext* context, const Di
     if (exceptionState.hadException())
         return 0;
 
+    // Make sure no certificates have expired.
+    if (configuration && configuration->numberOfCertificates() > 0) {
+        DOMTimeStamp now = convertSecondsToDOMTimeStamp(currentTime());
+        for (size_t i = 0; i < configuration->numberOfCertificates(); ++i) {
+            DOMTimeStamp expires = configuration->certificate(i)->expires();
+            if (expires <= now) {
+                exceptionState.throwDOMException(InvalidStateError, "Expired certificate(s).");
+                return 0;
+            }
+        }
+    }
+
     MediaErrorState mediaErrorState;
     WebMediaConstraints constraints = MediaConstraintsImpl::create(context, mediaConstraints, mediaErrorState);
     if (mediaErrorState.hadException()) {
@@ -413,6 +426,7 @@ RTCPeerConnection::RTCPeerConnection(ExecutionContext* context, RTCConfiguration
     , m_stopped(false)
     , m_closed(false)
 {
+    ThreadState::current()->registerPreFinalizer(this);
     Document* document = toDocument(getExecutionContext());
 
     // If we fail, set |m_closed| and |m_stopped| to true, to avoid hitting the assert in the destructor.
@@ -447,6 +461,13 @@ RTCPeerConnection::~RTCPeerConnection()
     // This checks that close() or stop() is called before the destructor.
     // We are assuming that a wrapper is always created when RTCPeerConnection is created.
     DCHECK(m_closed || m_stopped);
+}
+
+void RTCPeerConnection::dispose()
+{
+    // Promptly clears a raw reference from content/ to an on-heap object
+    // so that content/ doesn't access it in a lazy sweeping phase.
+    m_peerHandler.clear();
 }
 
 ScriptPromise RTCPeerConnection::createOffer(ScriptState* scriptState, const RTCOfferOptions& options)
@@ -664,6 +685,22 @@ ScriptPromise RTCPeerConnection::generateCertificate(ScriptState* scriptState, c
         return promise;
     }
 
+    // Check if |keygenAlgorithm| contains the optional DOMTimeStamp |expires| attribute.
+    Nullable<DOMTimeStamp> expires;
+    if (keygenAlgorithm.isDictionary()) {
+        Dictionary keygenAlgorithmDict = keygenAlgorithm.getAsDictionary();
+        if (keygenAlgorithmDict.hasProperty("expires")) {
+            v8::Local<v8::Value> expiresValue;
+            keygenAlgorithmDict.get("expires", expiresValue);
+            if (expiresValue->IsNumber()) {
+                double expiresDouble = expiresValue->ToNumber(scriptState->isolate()->GetCurrentContext()).ToLocalChecked()->Value();
+                if (expiresDouble >= 0) {
+                    expires.set(static_cast<DOMTimeStamp>(expiresDouble));
+                }
+            }
+        }
+    }
+
     // Convert from WebCrypto representation to recognized WebRTCKeyParams. WebRTC supports a small subset of what are valid AlgorithmIdentifiers.
     const char* unsupportedParamsString = "The 1st argument provided is an AlgorithmIdentifier with a supported algorithm name, but the parameters are not supported.";
     Nullable<WebRTCKeyParams> keyParams;
@@ -710,11 +747,20 @@ ScriptPromise RTCPeerConnection::generateCertificate(ScriptState* scriptState, c
 
     // Generate certificate. The |certificateObserver| will resolve the promise asynchronously upon completion.
     // The observer will manage its own destruction as well as the resolver's destruction.
-    certificateGenerator->generateCertificate(
-        keyParams.get(),
-        toDocument(scriptState->getExecutionContext())->url(),
-        toDocument(scriptState->getExecutionContext())->firstPartyForCookies(),
-        std::move(certificateObserver));
+    if (expires.isNull()) {
+        certificateGenerator->generateCertificate(
+            keyParams.get(),
+            toDocument(scriptState->getExecutionContext())->url(),
+            toDocument(scriptState->getExecutionContext())->firstPartyForCookies(),
+            std::move(certificateObserver));
+    } else {
+        certificateGenerator->generateCertificateWithExpiration(
+            keyParams.get(),
+            toDocument(scriptState->getExecutionContext())->url(),
+            toDocument(scriptState->getExecutionContext())->firstPartyForCookies(),
+            expires.get(),
+            std::move(certificateObserver));
+    }
 
     return promise;
 }
@@ -1169,7 +1215,7 @@ DEFINE_TRACE(RTCPeerConnection)
     visitor->trace(m_remoteStreams);
     visitor->trace(m_dispatchScheduledEventRunner);
     visitor->trace(m_scheduledEvents);
-    RefCountedGarbageCollectedEventTargetWithInlineData<RTCPeerConnection>::trace(visitor);
+    EventTargetWithInlineData::trace(visitor);
     ActiveDOMObject::trace(visitor);
 }
 

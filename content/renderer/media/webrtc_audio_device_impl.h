@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include <list>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -16,7 +17,6 @@
 #include "base/logging.h"
 #include "base/macros.h"
 #include "base/memory/ref_counted.h"
-#include "base/memory/scoped_ptr.h"
 #include "base/threading/thread_checker.h"
 #include "content/common/content_export.h"
 #include "content/renderer/media/webrtc_audio_capturer.h"
@@ -380,9 +380,6 @@ class CONTENT_EXPORT WebRtcAudioDeviceImpl
   // RegisterAudioCallback().
   webrtc::AudioTransport* audio_transport_callback_;
 
-  // Cached value of the current audio delay on the input/capture side.
-  int input_delay_ms_;
-
   // Cached value of the current audio delay on the output/renderer side.
   int output_delay_ms_;
 
@@ -397,10 +394,6 @@ class CONTENT_EXPORT WebRtcAudioDeviceImpl
   bool initialized_;
   bool playing_;
   bool recording_;
-
-  // Stores latest microphone volume received in a CaptureData() callback.
-  // Range is [0, 255].
-  uint32_t microphone_volume_;
 
   // Buffer used for temporary storage during render callback.
   // It is only accessed by the audio render thread.

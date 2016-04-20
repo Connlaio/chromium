@@ -223,11 +223,6 @@ XMLHttpRequest::XMLHttpRequest(ExecutionContext* context, PassRefPtr<SecurityOri
     , m_downloadingToFile(false)
     , m_responseTextOverflow(false)
 {
-#if ENABLE(ASSERT) && !ENABLE(OILPAN)
-    // Verify that this object was allocated on the 'eager' heap.
-    // (this check comes 'for free' with Oilpan enabled.)
-    ASSERT(IS_EAGERLY_FINALIZED());
-#endif
 }
 
 XMLHttpRequest::~XMLHttpRequest()
@@ -361,14 +356,14 @@ DOMArrayBuffer* XMLHttpRequest::responseArrayBuffer()
 
     if (!m_responseArrayBuffer) {
         if (m_binaryResponseBuilder && m_binaryResponseBuilder->size()) {
-            RefPtr<DOMArrayBuffer> buffer = DOMArrayBuffer::createUninitialized(m_binaryResponseBuilder->size(), 1);
+            DOMArrayBuffer* buffer = DOMArrayBuffer::createUninitialized(m_binaryResponseBuilder->size(), 1);
             if (!m_binaryResponseBuilder->getAsBytes(buffer->data(), static_cast<size_t>(buffer->byteLength()))) {
                 // m_binaryResponseBuilder failed to allocate an ArrayBuffer.
                 // We need to crash the renderer since there's no way defined in
                 // the spec to tell this to the user.
                 CRASH();
             }
-            m_responseArrayBuffer = buffer.release();
+            m_responseArrayBuffer = buffer;
             m_binaryResponseBuilder.clear();
         } else {
             m_responseArrayBuffer = DOMArrayBuffer::create(nullptr, 0);
@@ -652,12 +647,12 @@ void XMLHttpRequest::send(const ArrayBufferOrArrayBufferViewOrBlobOrDocumentOrSt
     }
 
     if (body.isArrayBuffer()) {
-        send(body.getAsArrayBuffer().get(), exceptionState);
+        send(body.getAsArrayBuffer(), exceptionState);
         return;
     }
 
     if (body.isArrayBufferView()) {
-        send(body.getAsArrayBufferView().get(), exceptionState);
+        send(body.getAsArrayBufferView(), exceptionState);
         return;
     }
 
@@ -874,6 +869,9 @@ void XMLHttpRequest::createRequest(PassRefPtr<EncodedFormData> httpBody, Excepti
 
     m_sameOriginRequest = getSecurityOrigin()->canRequestNoSuborigin(m_url);
 
+    if (!m_sameOriginRequest && m_includeCredentials)
+        UseCounter::count(&executionContext, UseCounter::XMLHttpRequestCrossOriginWithCredentials);
+
     // We also remember whether upload events should be allowed for this request in case the upload listeners are
     // added after the request is started.
     m_uploadEventsAllowed = m_sameOriginRequest || uploadEvents || !FetchUtils::isSimpleRequest(m_method, m_requestHeaders);
@@ -882,7 +880,7 @@ void XMLHttpRequest::createRequest(PassRefPtr<EncodedFormData> httpBody, Excepti
     request.setHTTPMethod(m_method);
     request.setRequestContext(WebURLRequest::RequestContextXMLHttpRequest);
     request.setFetchCredentialsMode(m_includeCredentials ? WebURLRequest::FetchCredentialsModeInclude : WebURLRequest::FetchCredentialsModeSameOrigin);
-    request.setSkipServiceWorker(m_isolatedWorldSecurityOrigin);
+    request.setSkipServiceWorker(m_isolatedWorldSecurityOrigin.get());
     request.setExternalRequestStateFromRequestorAddressSpace(executionContext.securityContext().addressSpace());
 
     InspectorInstrumentation::willLoadXHR(&executionContext, this, this, m_method, m_url, m_async, httpBody ? httpBody->deepCopy() : nullptr, m_requestHeaders, m_includeCredentials);
@@ -948,7 +946,7 @@ void XMLHttpRequest::abort()
     //
     // |sendFlag| is only set when we have an active, asynchronous loader.
     // Don't use it as "the send() flag" when the XHR is in sync mode.
-    bool sendFlag = m_loader;
+    bool sendFlag = m_loader.get();
 
     // internalAbort() clears the response. Save the data needed for
     // dispatching ProgressEvents.
@@ -1025,7 +1023,7 @@ bool XMLHttpRequest::internalAbort()
     // If abort() called internalAbort() and a nested open() ended up
     // clearing the error flag, but didn't send(), make sure the error
     // flag is still set.
-    bool newLoadStarted = m_loader;
+    bool newLoadStarted = m_loader.get();
     if (!newLoadStarted)
         m_error = true;
 
@@ -1701,6 +1699,7 @@ DEFINE_TRACE(XMLHttpRequest)
     visitor->trace(m_responseLegacyStream);
     visitor->trace(m_responseDocument);
     visitor->trace(m_responseDocumentParser);
+    visitor->trace(m_responseArrayBuffer);
     visitor->trace(m_progressEventThrottle);
     visitor->trace(m_upload);
     visitor->trace(m_blobLoader);

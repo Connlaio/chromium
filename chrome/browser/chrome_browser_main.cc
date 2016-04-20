@@ -6,6 +6,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+
 #include <set>
 #include <string>
 #include <utility>
@@ -20,6 +21,7 @@
 #include "base/feature_list.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
+#include "base/memory/ptr_util.h"
 #include "base/metrics/field_trial.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/path_service.h"
@@ -157,6 +159,7 @@
 #include "net/url_request/url_request.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/layout.h"
+#include "ui/base/material_design/material_design_controller.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/strings/grit/app_locale_settings.h"
 
@@ -208,7 +211,6 @@
 #include "chrome/installer/util/shell_util.h"
 #include "components/startup_metric_utils/common/pre_read_field_trial_utils_win.h"
 #include "ui/base/l10n/l10n_util_win.h"
-#include "ui/gfx/win/dpi.h"
 #include "ui/shell_dialogs/select_file_dialog.h"
 #endif  // defined(OS_WIN)
 
@@ -334,13 +336,10 @@ PrefService* InitializeLocalState(
       base::FilePath parent_profile =
           parsed_command_line.GetSwitchValuePath(switches::kParentProfile);
       scoped_refptr<PrefRegistrySimple> registry = new PrefRegistrySimple();
-      scoped_ptr<PrefService> parent_local_state(
+      std::unique_ptr<PrefService> parent_local_state(
           chrome_prefs::CreateLocalState(
-              parent_profile,
-              local_state_task_runner,
-              g_browser_process->policy_service(),
-              registry,
-              false));
+              parent_profile, local_state_task_runner,
+              g_browser_process->policy_service(), registry, false));
       registry->RegisterStringPref(prefs::kApplicationLocale, std::string());
       // Right now, we only inherit the locale setting from the parent profile.
       local_state->SetString(
@@ -670,6 +669,8 @@ void ChromeBrowserMainParts::SetupMetricsAndFieldTrials() {
   metrics::MetricsService* metrics = browser_process_->metrics_service();
   // TODO(asvitkine): Turn into a DCHECK after http://crbug.com/359406 is fixed.
   CHECK(!field_trial_list_);
+  // TODO(asvitkine): Remove this after http://crbug.com/359406 is fixed.
+  base::FieldTrialList::EnableGlobalStateChecks();
   field_trial_list_.reset(
       new base::FieldTrialList(metrics->CreateEntropyProvider().release()));
 
@@ -715,7 +716,7 @@ void ChromeBrowserMainParts::SetupMetricsAndFieldTrials() {
     metrics->AddSyntheticTrialObserver(provider);
   }
 
-  scoped_ptr<base::FeatureList> feature_list(new base::FeatureList);
+  std::unique_ptr<base::FeatureList> feature_list(new base::FeatureList);
   feature_list->InitializeFromCommandLine(
       command_line->GetSwitchValueASCII(switches::kEnableFeatures),
       command_line->GetSwitchValueASCII(switches::kDisableFeatures));
@@ -974,12 +975,14 @@ int ChromeBrowserMainParts::PreCreateThreadsImpl() {
                                         flags_ui::kAddSentinels);
   }
 #endif  // !defined(OS_CHROMEOS)
-
-#if defined(OS_MACOSX)
   // The MaterialDesignController needs to look at command line flags, which
   // are not available until this point. Now that they are, proceed with
-  // (conditionally) loading the Material Design resource packs. See
-  // https://crbug.com/585290 .
+  // initializing the MaterialDesignController.
+  ui::MaterialDesignController::Initialize();
+
+#if defined(OS_MACOSX)
+  // Material Design resource packs can be loaded now that command line flags
+  // are set. See https://crbug.com/585290 .
   ui::ResourceBundle::GetSharedInstance().LoadMaterialDesignResources();
 #endif
 
@@ -1117,7 +1120,7 @@ int ChromeBrowserMainParts::PreCreateThreadsImpl() {
 
   // Initialize tracking synchronizer system.
   tracking_synchronizer_ = new metrics::TrackingSynchronizer(
-      make_scoped_ptr(new base::DefaultTickClock()),
+      base::WrapUnique(new base::DefaultTickClock()),
       base::Bind(&metrics::ContentTrackingSynchronizerDelegate::Create));
 
 #if defined(OS_MACOSX)
@@ -1459,10 +1462,11 @@ int ChromeBrowserMainParts::PreMainMessageLoopRunImpl() {
       return chrome::RESULT_CODE_NORMAL_EXIT_EXP2;
     // At this point the user is willing to try chrome again.
     if (answer == TryChromeDialogView::TRY_CHROME_AS_DEFAULT) {
-      // Only set in the unattended case, the interactive case is Windows 8.
-      if (shell_integration::CanSetAsDefaultBrowser() ==
-          shell_integration::SET_DEFAULT_UNATTENDED)
+      // Only set in the unattended case. This is not true on Windows 8+.
+      if (shell_integration::GetDefaultWebClientSetPermission() ==
+          shell_integration::SET_DEFAULT_UNATTENDED) {
         shell_integration::SetAsDefaultBrowser();
+      }
     }
 #else
     // We don't support retention experiments on Mac or Linux.
@@ -1600,7 +1604,7 @@ int ChromeBrowserMainParts::PreMainMessageLoopRunImpl() {
   // Negative ping delay means to send ping immediately after a first search is
   // recorded.
   rlz::RLZTracker::SetRlzDelegate(
-      make_scoped_ptr(new ChromeRLZTrackerDelegate));
+      base::WrapUnique(new ChromeRLZTrackerDelegate));
   rlz::RLZTracker::InitRlzDelayed(
       first_run::IsChromeFirstRun(), ping_delay < 0,
       base::TimeDelta::FromMilliseconds(abs(ping_delay)),

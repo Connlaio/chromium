@@ -2448,10 +2448,10 @@
     ]
   },
 
-  "ArcApplicationPolicy": {
+  "ArcPolicy": {
     "os": ["chromeos"],
     "can_be_recommended": false,
-    "test_policy": { "ArcApplicationPolicy": "" }
+    "test_policy": { "ArcPolicy": "" }
   },
 
   "----- Chrome OS device policies ---------------------------------------": {},
@@ -2704,6 +2704,17 @@
     "test_policy": { "SystemTimezoneAutomaticDetection": 1 },
     "pref_mappings": [
       { "pref": "cros.device.system_timezone_automatic_detection" }
+    ]
+  },
+
+  "TaskManagerEndProcessEnabled": {
+    "os": ["win", "linux", "mac", "chromeos"],
+    "test_policy": { "TaskManagerEndProcessEnabled": false },
+    "pref_mappings": [
+      {
+        "pref": "task_manager.end_process_enabled",
+        "local_state": true
+      }
     ]
   },
 

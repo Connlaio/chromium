@@ -9,8 +9,10 @@
 #include "ash/shell.h"
 #include "ash/shell_window_ids.h"
 #include "ash/wm/always_on_top_controller.h"
-#include "ash/wm/coordinate_conversion.h"
+#include "ash/wm/aura/wm_window_aura.h"
+#include "ash/wm/common/root_window_finder.h"
 #include "ash/wm/window_state.h"
+#include "ash/wm/window_state_aura.h"
 #include "ui/aura/client/aura_constants.h"
 #include "ui/aura/window.h"
 #include "ui/aura/window_event_dispatcher.h"
@@ -27,7 +29,7 @@ namespace {
 aura::Window* FindContainerRoot(const gfx::Rect& bounds) {
   if (bounds.x() == 0 && bounds.y() == 0 && bounds.IsEmpty())
     return Shell::GetTargetRootWindow();
-  return wm::GetRootWindowMatching(bounds);
+  return wm::WmWindowAura::GetAuraWindow(wm::GetRootWindowMatching(bounds));
 }
 
 aura::Window* GetContainerById(aura::Window* root, int id) {

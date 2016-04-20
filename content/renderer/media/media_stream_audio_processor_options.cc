@@ -18,6 +18,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
 #include "content/common/media/media_stream_options.h"
+#include "content/renderer/media/media_stream_constraints_util.h"
 #include "content/renderer/media/media_stream_source.h"
 #include "media/audio/audio_parameters.h"
 #include "third_party/webrtc/modules/audio_processing/include/audio_processing.h"
@@ -171,9 +172,12 @@ MediaAudioConstraints::MediaAudioConstraints(
   // - gUM has a specific kMediaStreamSource, which is used by tab capture
   //   and screen capture.
   // - |kEchoCancellation| is explicitly set to false.
-  std::string value_str;
+  bool echo_constraint;
   if (!constraints.basic().mediaStreamSource.isEmpty() ||
-      !constraints.basic().echoCancellation.matches(true)) {
+      (GetConstraintValueAsBoolean(
+           constraints, &blink::WebMediaTrackConstraintSet::echoCancellation,
+           &echo_constraint) &&
+       echo_constraint == false)) {
     default_audio_processing_constraint_value_ = false;
   }
 }
@@ -448,6 +452,8 @@ void GetAecStats(webrtc::EchoCancellation* echo_cancellation,
     stats->echo_return_loss = echo_metrics.echo_return_loss.instant;
     stats->echo_return_loss_enhancement =
         echo_metrics.echo_return_loss_enhancement.instant;
+    stats->aec_divergent_filter_fraction =
+        echo_metrics.divergent_filter_fraction;
   }
 
   int median = 0, std = 0;

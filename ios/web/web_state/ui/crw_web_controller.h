@@ -61,8 +61,7 @@ class WebStateImpl;
 // CRWWebController also transparently evicts and restores the internal web
 // view based on memory pressure, and manages access to interact with the
 // web view.
-// This is an abstract class which must not be instantiated directly. A factory
-// function from web_controller_factory.h should be used instead.
+// This is an abstract class which must not be instantiated directly.
 // TODO(stuartmorgan): Move all of the navigation APIs out of this class.
 @interface CRWWebController : NSObject<CRWJSInjectionEvaluator,
                                        CRWRequestTrackerDelegate,
@@ -113,6 +112,10 @@ class WebStateImpl;
 // calls should be suppressed. Default is NO. When dialog is suppressed
 // |CRWWebDelegate webControllerDidSuppressDialog:| will be called.
 @property(nonatomic, assign) BOOL shouldSuppressDialogs;
+
+// Designated initializer. Initializes web controller with |webState|. The
+// calling code must retain the ownership of |webState|.
+- (instancetype)initWithWebState:(web::WebStateImpl*)webState;
 
 // Return an image to use as replacement of a missing snapshot.
 + (UIImage*)defaultSnapshotImage;

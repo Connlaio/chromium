@@ -107,6 +107,11 @@ public:
     LayoutUnit logicalTopInFlowThread() const;
     LayoutUnit logicalBottomInFlowThread() const;
     LayoutUnit logicalHeightInFlowThread() const { return logicalBottomInFlowThread() - logicalTopInFlowThread(); }
+
+    // Return the amount of flow thread contents that the specified fragmentainer group can hold
+    // without overflowing.
+    LayoutUnit fragmentainerGroupCapacity(const MultiColumnFragmentainerGroup &group) const { return group.logicalHeight() * usedColumnCount(); }
+
     LayoutRect flowThreadPortionRect() const;
     LayoutRect flowThreadPortionOverflowRect() const;
     LayoutRect overflowRectForFlowThreadPortion(const LayoutRect& flowThreadPortionRect, bool isFirstPortion, bool isLastPortion) const;
@@ -143,6 +148,7 @@ public:
     // set or spanner.
     void endFlow(LayoutUnit offsetInFlowThread);
 
+    void styleDidChange(StyleDifference, const ComputedStyle* oldStyle) override;
     void layout() override;
 
     void computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const final;

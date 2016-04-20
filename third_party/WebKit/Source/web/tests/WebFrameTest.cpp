@@ -842,7 +842,8 @@ TEST_P(ParameterizedWebFrameTest, PostMessageThenDetach)
 
     LocalFrame* frame = toLocalFrame(webViewHelper.webViewImpl()->page()->mainFrame());
     NonThrowableExceptionState exceptionState;
-    frame->domWindow()->postMessage(SerializedScriptValueFactory::instance().create("message"), 0, "*", frame->localDOMWindow(), exceptionState);
+    MessagePortArray messagePorts;
+    frame->domWindow()->postMessage(SerializedScriptValueFactory::instance().create("message"), messagePorts, "*", frame->localDOMWindow(), exceptionState);
     webViewHelper.reset();
     EXPECT_FALSE(exceptionState.hadException());
 
@@ -5895,7 +5896,8 @@ TEST_P(ParameterizedWebFrameTest, BackDuringChildFrameReload)
     item.initialize();
     WebURL historyURL(toKURL(m_baseURL + "white-1x1.png"));
     item.setURLString(historyURL.string());
-    mainFrame->loadHistoryItem(item, WebHistoryDifferentDocumentLoad, WebCachePolicy::UseProtocolCachePolicy);
+    WebURLRequest request = mainFrame->toWebLocalFrame()->requestFromHistoryItem(item, WebCachePolicy::UseProtocolCachePolicy);
+    mainFrame->toWebLocalFrame()->load(request, WebFrameLoadType::BackForward, item);
 
     FrameTestHelpers::reloadFrame(childFrame);
     EXPECT_EQ(item.urlString(), mainFrame->document().url().string());
@@ -6713,6 +6715,65 @@ TEST_P(ParameterizedWebFrameTest, FullscreenResizeWithTinyViewport)
     EXPECT_EQ(192, layoutView->logicalHeight().floor());
     EXPECT_FLOAT_EQ(2, webViewImpl->pageScaleFactor());
     EXPECT_FLOAT_EQ(2, webViewImpl->minimumPageScaleFactor());
+    EXPECT_FLOAT_EQ(5.0, webViewImpl->maximumPageScaleFactor());
+}
+
+TEST_P(ParameterizedWebFrameTest, FullscreenRestoreScaleFactorUponExiting)
+{
+    // The purpose of this test is to more precisely simulate the sequence of
+    // resize and switching fullscreen state operations on WebView, with the
+    // interference from Android status bars like a real device does.
+    // This verifies we handle the transition and restore states correctly.
+    WebSize screenSizeMinusStatusBarsMinusUrlBar(598, 303);
+    WebSize screenSizeMinusStatusBars(598, 359);
+    WebSize screenSize(640, 384);
+
+    FakeCompositingWebViewClient client;
+    registerMockedHttpURLLoad("fullscreen_restore_scale_factor.html");
+    FrameTestHelpers::WebViewHelper webViewHelper(this);
+    WebViewImpl* webViewImpl = webViewHelper.initializeAndLoad(m_baseURL + "fullscreen_restore_scale_factor.html", true, nullptr, &client, &configureAndroid);
+    client.m_screenInfo.rect.width = screenSizeMinusStatusBarsMinusUrlBar.width;
+    client.m_screenInfo.rect.height = screenSizeMinusStatusBarsMinusUrlBar.height;
+    webViewHelper.resize(screenSizeMinusStatusBarsMinusUrlBar);
+    LayoutView* layoutView = webViewHelper.webViewImpl()->mainFrameImpl()->frameView()->layoutView();
+    EXPECT_EQ(screenSizeMinusStatusBarsMinusUrlBar.width, layoutView->logicalWidth().floor());
+    EXPECT_EQ(screenSizeMinusStatusBarsMinusUrlBar.height, layoutView->logicalHeight().floor());
+    EXPECT_FLOAT_EQ(1.0, webViewImpl->pageScaleFactor());
+    EXPECT_FLOAT_EQ(1.0, webViewImpl->minimumPageScaleFactor());
+    EXPECT_FLOAT_EQ(5.0, webViewImpl->maximumPageScaleFactor());
+
+    {
+        Document* document = toWebLocalFrameImpl(webViewImpl->mainFrame())->frame()->document();
+        UserGestureIndicator gesture(DefinitelyProcessingUserGesture);
+        Fullscreen::from(*document).requestFullscreen(*document->body(), Fullscreen::PrefixedRequest);
+    }
+
+    webViewImpl->didEnterFullScreen();
+    webViewImpl->updateAllLifecyclePhases();
+    client.m_screenInfo.rect.width = screenSizeMinusStatusBars.width;
+    client.m_screenInfo.rect.height = screenSizeMinusStatusBars.height;
+    webViewHelper.resize(screenSizeMinusStatusBars);
+    client.m_screenInfo.rect.width = screenSize.width;
+    client.m_screenInfo.rect.height = screenSize.height;
+    webViewHelper.resize(screenSize);
+    EXPECT_EQ(screenSize.width, layoutView->logicalWidth().floor());
+    EXPECT_EQ(screenSize.height, layoutView->logicalHeight().floor());
+    EXPECT_FLOAT_EQ(1.0, webViewImpl->pageScaleFactor());
+    EXPECT_FLOAT_EQ(1.0, webViewImpl->minimumPageScaleFactor());
+    EXPECT_FLOAT_EQ(1.0, webViewImpl->maximumPageScaleFactor());
+
+    webViewImpl->didExitFullScreen();
+    webViewImpl->updateAllLifecyclePhases();
+    client.m_screenInfo.rect.width = screenSizeMinusStatusBars.width;
+    client.m_screenInfo.rect.height = screenSizeMinusStatusBars.height;
+    webViewHelper.resize(screenSizeMinusStatusBars);
+    client.m_screenInfo.rect.width = screenSizeMinusStatusBarsMinusUrlBar.width;
+    client.m_screenInfo.rect.height = screenSizeMinusStatusBarsMinusUrlBar.height;
+    webViewHelper.resize(screenSizeMinusStatusBarsMinusUrlBar);
+    EXPECT_EQ(screenSizeMinusStatusBarsMinusUrlBar.width, layoutView->logicalWidth().floor());
+    EXPECT_EQ(screenSizeMinusStatusBarsMinusUrlBar.height, layoutView->logicalHeight().floor());
+    EXPECT_FLOAT_EQ(1.0, webViewImpl->pageScaleFactor());
+    EXPECT_FLOAT_EQ(1.0, webViewImpl->minimumPageScaleFactor());
     EXPECT_FLOAT_EQ(5.0, webViewImpl->maximumPageScaleFactor());
 }
 
@@ -8075,6 +8136,7 @@ protected:
         event.windowX = windowX;
         event.windowY = windowY;
         event.canScroll = true;
+        event.hasPreciseScrollingDeltas = true;
         webViewHelper->webViewImpl()->handleInputEvent(event);
     }
 
@@ -8249,21 +8311,22 @@ TEST_P(WebFrameOverscrollTest, ScaledPageRootLayerOverscrolled)
     webViewHelper.resize(WebSize(200, 200));
     webViewImpl->setPageScaleFactor(3.0);
 
-    // Calculation of accumulatedRootOverscroll and unusedDelta on scaled page.
+    // Calculation of accumulatedRootOverscroll and unusedDelta on scaled page. The point is (99, 99) because we clamp
+    // in the division by 3 to 33 so when we go back to viewport coordinates it becomes (99, 99).
     ScrollBegin(&webViewHelper);
-    EXPECT_CALL(client, didOverscroll(WebFloatSize(0, -10), WebFloatSize(0, -10), WebFloatPoint(33, 33), WebFloatSize()));
+    EXPECT_CALL(client, didOverscroll(WebFloatSize(0, -30), WebFloatSize(0, -30), WebFloatPoint(99, 99), WebFloatSize()));
     ScrollUpdate(&webViewHelper, 0, 30);
     Mock::VerifyAndClearExpectations(&client);
 
-    EXPECT_CALL(client, didOverscroll(WebFloatSize(0, -10), WebFloatSize(0, -20), WebFloatPoint(33, 33), WebFloatSize()));
+    EXPECT_CALL(client, didOverscroll(WebFloatSize(0, -30), WebFloatSize(0, -60), WebFloatPoint(99, 99), WebFloatSize()));
     ScrollUpdate(&webViewHelper, 0, 30);
     Mock::VerifyAndClearExpectations(&client);
 
-    EXPECT_CALL(client, didOverscroll(WebFloatSize(-10, -10), WebFloatSize(-10, -30), WebFloatPoint(33, 33), WebFloatSize()));
+    EXPECT_CALL(client, didOverscroll(WebFloatSize(-30, -30), WebFloatSize(-30, -90), WebFloatPoint(99, 99), WebFloatSize()));
     ScrollUpdate(&webViewHelper, 30, 30);
     Mock::VerifyAndClearExpectations(&client);
 
-    EXPECT_CALL(client, didOverscroll(WebFloatSize(-10, 0), WebFloatSize(-20, -30), WebFloatPoint(33, 33), WebFloatSize()));
+    EXPECT_CALL(client, didOverscroll(WebFloatSize(-30, 0), WebFloatSize(-60, -90), WebFloatPoint(99, 99), WebFloatSize()));
     ScrollUpdate(&webViewHelper, 30, 0);
     Mock::VerifyAndClearExpectations(&client);
 
@@ -8335,6 +8398,43 @@ TEST_P(WebFrameOverscrollTest, ReportingLatestOverscrollForElasticOverscroll)
     EXPECT_CALL(client, didOverscroll(WebFloatSize(-1000, -1000), WebFloatSize(-1000, -1000), WebFloatPoint(), WebFloatSize()));
     ScrollByWheel(&webViewHelper, 10, 10, 1000, 1000);
     Mock::VerifyAndClearExpectations(&client);
+}
+
+TEST_P(WebFrameOverscrollTest, ScrollPageWithBodyExplicitlyOverflowing)
+{
+    RuntimeEnabledFeatures::setScrollTopLeftInteropEnabled(false);
+
+    OverscrollWebViewClient client;
+    registerMockedHttpURLLoad("mouse-wheel-overflow-body.html");
+    FrameTestHelpers::WebViewHelper webViewHelper;
+    webViewHelper.initializeAndLoad(m_baseURL + "mouse-wheel-overflow-body.html", true, 0, &client, configureAndroid);
+    webViewHelper.resize(WebSize(800, 600));
+
+    FrameView* view = webViewHelper.webViewImpl()->mainFrameImpl()->frameView();
+    Document* document = toWebLocalFrameImpl(webViewHelper.webViewImpl()->mainFrame())->frame()->document();
+
+    {
+        EXPECT_CALL(client, didOverscroll(_, _, _, _)).Times(0);
+        ScrollByWheel(&webViewHelper, 100, 100, 0, -450);
+
+        LayoutBox* layoutBody = toLayoutBox(document->body()->layoutObject());
+        ASSERT_EQ(400, layoutBody->getScrollableArea()->scrollPosition().y());
+        ASSERT_EQ(400, layoutBody->getScrollableArea()->maximumScrollPosition().y());
+
+        Mock::VerifyAndClearExpectations(&client);
+    }
+
+    view->setScrollPosition(DoublePoint(0, 0), ProgrammaticScroll);
+
+    {
+        EXPECT_CALL(client, didOverscroll(WebFloatSize(0, 200), WebFloatSize(0, 200), WebFloatPoint(), WebFloatSize()));
+        ScrollByWheel(&webViewHelper, 100, 100, 0, -300);
+
+        ASSERT_EQ(100, view->getScrollableArea()->scrollPosition().y());
+        ASSERT_EQ(100, view->getScrollableArea()->maximumScrollPosition().y());
+
+        Mock::VerifyAndClearExpectations(&client);
+    }
 }
 
 TEST_F(WebFrameTest, OrientationFrameDetach)

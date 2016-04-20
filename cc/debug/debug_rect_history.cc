@@ -6,6 +6,7 @@
 
 #include <stddef.h>
 
+#include "base/memory/ptr_util.h"
 #include "cc/base/math_util.h"
 #include "cc/layers/layer_impl.h"
 #include "cc/layers/layer_iterator.h"
@@ -21,8 +22,8 @@
 namespace cc {
 
 // static
-scoped_ptr<DebugRectHistory> DebugRectHistory::Create() {
-  return make_scoped_ptr(new DebugRectHistory());
+std::unique_ptr<DebugRectHistory> DebugRectHistory::Create() {
+  return base::WrapUnique(new DebugRectHistory());
 }
 
 DebugRectHistory::DebugRectHistory() {}
@@ -99,8 +100,7 @@ void DebugRectHistory::SavePropertyChangedRects(
          ++layer_index) {
       LayerImpl* layer = layer_list[layer_index];
 
-      if (LayerTreeHostCommon::RenderSurfaceContributesToTarget<LayerImpl>(
-              layer, render_surface_layer->id()))
+      if (layer->render_surface() && layer->render_surface() != render_surface)
         continue;
 
       if (layer == hud_layer)

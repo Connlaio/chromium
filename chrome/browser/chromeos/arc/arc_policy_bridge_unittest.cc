@@ -14,6 +14,7 @@
 #include "components/policy/core/common/policy_namespace.h"
 #include "components/policy/core/common/policy_types.h"
 #include "mojo/public/cpp/bindings/string.h"
+#include "policy/policy_constants.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -74,9 +75,9 @@ TEST_F(ArcPolicyBridgeTest, EmptyPolicyTest) {
   policy_bridge()->GetPolicies(PolicyStringCallback("{}"));
 }
 
-TEST_F(ArcPolicyBridgeTest, ArcApplicationPolicyTest) {
+TEST_F(ArcPolicyBridgeTest, ArcPolicyTest) {
   policy_map().Set(
-      "ArcApplicationPolicy", policy::POLICY_LEVEL_MANDATORY,
+      policy::key::kArcPolicy, policy::POLICY_LEVEL_MANDATORY,
       policy::POLICY_SCOPE_USER, policy::POLICY_SOURCE_CLOUD,
       new base::StringValue(
           "{\"applications\":"
@@ -101,24 +102,95 @@ TEST_F(ArcPolicyBridgeTest, ArcApplicationPolicyTest) {
 
 TEST_F(ArcPolicyBridgeTest, HompageLocationTest) {
   // This policy will not be passed on, result should be empty.
-  policy_map().Set("HomepageLocation", policy::POLICY_LEVEL_MANDATORY,
-                   policy::POLICY_SCOPE_USER, policy::POLICY_SOURCE_CLOUD,
-                   new base::StringValue("http://chromium.org"), nullptr);
+  policy_map().Set(policy::key::kHomepageLocation,
+                   policy::POLICY_LEVEL_MANDATORY, policy::POLICY_SCOPE_USER,
+                   policy::POLICY_SOURCE_CLOUD,
+                   new base::StringValue("http://chromium.org"),
+                   nullptr);
   policy_bridge()->GetPolicies(PolicyStringCallback("{}"));
 }
 
+TEST_F(ArcPolicyBridgeTest, DisableScreenshotsTest) {
+  policy_map().Set(policy::key::kDisableScreenshots,
+                   policy::POLICY_LEVEL_MANDATORY, policy::POLICY_SCOPE_USER,
+                   policy::POLICY_SOURCE_CLOUD,
+                   new base::FundamentalValue(true), nullptr);
+  policy_bridge()->GetPolicies(
+      PolicyStringCallback("{\"screenCaptureDisabled\":true}"));
+}
+
 TEST_F(ArcPolicyBridgeTest, VideoCaptureAllowedTest) {
-  policy_map().Set("VideoCaptureAllowed", policy::POLICY_LEVEL_MANDATORY,
-                   policy::POLICY_SCOPE_USER, policy::POLICY_SOURCE_CLOUD,
+  policy_map().Set(policy::key::kVideoCaptureAllowed,
+                   policy::POLICY_LEVEL_MANDATORY, policy::POLICY_SCOPE_USER,
+                   policy::POLICY_SOURCE_CLOUD,
                    new base::FundamentalValue(false), nullptr);
   policy_bridge()->GetPolicies(
       PolicyStringCallback("{\"cameraDisabled\":true}"));
 }
 
-TEST_F(ArcPolicyBridgeTest, AllPoliciesTest) {
-  // Keep them in alphabetical order.
+TEST_F(ArcPolicyBridgeTest, AudioCaptureAllowedTest) {
+  policy_map().Set(policy::key::kAudioCaptureAllowed,
+                   policy::POLICY_LEVEL_MANDATORY,
+                   policy::POLICY_SCOPE_USER, policy::POLICY_SOURCE_CLOUD,
+                   new base::FundamentalValue(false), nullptr);
+  policy_bridge()->GetPolicies(
+      PolicyStringCallback("{\"unmuteMicrophoneDisabled\":true}"));
+}
+
+TEST_F(ArcPolicyBridgeTest, DefaultGeolocationSettingTest) {
+  policy_map().Set(policy::key::kDefaultGeolocationSetting,
+                   policy::POLICY_LEVEL_MANDATORY, policy::POLICY_SCOPE_USER,
+                   policy::POLICY_SOURCE_CLOUD, new base::FundamentalValue(1),
+                   nullptr);
+  policy_bridge()->GetPolicies(
+      PolicyStringCallback("{\"shareLocationDisabled\":false}"));
+  policy_map().Set(policy::key::kDefaultGeolocationSetting,
+                   policy::POLICY_LEVEL_MANDATORY, policy::POLICY_SCOPE_USER,
+                   policy::POLICY_SOURCE_CLOUD, new base::FundamentalValue(2),
+                   nullptr);
+  policy_bridge()->GetPolicies(
+      PolicyStringCallback("{\"shareLocationDisabled\":true}"));
+  policy_map().Set(policy::key::kDefaultGeolocationSetting,
+                   policy::POLICY_LEVEL_MANDATORY, policy::POLICY_SCOPE_USER,
+                   policy::POLICY_SOURCE_CLOUD, new base::FundamentalValue(3),
+                   nullptr);
+  policy_bridge()->GetPolicies(
+      PolicyStringCallback("{\"shareLocationDisabled\":false}"));
+}
+
+TEST_F(ArcPolicyBridgeTest, URLBlacklistTest) {
+  base::ListValue blacklist;
+  blacklist.Append(new base::StringValue("www.blacklist1.com"));
+  blacklist.Append(new base::StringValue("www.blacklist2.com"));
+  policy_map().Set(policy::key::kURLBlacklist, policy::POLICY_LEVEL_MANDATORY,
+                   policy::POLICY_SCOPE_USER, policy::POLICY_SOURCE_CLOUD,
+                   blacklist.DeepCopy(), nullptr);
+  policy_bridge()->GetPolicies(
+      PolicyStringCallback("{\"globalAppRestrictions\":"
+                           "{\"com.android.browser:URLBlacklist\":"
+                           "[\"www.blacklist1.com\","
+                           "\"www.blacklist2.com\""
+                           "]}}"));
+}
+
+TEST_F(ArcPolicyBridgeTest, URLWhitelistTest) {
+  base::ListValue whitelist;
+  whitelist.Append(new base::StringValue("www.whitelist1.com"));
+  whitelist.Append(new base::StringValue("www.whitelist2.com"));
+  policy_map().Set(policy::key::kURLWhitelist, policy::POLICY_LEVEL_MANDATORY,
+                   policy::POLICY_SCOPE_USER, policy::POLICY_SOURCE_CLOUD,
+                   whitelist.DeepCopy(), nullptr);
+  policy_bridge()->GetPolicies(
+      PolicyStringCallback("{\"globalAppRestrictions\":"
+                           "{\"com.android.browser:URLWhitelist\":"
+                           "[\"www.whitelist1.com\","
+                           "\"www.whitelist2.com\""
+                           "]}}"));
+}
+
+TEST_F(ArcPolicyBridgeTest, MultiplePoliciesTest) {
   policy_map().Set(
-      "ArcApplicationPolicy", policy::POLICY_LEVEL_MANDATORY,
+      policy::key::kArcPolicy, policy::POLICY_LEVEL_MANDATORY,
       policy::POLICY_SCOPE_USER, policy::POLICY_SOURCE_CLOUD,
       new base::StringValue("{\"applications\":"
               "[{\"packageName\":\"com.google.android.apps.youtube.kids\","
@@ -128,10 +200,12 @@ TEST_F(ArcPolicyBridgeTest, AllPoliciesTest) {
               "}],"
           "\"defaultPermissionPolicy\":\"GRANT\"}"),
       nullptr);
-  policy_map().Set("HomepageLocation", policy::POLICY_LEVEL_MANDATORY,
+  policy_map().Set(policy::key::kHomepageLocation,
+                   policy::POLICY_LEVEL_MANDATORY,
                    policy::POLICY_SCOPE_USER, policy::POLICY_SOURCE_CLOUD,
                    new base::StringValue("http://chromium.org"), nullptr);
-  policy_map().Set("VideoCaptureAllowed", policy::POLICY_LEVEL_MANDATORY,
+  policy_map().Set(policy::key::kVideoCaptureAllowed,
+                   policy::POLICY_LEVEL_MANDATORY,
                    policy::POLICY_SCOPE_USER, policy::POLICY_SOURCE_CLOUD,
                    new base::FundamentalValue(false), nullptr);
   policy_bridge()->GetPolicies(PolicyStringCallback(

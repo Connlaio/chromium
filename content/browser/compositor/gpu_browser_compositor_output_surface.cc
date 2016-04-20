@@ -22,11 +22,13 @@ GpuBrowserCompositorOutputSurface::GpuBrowserCompositorOutputSurface(
     const scoped_refptr<ContextProviderCommandBuffer>& context,
     const scoped_refptr<ContextProviderCommandBuffer>& worker_context,
     const scoped_refptr<ui::CompositorVSyncManager>& vsync_manager,
-    scoped_ptr<BrowserCompositorOverlayCandidateValidator>
+    base::SingleThreadTaskRunner* task_runner,
+    std::unique_ptr<BrowserCompositorOverlayCandidateValidator>
         overlay_candidate_validator)
     : BrowserCompositorOutputSurface(context,
                                      worker_context,
                                      vsync_manager,
+                                     task_runner,
                                      std::move(overlay_candidate_validator)),
 #if defined(OS_MACOSX)
       should_show_frames_state_(SHOULD_SHOW_FRAMES),
@@ -63,7 +65,7 @@ bool GpuBrowserCompositorOutputSurface::BindToClient(
       update_vsync_parameters_callback_.callback());
   if (capabilities_.uses_default_gl_framebuffer) {
     capabilities_.flipped_output_surface =
-        context_provider()->ContextCapabilities().gpu.flips_vertically;
+        context_provider()->ContextCapabilities().flips_vertically;
   }
   return true;
 }

@@ -8,12 +8,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "base/callback.h"
 #include "base/macros.h"
-#include "base/memory/scoped_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/synchronization/lock.h"
 #include "content/common/content_export.h"
@@ -31,6 +31,7 @@ namespace gpu {
 
 class ContextSupport;
 class GpuChannelHost;
+struct SharedMemoryLimits;
 class TransferBuffer;
 
 namespace gles2 {
@@ -52,16 +53,6 @@ class WebGraphicsContext3DCommandBufferImpl
  public:
   enum MappedMemoryReclaimLimit {
     kNoLimit = 0,
-  };
-
-  struct CONTENT_EXPORT SharedMemoryLimits {
-    SharedMemoryLimits();
-
-    size_t command_buffer_size;
-    size_t start_transfer_buffer_size;
-    size_t min_transfer_buffer_size;
-    size_t max_transfer_buffer_size;
-    size_t mapped_memory_reclaim_limit;
   };
 
   class ShareGroup : public base::RefCountedThreadSafe<ShareGroup> {
@@ -108,7 +99,7 @@ class WebGraphicsContext3DCommandBufferImpl
     DISALLOW_COPY_AND_ASSIGN(ShareGroup);
   };
 
-  WebGraphicsContext3DCommandBufferImpl(
+  CONTENT_EXPORT WebGraphicsContext3DCommandBufferImpl(
       gpu::SurfaceHandle surface_handle,
       const GURL& active_url,
       gpu::GpuChannelHost* host,
@@ -116,7 +107,6 @@ class WebGraphicsContext3DCommandBufferImpl
       gfx::GpuPreference gpu_preference,
       bool share_resources,
       bool automatic_flushes,
-      const SharedMemoryLimits& limits,
       WebGraphicsContext3DCommandBufferImpl* share_context);
 
   ~WebGraphicsContext3DCommandBufferImpl() override;
@@ -131,28 +121,8 @@ class WebGraphicsContext3DCommandBufferImpl
     return real_gl_.get();
   }
 
-  // Return true if GPU process reported context lost or there was a
-  // problem communicating with the GPU process.
-  bool IsCommandBufferContextLost();
-
-  // Create & initialize a WebGraphicsContext3DCommandBufferImpl.  Return NULL
-  // on any failure.
-  static CONTENT_EXPORT WebGraphicsContext3DCommandBufferImpl*
-  CreateOffscreenContext(
-      gpu::GpuChannelHost* host,
-      const gpu::gles2::ContextCreationAttribHelper& attributes,
-      gfx::GpuPreference gpu_preference,
-      bool share_resources,
-      bool automatic_flushes,
-      const GURL& active_url,
-      const SharedMemoryLimits& limits,
-      WebGraphicsContext3DCommandBufferImpl* share_context);
-
-  size_t GetMappedMemoryLimit() {
-    return mem_limits_.mapped_memory_reclaim_limit;
-  }
-
-  CONTENT_EXPORT bool InitializeOnCurrentThread();
+  CONTENT_EXPORT bool InitializeOnCurrentThread(
+      const gpu::SharedMemoryLimits& memory_limits);
 
   void SetContextType(CommandBufferContextType type) {
     context_type_ = type;
@@ -169,7 +139,7 @@ class WebGraphicsContext3DCommandBufferImpl
   // and subsequent calls are ignored. Must be called from the thread that is
   // going to use this object to issue GL commands (which might not be the main
   // thread).
-  bool MaybeInitializeGL();
+  bool MaybeInitializeGL(const gpu::SharedMemoryLimits& memory_limits);
 
   bool InitializeCommandBuffer(
       WebGraphicsContext3DCommandBufferImpl* share_context);
@@ -189,9 +159,9 @@ class WebGraphicsContext3DCommandBufferImpl
   // allocate both fake PluginWindowHandles and NativeViewIds and map
   // from fake NativeViewIds to PluginWindowHandles, but this seems like
   // unnecessary complexity at the moment.
-  bool CreateContext();
+  bool CreateContext(const gpu::SharedMemoryLimits& memory_limits);
 
-  virtual void OnContextLost();
+  void OnContextLost();
 
   bool automatic_flushes_;
   gpu::gles2::ContextCreationAttribHelper attributes_;
@@ -204,12 +174,11 @@ class WebGraphicsContext3DCommandBufferImpl
 
   gfx::GpuPreference gpu_preference_;
 
-  scoped_ptr<gpu::CommandBufferProxyImpl> command_buffer_;
-  scoped_ptr<gpu::gles2::GLES2CmdHelper> gles2_helper_;
-  scoped_ptr<gpu::TransferBuffer> transfer_buffer_;
-  scoped_ptr<gpu::gles2::GLES2Implementation> real_gl_;
-  scoped_ptr<gpu::gles2::GLES2Interface> trace_gl_;
-  SharedMemoryLimits mem_limits_;
+  std::unique_ptr<gpu::CommandBufferProxyImpl> command_buffer_;
+  std::unique_ptr<gpu::gles2::GLES2CmdHelper> gles2_helper_;
+  std::unique_ptr<gpu::TransferBuffer> transfer_buffer_;
+  std::unique_ptr<gpu::gles2::GLES2Implementation> real_gl_;
+  std::unique_ptr<gpu::gles2::GLES2Interface> trace_gl_;
   scoped_refptr<ShareGroup> share_group_;
 
   // Member variables should appear before the WeakPtrFactory, to ensure

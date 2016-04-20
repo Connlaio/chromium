@@ -66,7 +66,6 @@
 <translation id="3130323860337406239">Chromium está usando tu micrófono.</translation>
 <translation id="313551035350905294">Accediste con una cuenta administrada y le diste a su administrador el control sobre tu perfil de Chromium. Tus datos de Chromium, como las aplicaciones, los marcadores, el historial, las contraseñas y otros parámetros de configuración quedarán vinculados a <ph name="USER_NAME" /> de forma permanente. Podrás eliminar estos datos a través del Panel de control de cuentas de Google, pero no podrás relacionar estos datos con otra cuenta.</translation>
 <translation id="3190315855212034486">¡Vaya! Se ha producido un bloqueo en Chromium. ¿Quieres reiniciar el navegador ahora?</translation>
-<translation id="3197823471738295152">El dispositivo está actualizado.</translation>
 <translation id="3244477511402911926">Centro de notificaciones de Chromium</translation>
 <translation id="3256316712990552818">Se copió en Chromium.</translation>
 <translation id="3258596308407688501">Chromium no puede leer y escribir en su directorio de datos: <ph name="USER_DATA_DIRECTORY" /></translation>
@@ -110,6 +109,7 @@
 <translation id="4987820182225656817">Los invitados pueden utilizar Chromium sin dejar nada detrás.</translation>
 <translation id="4994636714258228724">Agregarte a Chromium</translation>
 <translation id="5032989939245619637">Guardar los detalles en Chromium</translation>
+<translation id="5116586539350239523">Chromium almacenará de forma segura tus datos personales para que no tengas que volver a escribirlos.</translation>
 <translation id="5358375970380395591">Estás por acceder con una cuenta administrada, lo que significa que proporcionarás al administrador el control sobre tu perfil de Chromium. Tus datos de Chromium, como las aplicaciones, los marcadores, el historial, las contraseñas y otros parámetros de configuración quedarán vinculados a <ph name="USER_NAME" /> de forma permanente. Podrás eliminar estos datos a través del Panel de control de Cuentas de Google, pero no podrás asociarlos a otra cuenta. <ph name="LEARN_MORE" /></translation>
 <translation id="5398878173008909840">Hay una nueva versión de Chromium disponible.</translation>
 <translation id="5427571867875391349">Establecer Chromium como navegador predeterminado</translation>
@@ -117,6 +117,7 @@
 <translation id="549669000822060376">Espera mientras Chromium instala las últimas actualizaciones del sistema.</translation>
 <translation id="5563479599352954471">Buscar con un toque</translation>
 <translation id="5620765574781326016">Obtén información sobre los temas en sitios web sin salir de la página.</translation>
+<translation id="5634636535844844681">Para usar Chromium, se requiere Windows 7 o versiones superiores.</translation>
 <translation id="5680901439334282664">acceder a Chromium</translation>
 <translation id="5772805321386874569">(Es necesario <ph name="BEGIN_BUTTON" />reiniciar<ph name="END_BUTTON" /> Chromium).</translation>
 <translation id="5796460469508169315">Chromium está casi listo.</translation>
@@ -216,7 +217,6 @@
 
 Si accedes de todos modos, se fusionará la información de Chromium, como los marcadores, el historial y otros parámetros de configuración en <ph name="ACCOUNT_EMAIL_NEW" />.</translation>
 <translation id="9013087743919948559">Agregar a Chromium</translation>
-<translation id="9013262824292842194">Para usar Chromium Frame, se necesita Windows Vista o Windows XP con SP2 o superior.</translation>
 <translation id="9019929317751753759">Para que Chromium sea más seguro, inhabilitamos algunas extensiones que no aparecen en <ph name="IDS_EXTENSION_WEB_STORE_TITLE" /> y que posiblemente se hayan agregado sin tu conocimiento.</translation>
 <translation id="9022552996538154597">Iniciar sesión en Chromium</translation>
 <translation id="9036189287518468038">Selector de aplicaciones de Chromium</translation>

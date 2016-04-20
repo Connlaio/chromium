@@ -41,6 +41,7 @@ struct FaviconURL;
 struct LoadCommittedDetails;
 class NavigationManager;
 class WebInterstitialImpl;
+class WebStateDelegate;
 class WebStateFacadeDelegate;
 class WebStatePolicyDecider;
 class WebUIIOS;
@@ -62,9 +63,8 @@ class WebStateImpl : public WebState, public NavigationManagerDelegate {
   WebStateImpl(BrowserState* browser_state);
   ~WebStateImpl() override;
 
-  // Sets the CRWWebController that backs this object. Typically
-  // |web_controller| will also take ownership of this object. This will also
-  // create the WebContentsIOS facade.
+  // Gets/Sets the CRWWebController that backs this object.
+  CRWWebController* GetWebController();
   void SetWebController(CRWWebController* web_controller);
 
   // Gets or sets the delegate used to communicate with the web contents facade.
@@ -216,11 +216,18 @@ class WebStateImpl : public WebState, public NavigationManagerDelegate {
   NSString* GetRequestGroupID();
 
   // WebState:
+  WebStateDelegate* GetDelegate() override;
+  void SetDelegate(WebStateDelegate* delegate) override;
+  bool IsWebUsageEnabled() const override;
+  void SetWebUsageEnabled(bool enabled) override;
   UIView* GetView() override;
   BrowserState* GetBrowserState() const override;
   void OpenURL(const WebState::OpenURLParams& params) override;
   NavigationManager* GetNavigationManager() override;
   CRWJSInjectionReceiver* GetJSInjectionReceiver() const override;
+  void ExecuteJavaScript(const base::string16& javascript) override;
+  void ExecuteJavaScript(const base::string16& javascript,
+                         const JavaScriptResultCallback& callback) override;
   const std::string& GetContentLanguageHeader() const override;
   const std::string& GetContentsMimeType() const override;
   bool ContentIsHTML() const override;
@@ -233,6 +240,7 @@ class WebStateImpl : public WebState, public NavigationManagerDelegate {
   void ShowTransientContentView(CRWContentView* content_view) override;
   bool IsShowingWebInterstitial() const override;
   WebInterstitial* GetWebInterstitial() const override;
+  int GetCertGroupId() const override;
   void AddScriptCommandCallback(const ScriptCommandCallback& callback,
                                 const std::string& command_prefix) override;
   void RemoveScriptCommandCallback(const std::string& command_prefix) override;
@@ -249,6 +257,9 @@ class WebStateImpl : public WebState, public NavigationManagerDelegate {
 
   // Called to dismiss the currently-displayed transient content view.
   void ClearTransientContentView();
+
+  // Notifies the delegate that the load progress was updated.
+  void SendChangeLoadProgress(double progress);
 
   // NavigationManagerDelegate:
   void NavigateToPendingEntry() override;
@@ -278,6 +289,9 @@ class WebStateImpl : public WebState, public NavigationManagerDelegate {
   // Returns true if |web_controller_| has been set.
   bool Configured() const;
 
+  // Delegate, not owned by this object.
+  WebStateDelegate* delegate_;
+
   // Stores whether the web state is currently loading a page.
   bool is_loading_;
 
@@ -287,8 +301,8 @@ class WebStateImpl : public WebState, public NavigationManagerDelegate {
   // The delegate used to pass state to the web contents facade.
   WebStateFacadeDelegate* facade_delegate_;
 
-  // The CRWWebController that backs and owns this object.
-  CRWWebController* web_controller_;
+  // The CRWWebController that backs this object.
+  base::scoped_nsobject<CRWWebController> web_controller_;
 
   NavigationManagerImpl navigation_manager_;
 

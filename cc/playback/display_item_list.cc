@@ -237,9 +237,9 @@ bool DisplayItemList::ShouldBeAnalyzedForSolidColor() const {
   return ApproximateOpCount() <= kOpCountThatIsOkToAnalyze;
 }
 
-scoped_ptr<base::trace_event::ConvertableToTraceFormat>
+std::unique_ptr<base::trace_event::ConvertableToTraceFormat>
 DisplayItemList::AsValue(bool include_items) const {
-  scoped_ptr<base::trace_event::TracedValue> state(
+  std::unique_ptr<base::trace_event::TracedValue> state(
       new base::trace_event::TracedValue());
 
   state->BeginDictionary("params");
@@ -306,10 +306,6 @@ void DisplayItemList::GetDiscardableImagesInRect(
     float raster_scale,
     std::vector<DrawImage>* images) {
   image_map_.GetDiscardableImagesInRect(rect, raster_scale, images);
-}
-
-bool DisplayItemList::MayHaveDiscardableImages() const {
-  return !image_map_.empty();
 }
 
 }  // namespace cc

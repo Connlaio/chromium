@@ -142,6 +142,12 @@ public class ContextualSearchManager implements ContextualSearchManagementDelega
     private boolean mIsAccessibilityModeEnabled;
 
     /**
+     * Tap Experiments and other variable behavior.
+     */
+    private ContextualSearchHeuristics mHeuristics;
+    private QuickAnswersHeuristic mQuickAnswersHeuristic;
+
+    /**
      * The delegate that is responsible for promoting a {@link ContentViewCore} to a {@link Tab}
      * when necessary.
      */
@@ -734,7 +740,10 @@ public class ContextualSearchManager implements ContextualSearchManagementDelega
     private void onSetCaption(String caption, boolean doesAnswer) {
         // Notify the UI of the caption.
         mSearchPanel.setCaption(caption);
-        // TODO(donnd): log doesAnswer!
+        if (mQuickAnswersHeuristic != null) {
+            mQuickAnswersHeuristic.setConditionSatisfied(true);
+            mQuickAnswersHeuristic.setDoesAnswer(doesAnswer);
+        }
     }
 
     /**
@@ -1171,6 +1180,23 @@ public class ContextualSearchManager implements ContextualSearchManagementDelega
         if (mIsAccessibilityModeEnabled) return;
 
         hideContextualSearch(StateChangeReason.BASE_PAGE_TAP);
+    }
+
+    @Override
+    public void handleSuppressedTap() {
+        if (mIsAccessibilityModeEnabled) return;
+
+        hideContextualSearch(StateChangeReason.BASE_PAGE_TAP);
+    }
+
+    @Override
+    public void handleMetricsForWouldSuppressTap(ContextualSearchHeuristics tapHeuristics) {
+        mHeuristics = tapHeuristics;
+        if (ContextualSearchFieldTrial.isQuickAnswersEnabled()) {
+            mQuickAnswersHeuristic = new QuickAnswersHeuristic();
+            mHeuristics.add(mQuickAnswersHeuristic);
+        }
+        mSearchPanel.getPanelMetrics().setResultsSeenExperiments(mHeuristics);
     }
 
     @Override

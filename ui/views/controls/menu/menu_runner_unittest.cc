@@ -6,72 +6,23 @@
 
 #include <stdint.h>
 
+#include <memory>
+
 #include "base/macros.h"
-#include "base/memory/scoped_ptr.h"
 #include "base/strings/utf_string_conversions.h"
 #include "ui/base/ui_base_types.h"
 #include "ui/events/test/event_generator.h"
 #include "ui/views/controls/menu/menu_delegate.h"
 #include "ui/views/controls/menu/menu_item_view.h"
+#include "ui/views/controls/menu/menu_runner_impl.h"
 #include "ui/views/controls/menu/menu_types.h"
 #include "ui/views/controls/menu/submenu_view.h"
+#include "ui/views/test/menu_test_utils.h"
 #include "ui/views/test/views_test_base.h"
 #include "ui/views/widget/widget.h"
 
 namespace views {
 namespace test {
-
-// Implementation of MenuDelegate that only reports the values of calls to
-// OnMenuClosed and ExecuteCommand.
-class TestMenuDelegate : public MenuDelegate {
- public:
-  TestMenuDelegate();
-  ~TestMenuDelegate() override;
-
-  int execute_command_id() const { return execute_command_id_; }
-
-  int on_menu_closed_called() const { return on_menu_closed_called_; }
-  MenuItemView* on_menu_closed_menu() const { return on_menu_closed_menu_; }
-  MenuRunner::RunResult on_menu_closed_run_result() const {
-    return on_menu_closed_run_result_;
-  }
-
-  // MenuDelegate:
-  void ExecuteCommand(int id) override;
-  void OnMenuClosed(MenuItemView* menu, MenuRunner::RunResult result) override;
-
- private:
-  // ID of last executed command.
-  int execute_command_id_;
-
-  // The number of times OnMenuClosed was called.
-  int on_menu_closed_called_;
-
-  // The values of the last call to OnMenuClosed.
-  MenuItemView* on_menu_closed_menu_;
-  MenuRunner::RunResult on_menu_closed_run_result_;
-
-  DISALLOW_COPY_AND_ASSIGN(TestMenuDelegate);
-};
-
-TestMenuDelegate::TestMenuDelegate()
-    : execute_command_id_(0),
-      on_menu_closed_called_(0),
-      on_menu_closed_menu_(nullptr),
-      on_menu_closed_run_result_(MenuRunner::MENU_DELETED) {}
-
-TestMenuDelegate::~TestMenuDelegate() {}
-
-void TestMenuDelegate::ExecuteCommand(int id) {
-  execute_command_id_ = id;
-}
-
-void TestMenuDelegate::OnMenuClosed(MenuItemView* menu,
-                                    MenuRunner::RunResult result) {
-  on_menu_closed_called_++;
-  on_menu_closed_menu_ = menu;
-  on_menu_closed_run_result_ = result;
-}
 
 class MenuRunnerTest : public ViewsTestBase {
  public:
@@ -95,9 +46,9 @@ class MenuRunnerTest : public ViewsTestBase {
   // Owned by MenuRunner.
   MenuItemView* menu_item_view_;
 
-  scoped_ptr<TestMenuDelegate> menu_delegate_;
-  scoped_ptr<MenuRunner> menu_runner_;
-  scoped_ptr<Widget> owner_;
+  std::unique_ptr<TestMenuDelegate> menu_delegate_;
+  std::unique_ptr<MenuRunner> menu_runner_;
+  std::unique_ptr<Widget> owner_;
 
   DISALLOW_COPY_AND_ASSIGN(MenuRunnerTest);
 };
@@ -220,9 +171,9 @@ TEST_F(MenuRunnerTest, NestingDuringDrag) {
   EXPECT_EQ(MenuRunner::NORMAL_EXIT, result);
   EXPECT_TRUE(runner->IsRunning());
 
-  scoped_ptr<TestMenuDelegate> nested_delegate(new TestMenuDelegate);
+  std::unique_ptr<TestMenuDelegate> nested_delegate(new TestMenuDelegate);
   MenuItemView* nested_menu = new MenuItemView(nested_delegate.get());
-  scoped_ptr<MenuRunner> nested_runner(
+  std::unique_ptr<MenuRunner> nested_runner(
       new MenuRunner(nested_menu, MenuRunner::IS_NESTED | MenuRunner::ASYNC));
   result = nested_runner->RunMenuAt(owner(), nullptr, gfx::Rect(),
                                     MENU_ANCHOR_TOPLEFT, ui::MENU_SOURCE_NONE);
@@ -233,6 +184,42 @@ TEST_F(MenuRunnerTest, NestingDuringDrag) {
   EXPECT_EQ(1, delegate->on_menu_closed_called());
   EXPECT_NE(nullptr, delegate->on_menu_closed_menu());
   EXPECT_EQ(MenuRunner::NORMAL_EXIT, delegate->on_menu_closed_run_result());
+}
+
+typedef MenuRunnerTest MenuRunnerImplTest;
+
+// Tests that when nested menu runners are destroyed out of order, that
+// MenuController is not accessed after it has been destroyed. This should not
+// crash on ASAN bots.
+TEST_F(MenuRunnerImplTest, NestedMenuRunnersDestroyedOutOfOrder) {
+  internal::MenuRunnerImpl* menu_runner =
+      new internal::MenuRunnerImpl(menu_item_view());
+  EXPECT_EQ(MenuRunner::NORMAL_EXIT,
+            menu_runner->RunMenuAt(owner(), nullptr, gfx::Rect(),
+                                   MENU_ANCHOR_TOPLEFT, MenuRunner::ASYNC));
+
+  std::unique_ptr<TestMenuDelegate> menu_delegate2(new TestMenuDelegate);
+  MenuItemView* menu_item_view2 = new MenuItemView(menu_delegate2.get());
+  menu_item_view2->AppendMenuItemWithLabel(1, base::ASCIIToUTF16("One"));
+
+  internal::MenuRunnerImpl* menu_runner2 =
+      new internal::MenuRunnerImpl(menu_item_view2);
+  EXPECT_EQ(MenuRunner::NORMAL_EXIT,
+            menu_runner2->RunMenuAt(owner(), nullptr, gfx::Rect(),
+                                    MENU_ANCHOR_TOPLEFT,
+                                    MenuRunner::ASYNC | MenuRunner::IS_NESTED));
+
+  // Hide the controller so we can test out of order destruction.
+  MenuControllerTestApi menu_controller;
+  menu_controller.Hide();
+
+  // This destroyed MenuController
+  menu_runner->OnMenuClosed(internal::MenuControllerDelegate::NOTIFY_DELEGATE,
+                            nullptr, 0);
+
+  // This should not access the destroyed MenuController
+  menu_runner2->Release();
+  menu_runner->Release();
 }
 
 }  // namespace test

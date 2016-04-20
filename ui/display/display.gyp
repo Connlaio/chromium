@@ -57,12 +57,10 @@
         'chromeos/display_snapshot_virtual.h',
         'chromeos/display_util.cc',
         'chromeos/display_util.h',
-        'chromeos/ozone/display_configurator_ozone.cc',
         'chromeos/query_content_protection_task.cc',
         'chromeos/query_content_protection_task.h',
         'chromeos/update_display_configuration_task.cc',
         'chromeos/update_display_configuration_task.h',
-        'chromeos/x11/display_configurator_x11.cc',
         'chromeos/x11/display_mode_x11.cc',
         'chromeos/x11/display_mode_x11.h',
         'chromeos/x11/display_snapshot_x11.cc',
@@ -82,6 +80,8 @@
         'manager/display_layout_builder.h',
         'win/display_info.cc',
         'win/display_info.h',
+        'win/dpi.cc',
+        'win/dpi.h',
         'win/screen_win.cc',
         'win/screen_win.h',
         'win/screen_win_display.cc',
@@ -105,11 +105,6 @@
         ['chromeos == 1 and use_x11 == 1', {
           'dependencies': [
             '../gfx/x/gfx_x11.gyp:gfx_x11',
-          ],
-        }],
-        ['use_ozone == 1', {
-          'dependencies': [
-            '../../ui/ozone/ozone.gyp:ozone',
           ],
         }],
       ],

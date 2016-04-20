@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "base/json/json_reader.h"
+#include "base/memory/ptr_util.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/strings/stringprintf.h"
 #include "base/trace_event/trace_event.h"
@@ -90,8 +91,7 @@ LayerImpl::LayerImpl(LayerTreeImpl* tree_impl, int id)
       mutable_properties_(MutableProperty::kNone),
       debug_info_(nullptr),
       force_render_surface_(false),
-      frame_timing_requests_dirty_(false),
-      layer_or_descendant_is_drawn_(false),
+      scrolls_drawn_descendant_(false),
       layer_or_descendant_has_touch_handler_(false) {
   DCHECK_GT(layer_id_, 0);
 
@@ -123,14 +123,14 @@ LayerImpl::~LayerImpl() {
   ClearChildList();
 }
 
-void LayerImpl::AddChild(scoped_ptr<LayerImpl> child) {
+void LayerImpl::AddChild(std::unique_ptr<LayerImpl> child) {
   child->SetParent(this);
   DCHECK_EQ(layer_tree_impl(), child->layer_tree_impl());
   children_.push_back(child.get());
   layer_tree_impl_->AddLayer(std::move(child));
 }
 
-scoped_ptr<LayerImpl> LayerImpl::RemoveChildForTesting(LayerImpl* child) {
+std::unique_ptr<LayerImpl> LayerImpl::RemoveChildForTesting(LayerImpl* child) {
   auto it = std::find(children_.begin(), children_.end(), child);
   if (it != children_.end())
     children_.erase(it);
@@ -167,7 +167,7 @@ void LayerImpl::SetScrollParent(LayerImpl* parent) {
 }
 
 void LayerImpl::SetDebugInfo(
-    scoped_ptr<base::trace_event::ConvertableToTraceFormat> debug_info) {
+    std::unique_ptr<base::trace_event::ConvertableToTraceFormat> debug_info) {
   owned_debug_info_ = std::move(debug_info);
   debug_info_ = owned_debug_info_.get();
   SetNeedsPushProperties();
@@ -249,7 +249,7 @@ void LayerImpl::SetScrollTreeIndex(int index) {
 }
 
 void LayerImpl::PassCopyRequests(
-    std::vector<scoped_ptr<CopyOutputRequest>>* requests) {
+    std::vector<std::unique_ptr<CopyOutputRequest>>* requests) {
   // In the case that a layer still has a copy request, this means that there's
   // a commit to the active tree without a draw.  This only happens in some
   // edge cases during lost context or visibility changes, so don't try to
@@ -273,10 +273,11 @@ void LayerImpl::PassCopyRequests(
 }
 
 void LayerImpl::TakeCopyRequestsAndTransformToTarget(
-    std::vector<scoped_ptr<CopyOutputRequest>>* requests) {
+    std::vector<std::unique_ptr<CopyOutputRequest>>* requests) {
   DCHECK(!copy_requests_.empty());
   DCHECK(layer_tree_impl()->IsActiveTree());
-  DCHECK_EQ(render_target(), this);
+  DCHECK(has_render_surface());
+  DCHECK_EQ(render_target(), render_surface());
 
   size_t first_inserted_request = requests->size();
   for (auto& request : copy_requests_)
@@ -461,7 +462,8 @@ bool LayerImpl::user_scrollable(ScrollbarOrientation orientation) const {
                                      : user_scrollable_vertical_;
 }
 
-scoped_ptr<LayerImpl> LayerImpl::CreateLayerImpl(LayerTreeImpl* tree_impl) {
+std::unique_ptr<LayerImpl> LayerImpl::CreateLayerImpl(
+    LayerTreeImpl* tree_impl) {
   return LayerImpl::Create(tree_impl, layer_id_);
 }
 
@@ -592,11 +594,6 @@ void LayerImpl::PushPropertiesTo(LayerImpl* layer) {
   if (owned_debug_info_)
     layer->SetDebugInfo(std::move(owned_debug_info_));
 
-  if (frame_timing_requests_dirty_) {
-    layer->SetFrameTimingRequests(frame_timing_requests_);
-    frame_timing_requests_dirty_ = false;
-  }
-
   // Reset any state that should be cleared for the next update.
   layer_property_changed_ = false;
   update_rect_ = gfx::Rect();
@@ -651,7 +648,7 @@ base::DictionaryValue* LayerImpl::LayerTreeAsJson() const {
     result->SetBoolean("Scrollable", true);
 
   if (!touch_event_handler_region_.IsEmpty()) {
-    scoped_ptr<base::Value> region = touch_event_handler_region_.AsValue();
+    std::unique_ptr<base::Value> region = touch_event_handler_region_.AsValue();
     result->Set("TouchRegion", region.release());
   }
 
@@ -979,7 +976,7 @@ void LayerImpl::SetBoundsDelta(const gfx::Vector2dF& bounds_delta) {
   }
 }
 
-void LayerImpl::SetMaskLayer(scoped_ptr<LayerImpl> mask_layer) {
+void LayerImpl::SetMaskLayer(std::unique_ptr<LayerImpl> mask_layer) {
   int new_layer_id = mask_layer ? mask_layer->id() : -1;
 
   if (mask_layer) {
@@ -998,16 +995,16 @@ void LayerImpl::SetMaskLayer(scoped_ptr<LayerImpl> mask_layer) {
   mask_layer_id_ = new_layer_id;
 }
 
-scoped_ptr<LayerImpl> LayerImpl::TakeMaskLayer() {
+std::unique_ptr<LayerImpl> LayerImpl::TakeMaskLayer() {
   mask_layer_id_ = -1;
-  scoped_ptr<LayerImpl> ret;
+  std::unique_ptr<LayerImpl> ret;
   if (mask_layer_)
     ret = layer_tree_impl_->RemoveLayer(mask_layer_->id());
   mask_layer_ = nullptr;
   return ret;
 }
 
-void LayerImpl::SetReplicaLayer(scoped_ptr<LayerImpl> replica_layer) {
+void LayerImpl::SetReplicaLayer(std::unique_ptr<LayerImpl> replica_layer) {
   int new_layer_id = replica_layer ? replica_layer->id() : -1;
 
   if (replica_layer) {
@@ -1026,9 +1023,9 @@ void LayerImpl::SetReplicaLayer(scoped_ptr<LayerImpl> replica_layer) {
   replica_layer_id_ = new_layer_id;
 }
 
-scoped_ptr<LayerImpl> LayerImpl::TakeReplicaLayer() {
+std::unique_ptr<LayerImpl> LayerImpl::TakeReplicaLayer() {
   replica_layer_id_ = -1;
-  scoped_ptr<LayerImpl> ret;
+  std::unique_ptr<LayerImpl> ret;
   if (replica_layer_)
     ret = layer_tree_impl_->RemoveLayer(replica_layer_->id());
   replica_layer_ = nullptr;
@@ -1209,18 +1206,6 @@ void LayerImpl::Set3dSortingContextId(int id) {
   if (id == sorting_context_id_)
     return;
   sorting_context_id_ = id;
-}
-
-void LayerImpl::SetFrameTimingRequests(
-    const std::vector<FrameTimingRequest>& requests) {
-  frame_timing_requests_ = requests;
-  frame_timing_requests_dirty_ = true;
-  SetNeedsPushProperties();
-}
-
-void LayerImpl::GatherFrameTimingRequestIds(std::vector<int64_t>* request_ids) {
-  for (const auto& request : frame_timing_requests_)
-    request_ids->push_back(request.id());
 }
 
 void LayerImpl::SetTransform(const gfx::Transform& transform) {
@@ -1469,7 +1454,7 @@ void LayerImpl::AsValueInto(base::trace_event::TracedValue* state) const {
     std::string str;
     debug_info_->AppendAsTraceFormat(&str);
     base::JSONReader json_reader;
-    scoped_ptr<base::Value> debug_info_value(json_reader.ReadToValue(str));
+    std::unique_ptr<base::Value> debug_info_value(json_reader.ReadToValue(str));
 
     if (debug_info_value->IsType(base::Value::TYPE_DICTIONARY)) {
       base::DictionaryValue* dictionary_value = nullptr;
@@ -1483,17 +1468,6 @@ void LayerImpl::AsValueInto(base::trace_event::TracedValue* state) const {
     } else {
       NOTREACHED();
     }
-  }
-
-  if (!frame_timing_requests_.empty()) {
-    state->BeginArray("frame_timing_requests");
-    for (const auto& request : frame_timing_requests_) {
-      state->BeginDictionary();
-      state->SetInteger("request_id", request.id());
-      MathUtil::AddToTracedValue("request_rect", request.rect(), state);
-      state->EndDictionary();
-    }
-    state->EndArray();
   }
 }
 
@@ -1518,7 +1492,7 @@ void LayerImpl::SetHasRenderSurface(bool should_have_render_surface) {
 
   SetNeedsPushProperties();
   if (should_have_render_surface) {
-    render_surface_ = make_scoped_ptr(new RenderSurfaceImpl(this));
+    render_surface_ = base::WrapUnique(new RenderSurfaceImpl(this));
     return;
   }
   render_surface_.reset();
@@ -1574,6 +1548,27 @@ gfx::Rect LayerImpl::GetScaledEnclosingRectInTargetSpace(float scale) const {
                                            gfx::Rect(scaled_bounds));
 }
 
+RenderSurfaceImpl* LayerImpl::render_target() {
+  EffectTree& effect_tree = layer_tree_impl_->property_trees()->effect_tree;
+  EffectNode* node = effect_tree.Node(effect_tree_index_);
+
+  if (node->data.render_surface)
+    return node->data.render_surface;
+  else
+    return effect_tree.Node(node->data.target_id)->data.render_surface;
+}
+
+const RenderSurfaceImpl* LayerImpl::render_target() const {
+  const EffectTree& effect_tree =
+      layer_tree_impl_->property_trees()->effect_tree;
+  const EffectNode* node = effect_tree.Node(effect_tree_index_);
+
+  if (node->data.render_surface)
+    return node->data.render_surface;
+  else
+    return effect_tree.Node(node->data.target_id)->data.render_surface;
+}
+
 bool LayerImpl::IsHidden() const {
   EffectTree& effect_tree = layer_tree_impl_->property_trees()->effect_tree;
   EffectNode* node = effect_tree.Node(effect_tree_index_);
@@ -1586,14 +1581,12 @@ bool LayerImpl::InsideReplica() const {
   EffectTree& effect_tree = layer_tree_impl_->property_trees()->effect_tree;
   EffectNode* node = effect_tree.Node(effect_tree_index_);
 
-  while (node) {
-    EffectNode* target_node = effect_tree.Node(node->data.target_id);
-    LayerImpl* target_layer =
-        layer_tree_impl()->LayerById(target_node->owner_id);
+  while (node->id > 0) {
+    LayerImpl* target_layer = layer_tree_impl()->LayerById(node->owner_id);
     DCHECK(target_layer);
     if (target_layer->has_replica())
       return true;
-    node = effect_tree.parent(target_node);
+    node = effect_tree.Node(node->data.target_id);
   }
 
   return false;

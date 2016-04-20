@@ -5611,6 +5611,14 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_FLAGS_GESTURE_REQUIREMENT_FOR_MEDIA_PLAYBACK_DESCRIPTION" desc="Description for the flag for gesture requiment for media playback">
         User gesture requirement for playing media elements. Disabling this will allow autoplay to work.
       </message>
+      <if expr="is_android">
+          <message name="IDS_FLAGS_MEDIA_STYLE_NOTIFICATION_NAME" desc="Title for the flag for using media style notification">
+              Media style notification
+          </message>
+          <message name="IDS_FLAGS_MEDIA_STYLE_NOTIFICATION_DESCRIPTION" desc="Description for the flag for using media style notification">
+              Use Android MediaStyle notifications for Chrome media notifications.
+          </message>
+      </if>
       <if expr="use_ash">
         <message name="IDS_FLAGS_ASH_MAXIMIZE_MODE_WINDOW_BACKDROP_NAME" desc="Title for the flag which can be used for window backdrops in TouchView.">
           Window backdrops in TouchView
@@ -5771,6 +5779,12 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </message>
       <message name="IDS_FLAGS_EXPERIMENTAL_WEB_PLATFORM_FEATURES_DESCRIPTION" desc="Description for the flag to enable experimental Web Platform features.">
         Enables experimental Web Platform features that are in development.
+      </message>
+      <message name="IDS_FLAGS_EXPERIMENTAL_POINTER_EVENT_NAME" desc="Name for the flag to enable the experimental pointer events.">
+        Pointer Events
+      </message>
+      <message name="IDS_FLAGS_EXPERIMENTAL_POINTER_EVENT_DESCRIPTION" desc="Description for the flag to enable the experimental pointer events.">
+        Enables partial experimental support for the Pointer Events API.  This is intended only for testing by web developers, it will cause some websites to be subtly broken.
       </message>
       <message name="IDS_FLAGS_EXPERIMENTAL_FRAMEWORK_NAME" desc="Name for the flag to enable the Experimental Framework.">
         Experimental Framework.
@@ -5981,6 +5995,12 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </message>
       <message name="IDS_FLAGS_PROTECT_SYNC_CREDENTIAL_DESCRIPTION" desc="Description of the flag specifying how the browser will handle autofilling the users sync credential.">
         How the password manager handles autofill for the sync credential.
+      </message>
+      <message name="IDS_FLAGS_PASSWORD_IMPORT_EXPORT_NAME" desc="Name of the flag for showing the Import and Export buttons for importing and exporting passwords in Chrome's settings.">
+        Password import and export
+      </message>
+      <message name="IDS_FLAGS_PASSWORD_IMPORT_EXPORT_DESCRIPTION" desc="Description of the flag for showing the Import and Export buttons for importing and exporting passwords in Chrome's settings.">
+        Import and Export functionality in password settings.
       </message>
       <message name="IDS_FLAGS_PROTECT_SYNC_CREDENTIAL_ON_REAUTH_NAME" desc="Name of the flag specifying how the browser will handle autofilling the users sync credential.">
         Autofill sync credential only for transactional reauth pages
@@ -6281,6 +6301,12 @@ Keep your key file in a safe place. You will need it to create new versions of y
         <message name="IDS_FLAGS_HOSTED_APPS_IN_WINDOWS_DESCRIPTION" desc="Description for the flag to allow hosted apps opening in windows">
           Allows hosted apps to be opened in windows instead of being limited to tabs.
         </message>
+        <message name="IDS_FLAGS_TAB_DETACHING_IN_FULLSCREEN_NAME" desc="Name of the flag to allow tabs detaching in fullscreen on Mac.">
+          Allow tab detaching in fullscreen
+        </message>
+        <message name="IDS_FLAGS_TAB_DETACHING_IN_FULLSCREEN_DESCRIPTION" desc="Description for the flag to allow tabs detaching in fullscreen on Mac">
+          Allow tabs to detach from the tabstrip when in fullscreen mode on Mac.
+        </message>
       </if>
       <message name="IDS_FLAGS_HOSTED_APP_SHIM_CREATION_NAME" desc="Name of the flag to enable creation of app shims for hosted apps on Mac.">
         Creation of app shims for hosted apps on Mac
@@ -6543,11 +6569,11 @@ Keep your key file in a safe place. You will need it to create new versions of y
           Fast start
         </message>
       </if>
-      <message name="IDS_FLAGS_LOW_PRIORITY_IFRAMES_UI_NAME" desc="Name of the flag to enable the low priority iframes experiment.">
-        Low priority iframes.
+      <message name="IDS_FLAGS_DISALLOW_DOC_WRITTEN_SCRIPTS_UI_NAME" desc="Name of the flag to disallow fetch of scripts inserted into the main frame by document.write.">
+        Block scripts loaded via document.write
       </message>
-      <message name="IDS_FLAGS_LOW_PRIORITY_IFRAMES_UI_DESCRIPTION" desc="Description of the flag to enable the low priority iframes experiment.">
-        Reduces the load priority of iframe resources.
+      <message name="IDS_FLAGS_DISALLOW_DOC_WRITTEN_SCRIPTS_UI_DESCRIPTION" desc="Description of the flag to disallow fetch of scripts inserted into the main frame by document.write.">
+        Disallows fetches for third-party parser-blocking scripts inserted into the main frame via document.write.
       </message>
       <if expr="is_win">
         <message name="IDS_FLAGS_PPAPI_WIN32K_LOCKDOWN_NAME" desc="Name of the flag to enable PPAPI win32k lockdown experiment.">
@@ -7329,6 +7355,18 @@ Keep your key file in a safe place. You will need it to create new versions of y
         </message>
         <message name="IDS_PASSWORD_MANAGER_TOOLTIP_MANAGE" desc="Text for the 'Manage Passwords' icon's 'saving passwords' state">
           Manage your passwords
+        </message>
+        <message name="IDS_PASSWORD_MANAGER_IMPORT_BUTTON" desc="The label of the button for importing passwords. The button appears next to the list of saved passwords in Chrome's settings.">
+          Import
+        </message>
+        <message name="IDS_PASSWORD_MANAGER_EXPORT_BUTTON" desc="The label of the button for exporting passwords. The button appears next to the list of saved passwords in Chrome's settings.">
+          Export
+        </message>
+        <message name="IDS_PASSWORD_MANAGER_IMPORT_DIALOG_TITLE" desc="The Title of the file selection dialog for importing password">
+          Import Passwords To Chrome
+        </message>
+        <message name="IDS_PASSWORD_MANAGER_EXPORT_DIALOG_TITLE" desc="The Title of the file selection dialog for exporting password">
+          Export Passwords From Chrome
         </message>
       </if>
       <if expr="is_android">
@@ -8811,7 +8849,7 @@ I don't think this site should be blocked!
       </message>
       <message name="IDS_MEDIA_TAB_CAPTURE_WITH_AUDIO_NOTIFICATION_TEXT_DELEGATED" desc="label used in screen capture notification UI to show the screen sharing status when the stream is consumed by a tab instead of the app initiating the window picker">
         <ph name="APP_NAME">$1<ex>Google Cast</ex></ph> is sharing a Chrome tab and audio with <ph name="TAB_NAME">$2<ex>https://google.com</ex></ph>.
-      </message>      
+      </message>
       <message name="IDS_MEDIA_SCREEN_CAPTURE_NOTIFICATION_STOP" desc="Text shown on the button that stops screen capture.">
         Stop sharing
       </message>
@@ -10802,19 +10840,19 @@ I don't think this site should be blocked!
       <message name="IDS_SYNC_CONFIRMATION_TITLE" desc="Title of the sync confirmation dialog in the tab modal signin flow">
         You're now signed in to Chrome
       </message>
-      <message name="IDS_SYNC_CONFIRMATION_CHROME_SYNC_TITLE" desc="Title of the chrome sync section of the sync confirmation dialog in the tab modal signin flow">
+      <message name="IDS_SYNC_CONFIRMATION_CHROME_SYNC_TITLE" desc="Title of the chrome sync section of the sync confirmation dialog in the tab modal signin flow" formatter_data="android_java">
         Chrome Sync
       </message>
       <message name="IDS_SYNC_CONFIRMATION_CHROME_SYNC_BODY" desc="Body of the chrome sync section of the sync confirmation dialog in the tab modal signin flow">
         Your bookmarks, history, passwords and other settings will be synced to your Google Account so you can use them on all your devices. Control what to sync in <ph name="BEGIN_LINK">&lt;a id="settingsLink" href="#"&gt;Settings&lt;/a&gt;.</ph>
        </message>
-      <message name="IDS_SYNC_CONFIRMATION_CHROME_SYNC_MESSAGE" desc="Body of the chrome sync section of the sync confirmation dialog in the tab modal signin flow">
+      <message name="IDS_SYNC_CONFIRMATION_CHROME_SYNC_MESSAGE" desc="Body of the chrome sync section of the sync confirmation dialog in the tab modal signin flow" formatter_data="android_java">
         Your bookmarks, history, passwords, and other settings will be synced to your Google Account so you can use them on all your devices
       </message>
-      <message name="IDS_SYNC_CONFIRMATION_PERSONALIZE_SERVICES_TITLE" desc="Title of the personalize services section of the sync confirmation dialog in the tab modal signin flow">
+      <message name="IDS_SYNC_CONFIRMATION_PERSONALIZE_SERVICES_TITLE" desc="Title of the personalize services section of the sync confirmation dialog in the tab modal signin flow" formatter_data="android_java">
         Personalize Google services
       </message>
-      <message name="IDS_SYNC_CONFIRMATION_PERSONALIZE_SERVICES_BODY" desc="Body of the personalize services section of the sync confirmation dialog in the tab modal signin flow">
+      <message name="IDS_SYNC_CONFIRMATION_PERSONALIZE_SERVICES_BODY" desc="Body of the personalize services section of the sync confirmation dialog in the tab modal signin flow" formatter_data="android_java">
         Google may use your browsing history to personalize Search and other Google services
       </message>
       <message name="IDS_SYNC_CONFIRMATION_SYNC_SETTINGS_LINK_BODY" desc="Label of the section containing the link to go to the sync setting page.">
@@ -11130,10 +11168,15 @@ Some features may be unavailable.  Please check that the profile exists and you 
         </message>
       </if>
 
-      <message name="IDS_SET_AS_DEFAULT_INFOBAR_BUTTON_LABEL" desc="The label of the 'set as default' button on the default browser infobar.">
+      <message name="IDS_DEFAULT_BROWSER_INFOBAR_OK_BUTTON_LABEL" desc="The label of the 'set as default' button on the default browser infobar.">
         Set as default
       </message>
-      <message name="IDS_DONT_ASK_AGAIN_INFOBAR_BUTTON_LABEL" desc="The label of the 'don't ask again' button on the default browser infobar.">
+      <if expr="is_win">
+        <message name="IDS_DEFAULT_BROWSER_INFOBAR_OK_BUTTON_LABEL_WIN_10" desc="The label of the 'open settings' button on the default browser infobar for Windows 10 and newer. Pressing this button opens the Windows &quot;Settings&quot; application to the &quot;Choose default apps&quot; page.">
+          Set as default
+        </message>
+      </if>
+      <message name="IDS_DEFAULT_BROWSER_INFOBAR_CANCEL_BUTTON_LABEL" desc="The label of the 'don't ask again' button on the default browser infobar.">
         Don't ask again
       </message>
 
@@ -11452,7 +11495,7 @@ Some features may be unavailable.  Please check that the profile exists and you 
 
         <!-- Personalize Google Services section of the configure sync dialog -->
         <message name="IDS_SYNC_PERSONALIZE_GOOGLE_SERVICES_MESSAGE" desc="Text of the section containing a link to the Google Activity Controls.">
-          Control how Google uses your browsing history to personalize Search and other Google services from <ph name="BEGIN_LINK">&lt;a href="$1" target=&quot;_blank&quot;&gt;</ph>Google Activity Controls<ph name="END_LINK">&lt;/a&gt;</ph>.
+          Control how Google uses your browsing history to personalize Search and other Google services from <ph name="BEGIN_LINK">&lt;a id="activity-controls" href="$1" target=&quot;_blank&quot;&gt;</ph>Google Activity Controls<ph name="END_LINK">&lt;/a&gt;</ph>.
         </message>
 
         <!-- Passphrase dialog strings -->
@@ -11615,6 +11658,9 @@ Some features may be unavailable.  Please check that the profile exists and you 
         <message name="IDS_NOTIFICATION_BUTTON_CLOSE" desc="Button label to close a notification">
           Close
         </message>
+        <message name="IDS_NOTIFICATION_BUTTON_OPTIONS" desc="Button label to display more options like extra buttons or going to the site settings page.">
+          Options
+        </message>
         <message name="IDS_NOTIFICATION_SETTINGS" desc="Button label to go to the notification settings panel">
           Notification settings
         </message>
@@ -11629,12 +11675,6 @@ Some features may be unavailable.  Please check that the profile exists and you 
         </message>
         <message name="IDS_FLAGS_ENABLE_WEB_NOTIFICATION_CUSTOM_LAYOUTS_DESCRIPTION" desc="Description for the flag to enable custom layouts for Web Notifications.">
           Enable custom layouts for Web Notifications. They will have subtle layout improvements that are otherwise not possible.
-        </message>
-        <message name="IDS_FLAGS_ENABLE_NOTIFICATION_ACTION_ICONS_NAME" desc="Name of the flag to enable action icons for Web Notifications.">
-          Enable action icons for Web Notifications.
-        </message>
-        <message name="IDS_FLAGS_ENABLE_NOTIFICATION_ACTION_ICONS_DESCRIPTION" desc="Description of the flag to enable action icons for Web Notifications.">
-          Enable icons in action buttons for Web Notifications.
         </message>
       </if>
 
@@ -11851,12 +11891,6 @@ Some features may be unavailable.  Please check that the profile exists and you 
         </message>
         <message name="IDS_EXIT_FULLSCREEN_MAC" desc="The Mac menu item to leave fullscreen mode in the view menu and also in the app menu.">
           Exit Full Screen
-        </message>
-        <message name="IDS_ENTER_PRESENTATION_MAC" desc="The Mac menu item to go into presentation mode in the view menu.">
-          Enter Presentation Mode
-        </message>
-        <message name="IDS_EXIT_PRESENTATION_MAC" desc="The Mac menu item to leave presentation mode in the view menu.">
-          Exit Presentation Mode
         </message>
         <message name="IDS_TOGGLE_FULLSCREEN_TOOLBAR_MAC" desc="The Mac menu checkbox item to show/hide the toolbar in full screen.">
           Always Show Toolbar in Full Screen
@@ -12517,10 +12551,10 @@ Some features may be unavailable.  Please check that the profile exists and you 
         Allow <ph name="HANDLER_HOSTNAME">$1<ex>google.com</ex></ph> to open all <ph name="PROTOCOL">$2<ex>search</ex></ph> links instead of <ph name="REPLACED_HANDLER_TITLE">$3<ex>Elgoog Search</ex></ph>?
       </message>
       <message name="IDS_REGISTER_PROTOCOL_HANDLER_CONFIRM_FRAGMENT" desc="The permission fragment to display when asking a user to confirm the registration of a protocol handler in a permission bubble. Follows a prompt 'This site would like to:'.">
-        Open <ph name="PROTOCOL">$3<ex>search</ex></ph> links
+        Open <ph name="PROTOCOL">$1<ex>search</ex></ph> links
       </message>
       <message name="IDS_REGISTER_PROTOCOL_HANDLER_CONFIRM_REPLACE_FRAGMENT" desc="The permission fragment to display when asking a user to confirm the registration of a protocol handler. Follows a prompt 'This site would like to:'.">
-        Open <ph name="PROTOCOL">$3<ex>search</ex></ph> links instead of <ph name="REPLACED_HANDLER_TITLE">$4<ex>Elgoog Search</ex></ph>
+        Open <ph name="PROTOCOL">$1<ex>search</ex></ph> links instead of <ph name="REPLACED_HANDLER_TITLE">$2<ex>Elgoog Search</ex></ph>
       </message>
       <message name="IDS_REGISTER_PROTOCOL_HANDLER_ACCEPT" desc="Text to show for the accept button for the register protocol handler request infobar.">
         Allow
@@ -12897,7 +12931,7 @@ Please check your email at <ph name="ACCOUNT_EMAIL">$2<ex>jane.doe@gmail.com</ex
           Sorry, your password could not be verified because you are offline.
         </message>
         <message name="IDS_LOGIN_POD_EMPTY_PASSWORD_TEXT" desc="Text to display in the password field for user pod when no password has been entered.">
-          Enter password
+          Password
         </message>
         <message name="IDS_LOGIN_POD_SIGNING_IN" desc="Text to display at the bottom of a user pod during signing in the user. The translation should be as short as possible because of limited UI space.">
           Signing in
@@ -12948,19 +12982,19 @@ Please check your email at <ph name="ACCOUNT_EMAIL">$2<ex>jane.doe@gmail.com</ex
           </message>
           <message name="IDS_LOGIN_POD_USER_REMOVE_WARNING_SYNC" desc="Main text shown as a warning when attempting to remove an user. This case is for synced profiles, with all statistics loaded correctly. The symbol $1 will be substituted with custom JS code, so it should not be replaced by a #.">
             {NUM_ITEMS, plural,
-            =1 {This will permanently delete $1 item from this device but will not clear synced items from other devices.}
-            other {This will permanently delete $1 items from this device but will not clear synced items from other devices.}}
+            =1 {This will permanently delete $1 item from this device. To retrieve your data later, sign in to chrome as $2.}
+            other {This will permanently delete $1 items from this device. To retrieve your data later, sign in to chrome as $2.}}
           </message>
           <message name="IDS_LOGIN_POD_USER_REMOVE_WARNING_SYNC_WITH_ERRORS" desc="Main text shown as a warning when attempting to remove an user. This case is for non-synced profiles, with some statistics failed to load. The symbol $1 will be substituted with custom JS code, so it should not be replaced by a #.">
             {NUM_ITEMS, plural,
-            =1 {This will permanently delete at least $1 item from this device but will not clear synced items from other devices.}
-            other {This will permanently delete at least $1 items from this device but will not clear synced items from other devices.}}
+            =1 {This will permanently delete at least $1 item from this device. To retrieve your data later, sign in to chrome as $2.}
+            other {This will permanently delete at least $1 items from this device. To retrieve your data later, sign in to chrome as $2.}}
           </message>
           <message name="IDS_LOGIN_POD_USER_REMOVE_WARNING_SYNC_NOSTATS" desc="Main text shown as a warning when attempting to remove an user. This case is for synced profiles with statistics unavailable. (Possible case: Chromium decided not to load the statistics of closed profiles.)">
-            This will permanently delete your browsing data from this device but will not clear synced items from other devices.
+            This will permanently delete your browsing data from this device. To retrieve your data later, sign in to chrome as $2.
           </message>
           <message name="IDS_LOGIN_POD_USER_REMOVE_WARNING_SYNC_CALCULATING" desc="Main text shown as a warning when attempting to remove an user. This case is for synced profiles when the statistics is still loading. $1 is always replaced by localized version of the ellipsis (...).">
-            This will permanently delete at least <ph name="TOTAL_COUNT">$1<ex>...</ex></ph> items from this device but will not clear synced items from other devices.
+            This will permanently delete at least <ph name="TOTAL_COUNT">$1<ex>...</ex></ph> items from this device. To retrieve your data later, sign in to chrome as $2.
           </message>
         </if>
 
@@ -14277,7 +14311,6 @@ Please check your email at <ph name="ACCOUNT_EMAIL">$2<ex>jane.doe@gmail.com</ex
       <message name="IDS_FLAGS_TOUCH_HOVER_DESCRIPTION" desc="Description of the 'Enable support for hover capable touchscreens' flag.">
         Enables hover feature by holding your finger just over the screen to experience a mouseover event.
       </message>
-
       <message name="IDS_ALLOW_INSECURE_LOCALHOST" desc="Name of the 'Allow insecure localhost' flag.">
         Allow invalid certificates for resources loaded from localhost.
       </message>
@@ -14540,14 +14573,6 @@ Please check your email at <ph name="ACCOUNT_EMAIL">$2<ex>jane.doe@gmail.com</ex
         <!-- Intentionally empty. This is overridden via Finch. -->
       </message>
 
-      <!-- Disable Auto-Hiding Toolbar Flags -->
-      <message name="IDS_FLAGS_DISABLE_AUTO_HIDING_TOOLBAR_NAME" desc="Name of the flag to disable auto-hiding the toolbar.">
-        Disable auto-hiding the toolbar on large tablets
-      </message>
-      <message name="IDS_FLAGS_DISABLE_AUTO_HIDING_TOOLBAR_DESCRIPTION" desc="Description of the flag to disable auto-hiding the toolbar.">
-        When enabled, the toolbar will never be hidden due to scrolling on devices with a minimum screen dp >= 800. It will still be hidden if page contents go full screen.
-      </message>
-
       <!-- Update Menu Item Flags -->
       <message name="IDS_FLAGS_UPDATE_MENU_ITEM_NAME" desc="Name of the flag to force show the update menu item." translateable="false">
         Force show update menu item
@@ -14590,7 +14615,7 @@ Please check your email at <ph name="ACCOUNT_EMAIL">$2<ex>jane.doe@gmail.com</ex
     <if expr="not is_android and not is_ios">
       <!-- Chooser Bubble Prompt -->
       <message name="IDS_CHOOSER_BUBBLE_PROMPT" desc="The label that is used to introduce chooser details to the user in a popup.">
-        This site wants to connect to:
+        <ph name="Origin">$1<ex>www.google.com</ex></ph> wants to connect to:
       </message>
       <!-- Chooser Bubble No Devices Found Prompt -->
       <message name="IDS_CHOOSER_BUBBLE_NO_DEVICES_FOUND_PROMPT" desc="The label that is used to inform user that no devices found in the chooser popup.">

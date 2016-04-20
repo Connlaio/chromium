@@ -66,7 +66,6 @@
 <translation id="3130323860337406239">Chromium mikrofonunuzu kullanıyor.</translation>
 <translation id="313551035350905294">Yönetilen bir hesapla oturum açıyor ve hesabın yöneticisine Chromium profilinizi denetleme izni veriyorsunuz. Uygulamalarınız, yer işaretleriniz, geçmişiniz, şifreleriniz ve diğer ayarlarınız gibi Chromium verileriniz kalıcı olarak <ph name="USER_NAME" /> ile bağlantılandırılacaktır. İstediğinizde Google Hesapları Hesap Özeti'ni kullanarak bu verileri silebilecek, ancak bu verileri başka bir hesapla ilişkilendiremeyeceksiniz.</translation>
 <translation id="3190315855212034486">Hata! Chromium kilitlendi. Yeniden başlatılsın mı?</translation>
-<translation id="3197823471738295152">Cihazınız güncel.</translation>
 <translation id="3244477511402911926">Chromium Bildirim Merkezi</translation>
 <translation id="3256316712990552818">Chromium'a kopyalandı</translation>
 <translation id="3258596308407688501">Chromium veri dizini üzerinde okuma ve yazma işlemi yapamıyor: <ph name="USER_DATA_DIRECTORY" /></translation>
@@ -110,6 +109,7 @@
 <translation id="4987820182225656817">Misafirler Chromium'u geride hiçbir şey bırakmadan kullanabilir.</translation>
 <translation id="4994636714258228724">Kendinizi Chromium'a ekleyin</translation>
 <translation id="5032989939245619637">Ayrıntıları Chromium'a kaydet</translation>
+<translation id="5116586539350239523">Chromium, kişisel bilgilerinizi güvenli şekilde depoladığından bu bilgileri tekrar yazmak zorunda kalmazsınız.</translation>
 <translation id="5358375970380395591">Yönetilen bir hesapla oturum açıyor ve hesabın yöneticisine Chromium profilinizi denetleme izni veriyorsunuz. Uygulamalarınız, yer işaretleriniz, geçmişiniz, şifreleriniz ve diğer ayarlarınız gibi Chromium verileriniz kalıcı olarak <ph name="USER_NAME" /> ile bağlantılandırılacaktır. Google Hesapları Hesap Özeti'ni kullanarak bu verileri silebilecek, ancak bu verileri başka bir hesapla ilişkilendiremeyeceksiniz. <ph name="LEARN_MORE" /></translation>
 <translation id="5398878173008909840">Chromium'un yeni bir sürümü çıktı.</translation>
 <translation id="5427571867875391349">Chromium'u varsayılan tarayıcım olarak ayarla</translation>
@@ -117,6 +117,7 @@
 <translation id="549669000822060376">Chromium en son sistem güncellemelerini yüklerken lütfen bekleyin.</translation>
 <translation id="5563479599352954471">Tek dokunmayla ara</translation>
 <translation id="5620765574781326016">Sayfadan ayrılmadan web sitelerindeki konular hakkında bilgi edinin.</translation>
+<translation id="5634636535844844681">Chromium, Windows 7 veya daha yeni bir sürümünü gerektirir.</translation>
 <translation id="5680901439334282664">Chromium'da oturum açın</translation>
 <translation id="5772805321386874569">(Chromium'un <ph name="BEGIN_BUTTON" />yeniden başlatılmasını<ph name="END_BUTTON" /> gerektirir)</translation>
 <translation id="5796460469508169315">Chromium neredeyse hazır.</translation>
@@ -220,7 +221,6 @@ Chromium ayarlarınızı kurtaramıyor.</translation>
 
 Yine de oturum açarsanız, yer işaretleriniz, geçmişiniz ve diğer ayarlarınız gibi Chromium bilgileriniz <ph name="ACCOUNT_EMAIL_NEW" /> ile birleştirilecektir.</translation>
 <translation id="9013087743919948559">Chromium'a ekle</translation>
-<translation id="9013262824292842194">Chromium; Windows Vista veya Windows XP SP2 ya da daha ileri bir sürümü gerektirir.</translation>
 <translation id="9019929317751753759">Chromium'u daha güvenli bir hale getirmek için <ph name="IDS_EXTENSION_WEB_STORE_TITLE" /> altında listelenmeyen ve bilginiz dışında eklenmiş olabilecek aşağıdaki uzantıyı devre dışı bıraktık.</translation>
 <translation id="9022552996538154597">Chromium'da oturum aç</translation>
 <translation id="9036189287518468038">Chromium Uygulama Başlatıcı</translation>

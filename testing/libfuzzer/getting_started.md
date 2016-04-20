@@ -10,18 +10,6 @@ This document will walk you through:
 * creating your first fuzzer.
 * running the fuzzer and verifying its vitals.
 
-## Check Out ToT Clang
-
-libFuzzer relies heavily on compile-time instrumentation. Because it is still
-under heavy development you need to use tot clang with libFuzzer ([crbug/598448]):
-
-```bash
-# In chrome/src
-LLVM_FORCE_HEAD_REVISION=1 ./tools/clang/scripts/update.py --force-local-build --without-android
-```
-
-To revert this run the same script without specifying `LLVM_FORCE_HEAD_REVISION`.
-
 ## Configure Build
 
 Use `use_libfuzzer` GN argument together with sanitizer to generate build files:
@@ -37,6 +25,7 @@ Supported sanitizer configurations are:
 |--------------|----|
 | is_asan=true | enables [Address Sanitizer] to catch problems like buffer overruns. |
 | is_msan=true | enables [Memory Sanitizer] to catch problems like uninitialed reads. |
+| is_ubsan_security=true | enables [Undefined Behavior Sanitizer] to catch undefined behavior like integer overflow. |
 
 
 ## Write Fuzzer Function
@@ -114,6 +103,7 @@ performance and for optimization hints.
 
 [Address Sanitizer]: http://clang.llvm.org/docs/AddressSanitizer.html
 [Memory Sanitizer]: http://clang.llvm.org/docs/MemorySanitizer.html
+[Undefined Behavior Sanitizer]: http://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html
 [url_parse_fuzzer.cc]: https://code.google.com/p/chromium/codesearch#chromium/src/testing/libfuzzer/fuzzers/url_parse_fuzzer.cc
 [ClusterFuzz status]: clusterfuzz.md#Status-Links
 [Efficient Fuzzer Guide]: efficient_fuzzer.md

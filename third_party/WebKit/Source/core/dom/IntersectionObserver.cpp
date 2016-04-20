@@ -83,7 +83,7 @@ static void parseThresholds(const DoubleOrDoubleArray& thresholdParameter, Vecto
 
 IntersectionObserver* IntersectionObserver::create(const IntersectionObserverInit& observerInit, IntersectionObserverCallback& callback, ExceptionState& exceptionState)
 {
-    RawPtr<Node> root = observerInit.root();
+    Node* root = observerInit.root();
     if (!root) {
         // TODO(szager): Use Document instead of document element for implicit root. (crbug.com/570538)
         ExecutionContext* context = callback.getExecutionContext();
@@ -151,15 +151,13 @@ IntersectionObserver::IntersectionObserver(IntersectionObserverCallback& callbac
     root.document().ensureIntersectionObserverController().addTrackedObserver(*this);
 }
 
-#if ENABLE(OILPAN)
 void IntersectionObserver::clearWeakMembers(Visitor* visitor)
 {
-    if (Heap::isHeapObjectAlive(m_root))
+    if (ThreadHeap::isHeapObjectAlive(m_root))
         return;
     disconnect();
     m_root = nullptr;
 }
-#endif
 
 LayoutObject* IntersectionObserver::rootLayoutObject() const
 {
@@ -194,8 +192,6 @@ void IntersectionObserver::unobserve(Element* target)
 
 void IntersectionObserver::computeIntersectionObservations()
 {
-    if (!m_root || !m_root->inShadowIncludingDocument())
-        return;
     Document* callbackDocument = toDocument(m_callback->getExecutionContext());
     if (!callbackDocument)
         return;

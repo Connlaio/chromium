@@ -13,6 +13,8 @@
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/notifications/platform_notification_service_impl.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/push_messaging/background_budget_service.h"
+#include "chrome/browser/push_messaging/background_budget_service_factory.h"
 #include "chrome/browser/push_messaging/push_messaging_constants.h"
 #include "chrome/common/features.h"
 #include "chrome/grit/generated_resources.h"
@@ -65,8 +67,8 @@ NotificationDatabaseData CreateDatabaseData(
     const GURL& origin,
     int64_t service_worker_registration_id) {
   PlatformNotificationData notification_data;
-  notification_data.title =
-      url_formatter::FormatUrlForSecurityDisplayOmitScheme(origin);
+  notification_data.title = url_formatter::FormatUrlForSecurityDisplay(
+      origin, url_formatter::SchemeDisplay::OMIT_HTTP_AND_HTTPS);
   notification_data.direction =
       PlatformNotificationData::DIRECTION_LEFT_TO_RIGHT;
   notification_data.body =
@@ -81,8 +83,6 @@ NotificationDatabaseData CreateDatabaseData(
   database_data.notification_data = notification_data;
   return database_data;
 }
-
-void IgnoreResult(bool unused) {}
 
 }  // namespace
 
@@ -189,16 +189,12 @@ void PushMessagingNotificationManager::DidGetNotificationsFromDatabase(
   // Don't track push messages that didn't show a notification but were exempt
   // from needing to do so.
   if (notification_shown || notification_needed) {
-    ServiceWorkerContext* service_worker_context =
-        GetStoragePartition(profile_, origin)->GetServiceWorkerContext();
-
-    PushMessagingService::GetNotificationsShownByLastFewPushes(
-        service_worker_context, service_worker_registration_id,
-        base::Bind(&PushMessagingNotificationManager::
-                       DidGetNotificationsShownAndNeeded,
-                   weak_factory_.GetWeakPtr(), origin,
-                   service_worker_registration_id, notification_shown,
-                   notification_needed, message_handled_closure));
+    BackgroundBudgetService* service =
+        BackgroundBudgetServiceFactory::GetForProfile(profile_);
+    std::string notification_history = service->GetBudget(origin);
+    DidGetBudget(origin, service_worker_registration_id, notification_shown,
+                 notification_needed, message_handled_closure,
+                 notification_history);
   } else {
     RecordUserVisibleStatus(
         content::PUSH_USER_VISIBLE_STATUS_NOT_REQUIRED_AND_NOT_SHOWN);
@@ -239,18 +235,14 @@ bool PushMessagingNotificationManager::IsTabVisible(
   return visible_url.GetOrigin() == origin;
 }
 
-void PushMessagingNotificationManager::DidGetNotificationsShownAndNeeded(
+void PushMessagingNotificationManager::DidGetBudget(
     const GURL& origin,
     int64_t service_worker_registration_id,
     bool notification_shown,
     bool notification_needed,
     const base::Closure& message_handled_closure,
-    const std::string& data,
-    bool success,
-    bool not_found) {
+    const std::string& data) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  ServiceWorkerContext* service_worker_context =
-      GetStoragePartition(profile_, origin)->GetServiceWorkerContext();
 
   // We remember whether the last (up to) 10 pushes showed notifications.
   const size_t MISSED_NOTIFICATIONS_LENGTH = 10;
@@ -267,10 +259,9 @@ void PushMessagingNotificationManager::DidGetNotificationsShownAndNeeded(
   missed_notifications[0] = needed_but_not_shown;
   std::string updated_data(missed_notifications.
       to_string<char, std::string::traits_type, std::string::allocator_type>());
-  PushMessagingService::SetNotificationsShownByLastFewPushes(
-      service_worker_context, service_worker_registration_id, origin,
-      updated_data,
-      base::Bind(&IgnoreResult));  // This is a heuristic; ignore failure.
+  BackgroundBudgetService* service =
+      BackgroundBudgetServiceFactory::GetForProfile(profile_);
+  service->StoreBudget(origin, updated_data);
 
   if (notification_shown) {
     RecordUserVisibleStatus(

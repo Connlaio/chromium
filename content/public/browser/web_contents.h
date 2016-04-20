@@ -67,7 +67,7 @@ struct RendererPreferences;
 // (usually HTML) in a rectangular area.
 //
 // Instantiating one is simple:
-//   scoped_ptr<content::WebContents> web_contents(
+//   std::unique_ptr<content::WebContents> web_contents(
 //       content::WebContents::Create(
 //           content::WebContents::CreateParams(browser_context)));
 //   gfx::NativeView view = web_contents->GetNativeView();
@@ -76,7 +76,8 @@ struct RendererPreferences;
 //
 // That's it; go to your kitchen, grab a scone, and chill. WebContents will do
 // all the multi-process stuff behind the scenes. More details are at
-// http://www.chromium.org/developers/design-documents/multi-process-architecture .
+// http://www.chromium.org/developers/design-documents/multi-process-architecture
+// .
 //
 // Each WebContents has exactly one NavigationController; each
 // NavigationController belongs to one WebContents. The NavigationController can
@@ -707,6 +708,20 @@ class WebContents : public PageNavigator,
   CONTENT_EXPORT static WebContents* FromJavaWebContents(
       jobject jweb_contents_android);
   virtual base::android::ScopedJavaLocalRef<jobject> GetJavaWebContents() = 0;
+
+  // Selects and zooms to the find result nearest to the point (x,y) defined in
+  // find-in-page coordinates.
+  virtual void ActivateNearestFindResult(float x, float y) = 0;
+
+  // Requests the rects of the current find matches from the renderer
+  // process. |current_version| is the version of find rects that the caller
+  // already knows about. This version will be compared to the current find
+  // rects version in the renderer process (which is updated whenever the rects
+  // change), to see which new rect data will need to be sent back.
+  //
+  // TODO(paulmeyer): This process will change slightly once multi-process
+  // find-in-page is implemented. This comment should be updated at that time.
+  virtual void RequestFindMatchRects(int current_version) = 0;
 #elif defined(OS_MACOSX)
   // Allowing other views disables optimizations which assume that only a single
   // WebContents is present.

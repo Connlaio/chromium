@@ -13,6 +13,7 @@
 #include "base/time/time.h"
 #include "cc/animation/animation.h"
 #include "cc/animation/animation_curve.h"
+#include "cc/animation/element_animations.h"
 #include "cc/base/cc_export.h"
 
 namespace cc {
@@ -56,8 +57,9 @@ class CC_EXPORT AnimationPlayer : public base::RefCounted<AnimationPlayer>,
   void SetAnimationTimeline(AnimationTimeline* timeline);
 
   // ElementAnimations object where this player is listed.
-  // ElementAnimations has a reference to shared LayerAnimationController.
-  ElementAnimations* element_animations() const { return element_animations_; }
+  scoped_refptr<ElementAnimations> element_animations() const {
+    return element_animations_;
+  }
 
   void set_layer_animation_delegate(AnimationDelegate* delegate) {
     layer_animation_delegate_ = delegate;
@@ -66,7 +68,7 @@ class CC_EXPORT AnimationPlayer : public base::RefCounted<AnimationPlayer>,
   void AttachLayer(int layer_id);
   void DetachLayer();
 
-  void AddAnimation(scoped_ptr<Animation> animation);
+  void AddAnimation(std::unique_ptr<Animation> animation);
   void PauseAnimation(int animation_id, double time_offset);
   void RemoveAnimation(int animation_id);
   void AbortAnimation(int animation_id);
@@ -88,7 +90,7 @@ class CC_EXPORT AnimationPlayer : public base::RefCounted<AnimationPlayer>,
   void NotifyAnimationTakeover(base::TimeTicks monotonic_time,
                                TargetProperty::Type target_property,
                                double animation_start_time,
-                               scoped_ptr<AnimationCurve> curve);
+                               std::unique_ptr<AnimationCurve> curve);
 
   // Whether this player has animations waiting to get sent to LAC.
   bool has_pending_animations_for_testing() const {
@@ -112,12 +114,12 @@ class CC_EXPORT AnimationPlayer : public base::RefCounted<AnimationPlayer>,
   // We accumulate added animations in animations_ container
   // if element_animations_ is a nullptr. It allows us to add/remove animations
   // to non-attached AnimationPlayers.
-  std::vector<scoped_ptr<Animation>> animations_;
+  std::vector<std::unique_ptr<Animation>> animations_;
 
   AnimationHost* animation_host_;
   AnimationTimeline* animation_timeline_;
   // element_animations isn't null if player attached to an element (layer).
-  ElementAnimations* element_animations_;
+  scoped_refptr<ElementAnimations> element_animations_;
   AnimationDelegate* layer_animation_delegate_;
 
   int id_;

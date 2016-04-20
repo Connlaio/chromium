@@ -12,7 +12,6 @@
 
 #include "base/macros.h"
 #include "cc/base/math_util.h"
-#include "cc/raster/raster_buffer.h"
 #include "cc/raster/staging_buffer_pool.h"
 #include "cc/resources/platform_color.h"
 #include "cc/resources/resource_format.h"
@@ -69,7 +68,7 @@ const int kMaxBytesPerCopyOperation = 1024 * 1024 * 4;
 }  // namespace
 
 // static
-scoped_ptr<TileTaskWorkerPool> OneCopyTileTaskWorkerPool::Create(
+std::unique_ptr<TileTaskWorkerPool> OneCopyTileTaskWorkerPool::Create(
     base::SequencedTaskRunner* task_runner,
     TaskGraphRunner* task_graph_runner,
     ContextProvider* context_provider,
@@ -78,7 +77,7 @@ scoped_ptr<TileTaskWorkerPool> OneCopyTileTaskWorkerPool::Create(
     bool use_partial_raster,
     int max_staging_buffer_usage_in_bytes,
     ResourceFormat preferred_tile_format) {
-  return make_scoped_ptr<TileTaskWorkerPool>(new OneCopyTileTaskWorkerPool(
+  return base::WrapUnique<TileTaskWorkerPool>(new OneCopyTileTaskWorkerPool(
       task_runner, task_graph_runner, resource_provider,
       max_copy_texture_chromium_size, use_partial_raster,
       max_staging_buffer_usage_in_bytes, preferred_tile_format));
@@ -109,10 +108,6 @@ OneCopyTileTaskWorkerPool::OneCopyTileTaskWorkerPool(
 }
 
 OneCopyTileTaskWorkerPool::~OneCopyTileTaskWorkerPool() {
-}
-
-TileTaskRunner* OneCopyTileTaskWorkerPool::AsTileTaskRunner() {
-  return this;
 }
 
 void OneCopyTileTaskWorkerPool::Shutdown() {
@@ -172,19 +167,23 @@ bool OneCopyTileTaskWorkerPool::GetResourceRequiresSwizzle(
   return ResourceFormatRequiresSwizzle(GetResourceFormat(must_support_alpha));
 }
 
-scoped_ptr<RasterBuffer> OneCopyTileTaskWorkerPool::AcquireBufferForRaster(
+RasterBufferProvider* OneCopyTileTaskWorkerPool::AsRasterBufferProvider() {
+  return this;
+}
+
+std::unique_ptr<RasterBuffer> OneCopyTileTaskWorkerPool::AcquireBufferForRaster(
     const Resource* resource,
     uint64_t resource_content_id,
     uint64_t previous_content_id) {
   // TODO(danakj): If resource_content_id != 0, we only need to copy/upload
   // the dirty rect.
-  return make_scoped_ptr<RasterBuffer>(
+  return base::WrapUnique<RasterBuffer>(
       new RasterBufferImpl(this, resource_provider_, resource->format(),
                            resource, previous_content_id));
 }
 
 void OneCopyTileTaskWorkerPool::ReleaseBufferForRaster(
-    scoped_ptr<RasterBuffer> buffer) {
+    std::unique_ptr<RasterBuffer> buffer) {
   // Nothing to do here. RasterBufferImpl destructor cleans up after itself.
 }
 
@@ -198,7 +197,7 @@ void OneCopyTileTaskWorkerPool::PlaybackAndCopyOnWorkerThread(
     const RasterSource::PlaybackSettings& playback_settings,
     uint64_t previous_content_id,
     uint64_t new_content_id) {
-  scoped_ptr<StagingBuffer> staging_buffer =
+  std::unique_ptr<StagingBuffer> staging_buffer =
       staging_pool_->AcquireStagingBuffer(resource, previous_content_id);
 
   PlaybackToStagingBuffer(staging_buffer.get(), resource, raster_source,
@@ -332,8 +331,8 @@ void OneCopyTileTaskWorkerPool::CopyOnWorkerThread(
       gl->CompressedCopyTextureCHROMIUM(staging_buffer->texture_id,
                                         resource_lock->texture_id());
     } else {
-      int bytes_per_row =
-          (BitsPerPixel(resource->format()) * resource->size().width()) / 8;
+      int bytes_per_row = ResourceUtil::UncheckedWidthInBytes<int>(
+          resource->size().width(), resource->format());
       int chunk_size_in_rows =
           std::max(1, max_bytes_per_copy_operation_ / bytes_per_row);
       // Align chunk size to 4. Required to support compressed texture formats.

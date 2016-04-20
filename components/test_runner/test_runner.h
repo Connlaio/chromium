@@ -41,13 +41,13 @@ class Arguments;
 namespace test_runner {
 
 class InvokeCallbackTask;
+class MockContentSettingsClient;
 class MockCredentialManagerClient;
 class MockScreenOrientationClient;
 class MockWebSpeechRecognizer;
 class MockWebUserMediaClient;
 class SpellCheckClient;
 class TestInterfaces;
-class WebContentSettings;
 class WebTestDelegate;
 class WebTestProxyBase;
 
@@ -59,7 +59,7 @@ class TestRunner : public WebTestRunner {
   void Install(blink::WebFrame* frame);
 
   void SetDelegate(WebTestDelegate*);
-  void SetWebView(blink::WebView*, WebTestProxyBase*);
+  void SetWebView(blink::WebView*);
 
   void Reset();
 
@@ -83,6 +83,7 @@ class TestRunner : public WebTestRunner {
   bool ShouldDumpBackForwardList() const override;
   blink::WebContentSettingsClient* GetWebContentSettings() const override;
   void InitializeWebViewWithMocks(blink::WebView* web_view) override;
+  void SetFocus(blink::WebView* web_view, bool focus) override;
 
   // Methods used by WebViewTestClient and WebFrameTestClient.
   void OnAnimationScheduled(blink::WebView* view);
@@ -522,7 +523,7 @@ class TestRunner : public WebTestRunner {
   // Changes the cookie policy from the default to allow all cookies.
   void SetAlwaysAcceptCookies(bool accept);
 
-  // Gives focus to the window.
+  // Gives focus to the main test window.
   void SetWindowIsKey(bool value);
 
   // Converts a URL starting with file:///tmp/ to the local mapping.
@@ -587,6 +588,11 @@ class TestRunner : public WebTestRunner {
   // Resolve the beforeinstallprompt event with the matching request id.
   void ResolveBeforeInstallPromptPromise(int request_id,
                                          const std::string& platform);
+
+  // Immediately run all pending idle tasks, including all pending
+  // requestIdleCallback calls.  Invoke the callback when all
+  // idle tasks are complete.
+  void RunIdleTasks(v8::Local<v8::Function> callback);
 
   // Calls setlocale(LC_ALL, ...) for a specified locale.
   // Resets between tests.
@@ -680,10 +686,6 @@ class TestRunner : public WebTestRunner {
   // setCloseRemainingWindowsWhenComplete().
   bool close_remaining_windows_;
 
-  // If true, ends the test when a URL is loaded externally via
-  // WebFrameClient::loadURLExternally().
-  bool wait_until_external_url_load_;
-
   WorkQueue work_queue_;
 
   // Bound variable to return the name of this platform (chromium).
@@ -695,36 +697,11 @@ class TestRunner : public WebTestRunner {
   // Bound variable counting the number of top URLs visited.
   int web_history_item_count_;
 
-  // Bound variable to set whether postMessages should be intercepted or not
-  bool intercept_post_message_;
-
-  // If true, the test_shell will write a descriptive line for each editing
-  // command.
-  bool dump_editting_callbacks_;
-
   // Flags controlling what content gets dumped as a layout text result.
   LayoutTestRuntimeFlags layout_test_runtime_flags_;
 
-  // If true, the test_shell will print out the icon change notifications.
-  bool dump_icon_changes_;
-
   // If true, the test_shell will output a base64 encoded WAVE file.
   bool dump_as_audio_;
-
-  // If true, the test_shell will output a descriptive line for each frame
-  // load callback.
-  bool dump_frame_load_callbacks_;
-
-  // If true, the test_shell will output a descriptive line for each
-  // PingLoader dispatched.
-  bool dump_ping_loader_callbacks_;
-
-  // If true, the test_shell will output a line of the user gesture status
-  // text for some frame load callbacks.
-  bool dump_user_gesture_in_frame_load_callbacks_;
-
-  // If true, output a message when the page title is changed.
-  bool dump_title_changes_;
 
   // If true, output a descriptive line each time WebViewClient::createView
   // is invoked.
@@ -734,14 +711,6 @@ class TestRunner : public WebTestRunner {
   // default, set to false and can be toggled to true using
   // setCanOpenWindows().
   bool can_open_windows_;
-
-  // If true, the test_shell will output a descriptive line for each resource
-  // load callback.
-  bool dump_resource_load_callbacks_;
-
-  // If true, the test_shell will output the MIME type for each resource that
-  // was loaded.
-  bool dump_resource_response_mime_types_;
 
   // If true, the test_shell will dump all changes to window.status.
   bool dump_window_status_changes_;
@@ -754,10 +723,6 @@ class TestRunner : public WebTestRunner {
   // well.
   bool dump_back_forward_list_;
 
-  // If true, content_shell will dump the default navigation policy passed to
-  // WebFrameClient::decidePolicyForNavigation.
-  bool dump_navigation_policy_;
-
   // If true, pixel dump will be produced as a series of 1px-tall, view-wide
   // individual paints over the height of the view.
   bool test_repaint_;
@@ -768,10 +733,6 @@ class TestRunner : public WebTestRunner {
 
   // If false, MockWebMIDIAccessor fails on startSession() for testing.
   bool midi_accessor_result_;
-
-  bool should_stay_on_page_after_handling_before_unload_;
-
-  bool should_dump_resource_priorities_;
 
   bool has_custom_text_output_;
   std::string custom_text_output_;
@@ -784,13 +745,12 @@ class TestRunner : public WebTestRunner {
   TestInterfaces* test_interfaces_;
   WebTestDelegate* delegate_;
   blink::WebView* web_view_;
-  WebTestProxyBase* proxy_;
 
   // This is non-0 IFF a load is in progress.
   blink::WebFrame* top_loading_frame_;
 
   // WebContentSettingsClient mock object.
-  scoped_ptr<WebContentSettings> web_content_settings_;
+  scoped_ptr<MockContentSettingsClient> mock_content_settings_client_;
 
   bool pointer_locked_;
   enum {
@@ -811,6 +771,11 @@ class TestRunner : public WebTestRunner {
 
   // Captured drag image.
   blink::WebImage drag_image_;
+
+  // View that was focused by a previous call to TestRunner::SetFocus method.
+  // Note - this can be a dangling pointer to an already destroyed WebView (this
+  // is ok, because this is taken care of in WebTestDelegate::SetFocus).
+  blink::WebView* previously_focused_view_;
 
   std::set<blink::WebView*> views_with_scheduled_animations_;
 

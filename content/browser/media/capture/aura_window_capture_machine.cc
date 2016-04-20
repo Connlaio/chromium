@@ -179,11 +179,10 @@ void AuraWindowCaptureMachine::Capture(bool dirty) {
             : media::VideoCaptureOracle::kActiveRefreshRequest;
   if (oracle_proxy_->ObserveEventAndDecideCapture(
           event, gfx::Rect(), start_time, &frame, &capture_frame_cb)) {
-    scoped_ptr<cc::CopyOutputRequest> request =
-        cc::CopyOutputRequest::CreateRequest(
-            base::Bind(&AuraWindowCaptureMachine::DidCopyOutput,
-                       weak_factory_.GetWeakPtr(),
-                       frame, start_time, capture_frame_cb));
+    std::unique_ptr<cc::CopyOutputRequest> request =
+        cc::CopyOutputRequest::CreateRequest(base::Bind(
+            &AuraWindowCaptureMachine::DidCopyOutput,
+            weak_factory_.GetWeakPtr(), frame, start_time, capture_frame_cb));
     gfx::Rect window_rect = gfx::Rect(desktop_window_->bounds().width(),
                                       desktop_window_->bounds().height());
     request->set_area(window_rect);
@@ -195,7 +194,7 @@ void AuraWindowCaptureMachine::DidCopyOutput(
     scoped_refptr<media::VideoFrame> video_frame,
     base::TimeTicks start_time,
     const CaptureFrameCallback& capture_frame_cb,
-    scoped_ptr<cc::CopyOutputResult> result) {
+    std::unique_ptr<cc::CopyOutputResult> result) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 
   static bool first_call = true;
@@ -230,7 +229,7 @@ bool AuraWindowCaptureMachine::ProcessCopyOutputResponse(
     scoped_refptr<media::VideoFrame> video_frame,
     base::TimeTicks start_time,
     const CaptureFrameCallback& capture_frame_cb,
-    scoped_ptr<cc::CopyOutputResult> result) {
+    std::unique_ptr<cc::CopyOutputResult> result) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 
   if (result->IsEmpty() || result->size().IsEmpty() || !desktop_window_)
@@ -258,7 +257,7 @@ bool AuraWindowCaptureMachine::ProcessCopyOutputResponse(
     return false;
 
   cc::TextureMailbox texture_mailbox;
-  scoped_ptr<cc::SingleReleaseCallback> release_callback;
+  std::unique_ptr<cc::SingleReleaseCallback> release_callback;
   result->TakeTexture(&texture_mailbox, &release_callback);
   DCHECK(texture_mailbox.IsTexture());
   if (!texture_mailbox.IsTexture())
@@ -281,10 +280,17 @@ bool AuraWindowCaptureMachine::ProcessCopyOutputResponse(
   cursor_renderer_->SnapshotCursorState(region_in_frame);
   yuv_readback_pipeline_->ReadbackYUV(
       texture_mailbox.mailbox(), texture_mailbox.sync_token(),
-      video_frame.get(), region_in_frame.origin(),
+      video_frame->visible_rect(),
+      video_frame->stride(media::VideoFrame::kYPlane),
+      video_frame->data(media::VideoFrame::kYPlane),
+      video_frame->stride(media::VideoFrame::kUPlane),
+      video_frame->data(media::VideoFrame::kUPlane),
+      video_frame->stride(media::VideoFrame::kVPlane),
+      video_frame->data(media::VideoFrame::kVPlane), region_in_frame.origin(),
       base::Bind(&CopyOutputFinishedForVideo, weak_factory_.GetWeakPtr(),
                  start_time, capture_frame_cb, video_frame,
                  base::Passed(&release_callback)));
+  media::LetterboxYUV(video_frame.get(), region_in_frame);
   return true;
 }
 
@@ -296,7 +302,7 @@ void AuraWindowCaptureMachine::CopyOutputFinishedForVideo(
     base::TimeTicks start_time,
     const CaptureFrameCallback& capture_frame_cb,
     const scoped_refptr<media::VideoFrame>& target,
-    scoped_ptr<cc::SingleReleaseCallback> release_callback,
+    std::unique_ptr<cc::SingleReleaseCallback> release_callback,
     bool result) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 

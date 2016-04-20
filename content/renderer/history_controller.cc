@@ -37,6 +37,7 @@
 
 #include <utility>
 
+#include "base/memory/ptr_util.h"
 #include "content/common/navigation_params.h"
 #include "content/common/site_isolation_policy.h"
 #include "content/renderer/render_frame_impl.h"
@@ -63,8 +64,8 @@ HistoryController::~HistoryController() {
 
 bool HistoryController::GoToEntry(
     blink::WebLocalFrame* main_frame,
-    scoped_ptr<HistoryEntry> target_entry,
-    scoped_ptr<NavigationParams> navigation_params,
+    std::unique_ptr<HistoryEntry> target_entry,
+    std::unique_ptr<NavigationParams> navigation_params,
     WebCachePolicy cache_policy) {
   DCHECK(!main_frame->parent());
   HistoryFrameLoadVector same_document_loads;
@@ -96,8 +97,8 @@ bool HistoryController::GoToEntry(
     RenderFrameImpl* render_frame = RenderFrameImpl::FromWebFrame(frame);
     if (!render_frame)
       continue;
-    render_frame->SetPendingNavigationParams(make_scoped_ptr(
-        new NavigationParams(*navigation_params_.get())));
+    render_frame->SetPendingNavigationParams(
+        base::WrapUnique(new NavigationParams(*navigation_params_.get())));
     WebURLRequest request = frame->toWebLocalFrame()->requestFromHistoryItem(
         item.second, cache_policy);
     frame->toWebLocalFrame()->load(
@@ -111,8 +112,8 @@ bool HistoryController::GoToEntry(
     RenderFrameImpl* render_frame = RenderFrameImpl::FromWebFrame(frame);
     if (!render_frame)
       continue;
-    render_frame->SetPendingNavigationParams(make_scoped_ptr(
-        new NavigationParams(*navigation_params_.get())));
+    render_frame->SetPendingNavigationParams(
+        base::WrapUnique(new NavigationParams(*navigation_params_.get())));
     WebURLRequest request = frame->toWebLocalFrame()->requestFromHistoryItem(
         item.second, cache_policy);
     frame->toWebLocalFrame()->load(
@@ -188,7 +189,36 @@ void HistoryController::UpdateForCommit(RenderFrameImpl* frame,
     case blink::WebBackForwardCommit:
       if (!provisional_entry_)
         return;
-      current_entry_.reset(provisional_entry_.release());
+
+      // If the current entry is null, this must be a main frame commit.
+      DCHECK(current_entry_ || frame->IsMainFrame());
+
+      // Commit the provisional entry, but only if it is a plausible transition.
+      // Do not commit it if the navigation is in a subframe and the provisional
+      // entry's main frame item does not match the current entry's main frame,
+      // which can happen if multiple forward navigations occur.  In that case,
+      // committing the provisional entry would corrupt it, leading to a URL
+      // spoof.  See https://crbug.com/597322.  (Note that the race in this bug
+      // does not affect main frame navigations, only navigations in subframes.)
+      //
+      // Note that we cannot compare the provisional entry against |item|, since
+      // |item| may have redirected to a different URL and ISN.  We also cannot
+      // compare against the main frame's URL, since that may have changed due
+      // to a replaceState.  (Even origin can change on replaceState in certain
+      // modes.)
+      //
+      // It would be safe to additionally check the ISNs of all parent frames
+      // (and not just the root), but that is less critical because it won't
+      // lead to a URL spoof.
+      if (frame->IsMainFrame() ||
+          current_entry_->root().itemSequenceNumber() ==
+              provisional_entry_->root().itemSequenceNumber()) {
+        current_entry_.reset(provisional_entry_.release());
+      }
+
+      // We're guaranteed to have a current entry now.
+      DCHECK(current_entry_);
+
       if (HistoryEntry::HistoryNode* node =
               current_entry_->GetHistoryNodeForFrame(frame)) {
         node->set_item(item);
@@ -226,8 +256,8 @@ HistoryEntry* HistoryController::GetCurrentEntry() {
 WebHistoryItem HistoryController::GetItemForNewChildFrame(
     RenderFrameImpl* frame) const {
   if (navigation_params_.get()) {
-    frame->SetPendingNavigationParams(make_scoped_ptr(
-        new NavigationParams(*navigation_params_.get())));
+    frame->SetPendingNavigationParams(
+        base::WrapUnique(new NavigationParams(*navigation_params_.get())));
   }
 
   if (!current_entry_)

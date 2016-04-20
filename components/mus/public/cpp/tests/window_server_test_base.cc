@@ -11,7 +11,7 @@
 #include "components/mus/public/cpp/window.h"
 #include "components/mus/public/cpp/window_tree_connection.h"
 #include "components/mus/public/cpp/window_tree_host_factory.h"
-#include "mojo/shell/public/cpp/connector.h"
+#include "services/shell/public/cpp/connector.h"
 
 namespace mus {
 namespace {
@@ -71,7 +71,7 @@ void WindowServerTestBase::SetUp() {
   std::swap(window_manager_, most_recent_connection_);
 }
 
-bool WindowServerTestBase::AcceptConnection(mojo::Connection* connection) {
+bool WindowServerTestBase::AcceptConnection(shell::Connection* connection) {
   connection->AddInterface<mojom::WindowTreeClient>(this);
   return true;
 }
@@ -119,7 +119,7 @@ void WindowServerTestBase::OnAccelerator(uint32_t id, const ui::Event& event) {
 }
 
 void WindowServerTestBase::Create(
-    mojo::Connection* connection,
+    shell::Connection* connection,
     mojo::InterfaceRequest<mojom::WindowTreeClient> request) {
   WindowTreeConnection::Create(
       this, std::move(request),

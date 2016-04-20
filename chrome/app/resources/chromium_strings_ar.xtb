@@ -66,7 +66,6 @@
 <translation id="3130323860337406239">‏يستخدم Chromium الميكروفون.</translation>
 <translation id="313551035350905294">‏أنت تسجل الدخول بحساب يخضع للإدارة وتتيح للمشرف إمكانية التحكم في ملفك الشخصي على Chromium. وستكون بياناتك في Chromium مثل تطبيقاتك وإشاراتك المرجعية وسجلك وكلمات المرور التابعة لك والإعدادات الأخرى مرتبطة دائمًا بالمستخدم <ph name="USER_NAME" />. ستتمكن من حذف هذه البيانات عبر لوحة تحكم حسابات Google، ولكنك لن تتمكن من إقران هذه البيانات بحساب آخر.</translation>
 <translation id="3190315855212034486">‏للأسف! تعطل Chromium. هل تريد إعادة التشغيل الآن؟</translation>
-<translation id="3197823471738295152">جهازك محدّث.</translation>
 <translation id="3244477511402911926">‏مركز إشعارات Chromium</translation>
 <translation id="3256316712990552818">‏تم النسخ إلى Chromium</translation>
 <translation id="3258596308407688501">‏يتعذر على Chromium القراءة والكتابة في دليل البيانات الخاص به:
@@ -112,6 +111,7 @@
 <translation id="4987820182225656817">‏يمكن للضيف استخدام Chromium بدون أن يترك أي أثر وراءه.</translation>
 <translation id="4994636714258228724">‏إضافة نفسك إلى Chromium</translation>
 <translation id="5032989939245619637">‏حفظ التفاصيل في Chromium</translation>
+<translation id="5116586539350239523">‏سيخزّن Chromium معلوماتك الشخصية بشكلٍ آمن حتى لا تُضطر إلى كتابتها مرةً أخرى.</translation>
 <translation id="5358375970380395591">‏أنت تسجل الدخول باستخدام حساب يخضع للإدارة وتتيح للمشرف إمكانية التحكم في ملفك الشخصي على Chromium. وستكون بياناتك في Chromium مثل تطبيقاتك وإشاراتك المرجعية وسجلك وكلمات المرور التابعة لك والإعدادات الأخرى مرتبطة دائمًا بالمستخدم <ph name="USER_NAME" />. ستتمكن من حذف هذه البيانات عبر لوحة تحكم حسابات Google، ولكنك لن تتمكن من إقران هذه البيانات بحساب آخر. <ph name="LEARN_MORE" /></translation>
 <translation id="5398878173008909840">‏يتوفر إصدار جديد من Chromium.</translation>
 <translation id="5427571867875391349">‏تعيين Chromium المتصفح الافتراضي</translation>
@@ -119,6 +119,7 @@
 <translation id="549669000822060376">‏الرجاء الانتظار أثناء تثبيت Chromium لآخر تحديثات النظام.</translation>
 <translation id="5563479599352954471">للبحث بلمسة واحدة</translation>
 <translation id="5620765574781326016">تعرّف على موضوعات على مواقع الويب دون مغادرة الصفحة.</translation>
+<translation id="5634636535844844681">‏يتطلب Chromium نظام التشغيل Windows 7 أو إصدارًا أحدث.</translation>
 <translation id="5680901439334282664">‏تسجيل الدخول إلى Chromium</translation>
 <translation id="5772805321386874569">‏(<ph name="BEGIN_BUTTON" />إعادة تشغيل<ph name="END_BUTTON" /> Chromium مطلوبة)</translation>
 <translation id="5796460469508169315">‏Chromium جاهز تقريبًا.</translation>
@@ -206,6 +207,7 @@
 <translation id="8586442755830160949">‏حقوق الطبع والنشر لعام <ph name="YEAR" /> لصالح The Chromium Authors. جميع الحقوق محفوظة.</translation>
 <translation id="8621669128220841554">‏أخفق التثبيت نظرًا لحدوث خطأ غير محدد. الرجاء إعادة تنزيل Chromium.</translation>
 <translation id="8628626585870903697">‏لا يتضمن Chromium عارض PDF المطلوب لإجراء معاينة الطباعة.</translation>
+<translation id="8667808506758191620">جهاز <ph name="DEVICE_TYPE" /> مُحدّث.</translation>
 <translation id="8697124171261953979">‏كما أنها تتحكم في الصفحة التي تظهر عند تشغيل Chromium أو إجراء بحث من المربع متعدد الاستخدامات.</translation>
 <translation id="8704119203788522458">‏هذا هو Chromium الخاص بك</translation>
 <translation id="872034308864968620">‏دع Chromium يعمل في الخلفية</translation>
@@ -222,7 +224,6 @@
 
 سيؤدي تسجيل الدخول على أية حال إلى دمج معلومات Chromium مثل الإشارات المرجعية والسجل والإعدادات الأخرى مع <ph name="ACCOUNT_EMAIL_NEW" />.</translation>
 <translation id="9013087743919948559">‏إضافة إلى Chromium</translation>
-<translation id="9013262824292842194">‏يتطلب Chromium نظام التشغيل Windows Vista أو Windows XP المزود بحزمة الخدمة SP2 أو الإصدارات الأحدث.</translation>
 <translation id="9019929317751753759">‏لجعل Chromium أكثر أمنًا، عطلنا الإضافة التالية التي لم تُدرج في <ph name="IDS_EXTENSION_WEB_STORE_TITLE" /> وربما تكون قد أضيفت دون علمك.</translation>
 <translation id="9022552996538154597">‏تسجيل الدخول إلى Chromium</translation>
 <translation id="9036189287518468038">‏مشغل تطبيقات Chromium</translation>

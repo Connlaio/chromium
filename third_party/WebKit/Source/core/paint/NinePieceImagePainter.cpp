@@ -4,7 +4,6 @@
 
 #include "core/paint/NinePieceImagePainter.h"
 
-#include "core/frame/Deprecation.h"
 #include "core/layout/ImageQualityController.h"
 #include "core/layout/LayoutBoxModelObject.h"
 #include "core/paint/BoxPainter.h"
@@ -35,14 +34,6 @@ bool NinePieceImagePainter::paint(GraphicsContext& graphicsContext, const Layout
     if (!styleImage->canRender())
         return false;
 
-    // Find out if the hasImage() check in ComputedStyle::border*Width had any affect, i.e. if a border is non-zero while border-style is
-    // none or hidden.
-    if ((style.borderLeftWidth() && (style.borderLeft().style() == BorderStyleNone || style.borderLeft().style() == BorderStyleHidden))
-        || (style.borderRightWidth() && (style.borderRight().style() == BorderStyleNone || style.borderRight().style() == BorderStyleHidden))
-        || (style.borderTopWidth() && (style.borderTop().style() == BorderStyleNone || style.borderTop().style() == BorderStyleHidden))
-        || (style.borderBottomWidth() && (style.borderBottom().style() == BorderStyleNone || style.borderBottom().style() == BorderStyleHidden)))
-        Deprecation::countDeprecation(m_layoutObject.document(), UseCounter::BorderImageWithBorderStyleNone);
-
     // FIXME: border-image is broken with full page zooming when tiling has to happen, since the tiling function
     // doesn't have any understanding of the zoom that is in effect on the tile.
     LayoutRect rectWithOutsets = rect;
@@ -69,11 +60,7 @@ bool NinePieceImagePainter::paint(GraphicsContext& graphicsContext, const Layout
         InspectorPaintImageEvent::data(m_layoutObject, *styleImage));
 
     for (NinePiece piece = MinPiece; piece < MaxPiece; ++piece) {
-        NinePieceImageGrid::NinePieceDrawInfo drawInfo = grid.getNinePieceDrawInfo(piece);
-
-        // The nine piece grid is computed in unscaled image coordinates but must be drawn using
-        // scaled image coordinates.
-        drawInfo.source.scale(styleImage->imageScaleFactor());
+        NinePieceImageGrid::NinePieceDrawInfo drawInfo = grid.getNinePieceDrawInfo(piece, styleImage->imageScaleFactor());
 
         if (drawInfo.isDrawable) {
             if (drawInfo.isCornerPiece) {

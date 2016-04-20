@@ -10,9 +10,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <memory>
+
 #include "base/compiler_specific.h"
 #include "base/macros.h"
-#include "base/memory/scoped_ptr.h"
 #include "gpu/command_buffer/client/gpu_control.h"
 #include "gpu/command_buffer/common/cmd_buffer_common.h"
 #include "gpu/command_buffer/common/gpu_memory_allocation.h"
@@ -96,6 +97,7 @@ class MockClientGpuControl : public GpuControl {
   MockClientGpuControl();
   virtual ~MockClientGpuControl();
 
+  MOCK_METHOD1(SetGpuControlClient, void(GpuControlClient*));
   MOCK_METHOD0(GetCapabilities, Capabilities());
   MOCK_METHOD4(CreateImage,
                int32_t(ClientBuffer buffer,

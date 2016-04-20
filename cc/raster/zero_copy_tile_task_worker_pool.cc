@@ -9,11 +9,11 @@
 #include <algorithm>
 
 #include "base/macros.h"
+#include "base/memory/ptr_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/trace_event_argument.h"
 #include "cc/debug/traced_value.h"
-#include "cc/raster/raster_buffer.h"
 #include "cc/resources/platform_color.h"
 #include "cc/resources/resource.h"
 #include "ui/gfx/buffer_format_util.h"
@@ -65,12 +65,12 @@ class RasterBufferImpl : public RasterBuffer {
 }  // namespace
 
 // static
-scoped_ptr<TileTaskWorkerPool> ZeroCopyTileTaskWorkerPool::Create(
+std::unique_ptr<TileTaskWorkerPool> ZeroCopyTileTaskWorkerPool::Create(
     base::SequencedTaskRunner* task_runner,
     TaskGraphRunner* task_graph_runner,
     ResourceProvider* resource_provider,
     ResourceFormat preferred_tile_format) {
-  return make_scoped_ptr<TileTaskWorkerPool>(
+  return base::WrapUnique<TileTaskWorkerPool>(
       new ZeroCopyTileTaskWorkerPool(task_runner, task_graph_runner,
                                      resource_provider, preferred_tile_format));
 }
@@ -87,10 +87,6 @@ ZeroCopyTileTaskWorkerPool::ZeroCopyTileTaskWorkerPool(
       preferred_tile_format_(preferred_tile_format) {}
 
 ZeroCopyTileTaskWorkerPool::~ZeroCopyTileTaskWorkerPool() {
-}
-
-TileTaskRunner* ZeroCopyTileTaskWorkerPool::AsTileTaskRunner() {
-  return this;
 }
 
 void ZeroCopyTileTaskWorkerPool::Shutdown() {
@@ -140,16 +136,21 @@ bool ZeroCopyTileTaskWorkerPool::GetResourceRequiresSwizzle(
   return ResourceFormatRequiresSwizzle(GetResourceFormat(must_support_alpha));
 }
 
-scoped_ptr<RasterBuffer> ZeroCopyTileTaskWorkerPool::AcquireBufferForRaster(
+RasterBufferProvider* ZeroCopyTileTaskWorkerPool::AsRasterBufferProvider() {
+  return this;
+}
+
+std::unique_ptr<RasterBuffer>
+ZeroCopyTileTaskWorkerPool::AcquireBufferForRaster(
     const Resource* resource,
     uint64_t resource_content_id,
     uint64_t previous_content_id) {
-  return make_scoped_ptr<RasterBuffer>(
+  return base::WrapUnique<RasterBuffer>(
       new RasterBufferImpl(resource_provider_, resource));
 }
 
 void ZeroCopyTileTaskWorkerPool::ReleaseBufferForRaster(
-    scoped_ptr<RasterBuffer> buffer) {
+    std::unique_ptr<RasterBuffer> buffer) {
   // Nothing to do here. RasterBufferImpl destructor cleans up after itself.
 }
 

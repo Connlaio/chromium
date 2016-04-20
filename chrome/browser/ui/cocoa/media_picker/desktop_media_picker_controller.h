@@ -33,7 +33,9 @@
   NSButton* cancelButton_;  // weak; owned by contentView
 
   // The checkbox for audio share.
+  // |audioShareState_| records the state when check box is disabled.
   base::scoped_nsobject<NSButton> audioShareCheckbox_;
+  NSCellStateValue audioShareState_;
 
   // Provides source information (including thumbnails) to fill up |items_| and
   // to render in |sourceBrowser_|.
@@ -60,12 +62,14 @@
 // appears as the initiator of the request.
 // |targetName| will be used to format the dialog's label and appear as the
 // consumer of the requested stream.
-- (id)initWithMediaList:(std::unique_ptr<DesktopMediaList>)media_list
-                 parent:(NSWindow*)parent
-               callback:(const DesktopMediaPicker::DoneCallback&)callback
-                appName:(const base::string16&)appName
-             targetName:(const base::string16&)targetName
-           requestAudio:(bool)requestAudio;
+- (id)initWithScreenList:(std::unique_ptr<DesktopMediaList>)screen_list
+              windowList:(std::unique_ptr<DesktopMediaList>)window_list
+                 tabList:(std::unique_ptr<DesktopMediaList>)tab_list
+                  parent:(NSWindow*)parent
+                callback:(const DesktopMediaPicker::DoneCallback&)callback
+                 appName:(const base::string16&)appName
+              targetName:(const base::string16&)targetName
+            requestAudio:(bool)requestAudio;
 
 @end
 

@@ -19,6 +19,7 @@ buildflag_header("media_features") {
     "ENABLE_AC3_EAC3_AUDIO_DEMUXING=$enable_ac3_eac3_audio_demuxing",
     "ENABLE_HEVC_DEMUXING=$enable_hevc_demuxing",
     "ENABLE_MSE_MPEG2TS_STREAM_PARSER=$enable_mse_mpeg2ts_stream_parser",
+    "ENABLE_MP4_VP9_DEMUXING=0",
   ]
 }
 
@@ -70,6 +71,12 @@ config("media_dependent_config") {
   }
 }
 
+source_set("cdm_api") {
+  sources = [
+    "cdm/api/content_decryption_module.h",
+  ]
+}
+
 component("media") {
   sources = [
     "cdm/aes_decryptor.cc",
@@ -80,6 +87,7 @@ component("media") {
     "cdm/cdm_allocator.h",
     "cdm/cdm_helpers.cc",
     "cdm/cdm_helpers.h",
+    "cdm/cdm_wrapper.h",
     "cdm/default_cdm_factory.cc",
     "cdm/default_cdm_factory.h",
     "cdm/json_web_key.cc",
@@ -227,7 +235,10 @@ component("media") {
   cflags = []
   libs = []
   defines = []
-  deps = []
+  deps = [
+    ":cdm_api",
+  ]
+  public_deps = []
 
   include_dirs = [ "." ]
   if (media_use_ffmpeg) {
@@ -334,7 +345,7 @@ component("media") {
   }
 
   if (is_mac) {
-    deps += [ "//media/base/mac" ]
+    public_deps += [ "//media/base/mac" ]
     libs += [
       "CoreVideo.framework",
       "OpenGL.framework",
@@ -434,7 +445,7 @@ component("media") {
     ]
   }
 
-  public_deps = [
+  public_deps += [
     ":media_features",
     ":shared_memory_support",
     "//media/audio",
@@ -818,7 +829,7 @@ fuzzer_test("media_vp8_parser_fuzzer") {
     ":media",
     "//base",
   ]
-  libfuzzer_options = "filters/vp8_parser_fuzzertest.options"
+  libfuzzer_options = [ "max_len = 400000" ]
   dict = "test/vp8.dict"
 }
 
@@ -830,5 +841,5 @@ fuzzer_test("media_vp9_parser_fuzzer") {
     ":media",
     "//base",
   ]
-  libfuzzer_options = "filters/vp9_parser_fuzzertest.options"
+  libfuzzer_options = [ "max_len = 400000" ]
 }

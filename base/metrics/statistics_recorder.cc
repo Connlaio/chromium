@@ -37,6 +37,14 @@ StatisticsRecorder::HistogramIterator::HistogramIterator(
     const HistogramMap::iterator& iter, bool include_persistent)
     : iter_(iter),
       include_persistent_(include_persistent) {
+  // The starting location could point to a persistent histogram when such
+  // is not wanted. If so, skip it.
+  if (!include_persistent_ && iter_ != histograms_->end() &&
+      (iter_->second->flags() & HistogramBase::kIsPersistent)) {
+    // This operator will continue to skip until a non-persistent histogram
+    // is found.
+    operator++();
+  }
 }
 
 StatisticsRecorder::HistogramIterator::HistogramIterator(
@@ -287,20 +295,13 @@ void StatisticsRecorder::GetBucketRanges(
 
 // static
 HistogramBase* StatisticsRecorder::FindHistogram(base::StringPiece name) {
-  if (lock_ == NULL)
-    return NULL;
-
-  // Import histograms from known persistent storage. Histograms could have
-  // been added by other processes and they must be fetched and recognized
-  // locally. If the persistent memory segment is not shared between processes,
-  // this call does nothing.
   // This must be called *before* the lock is acquired below because it will
   // call back into this object to register histograms. Those called methods
   // will acquire the lock at that time.
-  GlobalHistogramAllocator* allocator = GlobalHistogramAllocator::Get();
-  if (allocator)
-    allocator->ImportHistogramsToStatisticsRecorder();
+  ImportGlobalPersistentHistograms();
 
+  if (lock_ == NULL)
+    return NULL;
   base::AutoLock auto_lock(*lock_);
   if (histograms_ == NULL)
     return NULL;
@@ -314,12 +315,25 @@ HistogramBase* StatisticsRecorder::FindHistogram(base::StringPiece name) {
 // static
 StatisticsRecorder::HistogramIterator StatisticsRecorder::begin(
     bool include_persistent) {
-  return HistogramIterator(histograms_->begin(), include_persistent);
+  DCHECK(histograms_);
+  ImportGlobalPersistentHistograms();
+
+  HistogramMap::iterator iter_begin;
+  {
+    base::AutoLock auto_lock(*lock_);
+    iter_begin = histograms_->begin();
+  }
+  return HistogramIterator(iter_begin, include_persistent);
 }
 
 // static
 StatisticsRecorder::HistogramIterator StatisticsRecorder::end() {
-  return HistogramIterator(histograms_->end(), true);
+  HistogramMap::iterator iter_end;
+  {
+    base::AutoLock auto_lock(*lock_);
+    iter_end = histograms_->end();
+  }
+  return HistogramIterator(iter_end, true);
 }
 
 // static
@@ -421,6 +435,20 @@ void StatisticsRecorder::UninitializeForTesting() {
   // created so it's necessary to clear out an internal variable which
   // shouldn't be publicly visible but is for initialization reasons.
   g_statistics_recorder_.private_instance_ = 0;
+}
+
+// static
+void StatisticsRecorder::ImportGlobalPersistentHistograms() {
+  if (lock_ == NULL)
+    return;
+
+  // Import histograms from known persistent storage. Histograms could have
+  // been added by other processes and they must be fetched and recognized
+  // locally. If the persistent memory segment is not shared between processes,
+  // this call does nothing.
+  GlobalHistogramAllocator* allocator = GlobalHistogramAllocator::Get();
+  if (allocator)
+    allocator->ImportHistogramsToStatisticsRecorder();
 }
 
 // This singleton instance should be started during the single threaded portion

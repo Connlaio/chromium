@@ -8,10 +8,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <memory>
 #include <vector>
 
 #include "base/macros.h"
-#include "base/memory/scoped_ptr.h"
 #include "build/build_config.h"
 #include "content/browser/frame_host/render_widget_host_view_child_frame.h"
 #include "content/common/content_export.h"
@@ -23,6 +23,8 @@
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/vector2d_f.h"
 #include "ui/gfx/native_widget_types.h"
+
+struct ViewHostMsg_TextInputState_Params;
 
 namespace content {
 class BrowserPluginGuest;
@@ -76,6 +78,8 @@ class CONTENT_EXPORT RenderWidgetHostViewGuest
   void InitAsFullscreen(RenderWidgetHostView* reference_host_view) override;
   void UpdateCursor(const WebCursor& cursor) override;
   void SetIsLoading(bool is_loading) override;
+  void TextInputStateChanged(
+      const ViewHostMsg_TextInputState_Params& params) override;
   void ImeCancelComposition() override;
 #if defined(OS_MACOSX) || defined(USE_AURA)
   void ImeCompositionRangeChanged(
@@ -91,8 +95,9 @@ class CONTENT_EXPORT RenderWidgetHostViewGuest
                         const gfx::Range& range) override;
   void SelectionBoundsChanged(
       const ViewHostMsg_SelectionBounds_Params& params) override;
-  void OnSwapCompositorFrame(uint32_t output_surface_id,
-                             scoped_ptr<cc::CompositorFrame> frame) override;
+  void OnSwapCompositorFrame(
+      uint32_t output_surface_id,
+      std::unique_ptr<cc::CompositorFrame> frame) override;
 #if defined(USE_AURA)
   void ProcessAckedTouchEvent(const TouchEventWithLatencyInfo& touch,
                               InputEventAckState ack_result) override;

@@ -2,23 +2,26 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <algorithm>
+#include "content/common/gpu/media/vt_video_decode_accelerator_mac.h"
 
 #include <CoreVideo/CoreVideo.h>
 #include <OpenGL/CGLIOSurface.h>
 #include <OpenGL/gl.h>
 #include <stddef.h>
 
+#include <algorithm>
+#include <memory>
+
 #include "base/bind.h"
 #include "base/logging.h"
 #include "base/mac/mac_logging.h"
 #include "base/macros.h"
+#include "base/memory/ptr_util.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/sys_byteorder.h"
 #include "base/sys_info.h"
 #include "base/thread_task_runner_handle.h"
 #include "base/version.h"
-#include "content/common/gpu/media/vt_video_decode_accelerator_mac.h"
 #include "media/base/limits.h"
 #include "ui/gl/gl_context.h"
 #include "ui/gl/gl_image_io_surface.h"
@@ -124,7 +127,7 @@ static bool CreateVideoToolboxSession(const uint8_t* sps, size_t sps_size,
       format.InitializeInto());
   if (status) {
     OSSTATUS_DLOG(WARNING, status)
-        << "Failed to create CMVideoFormatDescription.";
+        << "Failed to create CMVideoFormatDescription";
     return false;
   }
 
@@ -161,7 +164,8 @@ static bool CreateVideoToolboxSession(const uint8_t* sps, size_t sps_size,
       &callback,            // output_callback
       session.InitializeInto());
   if (status) {
-    OSSTATUS_DLOG(WARNING, status) << "Failed to create VTDecompressionSession";
+    OSSTATUS_DLOG(WARNING, status)
+        << "Failed to create VTDecompressionSession";
     return false;
   }
 
@@ -183,8 +187,7 @@ static bool InitializeVideoToolboxInternal() {
     paths[kModuleVt].push_back(FILE_PATH_LITERAL(
         "/System/Library/Frameworks/VideoToolbox.framework/VideoToolbox"));
     if (!InitializeStubs(paths)) {
-      LOG(WARNING) << "Failed to initialize VideoToolbox framework. "
-                   << "Hardware accelerated video decoding will be disabled.";
+      DLOG(WARNING) << "Failed to initialize VideoToolbox framework";
       return false;
     }
   }
@@ -197,8 +200,7 @@ static bool InitializeVideoToolboxInternal() {
   const uint8_t pps_normal[] = {0x68, 0xe9, 0x7b, 0xcb};
   if (!CreateVideoToolboxSession(sps_normal, arraysize(sps_normal), pps_normal,
                                  arraysize(pps_normal), true)) {
-    LOG(WARNING) << "Failed to create hardware VideoToolbox session. "
-                 << "Hardware accelerated video decoding will be disabled.";
+    DLOG(WARNING) << "Failed to create hardware VideoToolbox session";
     return false;
   }
 
@@ -210,8 +212,7 @@ static bool InitializeVideoToolboxInternal() {
   const uint8_t pps_small[] = {0x68, 0xe9, 0x79, 0x72, 0xc0};
   if (!CreateVideoToolboxSession(sps_small, arraysize(sps_small), pps_small,
                                  arraysize(pps_small), false)) {
-    LOG(WARNING) << "Failed to create software VideoToolbox session. "
-                 << "Hardware accelerated video decoding will be disabled.";
+    DLOG(WARNING) << "Failed to create software VideoToolbox session";
     return false;
   }
 
@@ -299,6 +300,7 @@ VTVideoDecodeAccelerator::VTVideoDecodeAccelerator(
       last_sps_id_(-1),
       last_pps_id_(-1),
       config_changed_(false),
+      waiting_for_idr_(true),
       missing_idr_logged_(false),
       gpu_task_runner_(base::ThreadTaskRunnerHandle::Get()),
       decoder_thread_("VTDecoderThread"),
@@ -323,6 +325,11 @@ bool VTVideoDecodeAccelerator::Initialize(const Config& config,
 
   if (config.is_encrypted) {
     NOTREACHED() << "Encrypted streams are not supported for this VDA";
+    return false;
+  }
+
+  if (config.output_mode != Config::OutputMode::ALLOCATE) {
+    NOTREACHED() << "Only ALLOCATE OutputMode is supported by this VDA";
     return false;
   }
 
@@ -415,7 +422,7 @@ bool VTVideoDecodeAccelerator::ConfigureDecoder() {
           &kCFTypeDictionaryKeyCallBacks,
           &kCFTypeDictionaryValueCallBacks));
   if (!decoder_config.get()) {
-    DLOG(ERROR) << "Failed to create CFMutableDictionary.";
+    DLOG(ERROR) << "Failed to create CFMutableDictionary";
     NotifyError(PLATFORM_FAILURE, SFT_PLATFORM_ERROR);
     return false;
   }
@@ -429,7 +436,7 @@ bool VTVideoDecodeAccelerator::ConfigureDecoder() {
   base::ScopedCFTypeRef<CFMutableDictionaryRef> image_config(
       BuildImageConfig(coded_dimensions));
   if (!image_config.get()) {
-    DLOG(ERROR) << "Failed to create decoder image configuration.";
+    DLOG(ERROR) << "Failed to create decoder image configuration";
     NotifyError(PLATFORM_FAILURE, SFT_PLATFORM_ERROR);
     return false;
   }
@@ -556,6 +563,17 @@ void VTVideoDecodeAccelerator::DecodeTask(
       case media::H264NALU::kIDRSlice:
         // Compute the |pic_order_cnt| for the picture from the first slice.
         if (!has_slice) {
+          // Verify that we are not trying to decode a slice without an IDR.
+          if (waiting_for_idr_) {
+            if (nalu.nal_unit_type == media::H264NALU::kIDRSlice) {
+              waiting_for_idr_ = false;
+            } else {
+              // We can't compute anything yet, bail on this frame.
+              has_slice = true;
+              break;
+            }
+          }
+
           media::H264SliceHeader slice_hdr;
           result = parser_.ParseSliceHeader(nalu, &slice_hdr);
           if (result == media::H264Parser::kUnsupportedStream) {
@@ -644,7 +662,7 @@ void VTVideoDecodeAccelerator::DecodeTask(
   }
 
   // If no IDR has been seen yet, skip decoding.
-  if (has_slice && !session_ && config_changed_) {
+  if (has_slice && (!session_ || waiting_for_idr_) && config_changed_) {
     if (!missing_idr_logged_) {
       LOG(ERROR) << "Illegal attempt to decode without IDR. "
                  << "Discarding decode requests until next IDR.";
@@ -851,8 +869,8 @@ void VTVideoDecodeAccelerator::AssignPictureBuffers(
     DCHECK_LE(1u, picture.texture_ids().size());
     picture_info_map_.insert(std::make_pair(
         picture.id(),
-        make_scoped_ptr(new PictureInfo(picture.internal_texture_ids()[0],
-                                        picture.texture_ids()[0]))));
+        base::WrapUnique(new PictureInfo(picture.internal_texture_ids()[0],
+                                         picture.texture_ids()[0]))));
   }
 
   // Pictures are not marked as uncleared until after this method returns, and
@@ -866,7 +884,6 @@ void VTVideoDecodeAccelerator::ReusePictureBuffer(int32_t picture_id) {
   DCHECK(gpu_thread_checker_.CalledOnValidThread());
   DCHECK(picture_info_map_.count(picture_id));
   PictureInfo* picture_info = picture_info_map_.find(picture_id)->second.get();
-  DCHECK_EQ(CFGetRetainCount(picture_info->cv_image), 2);
   picture_info->cv_image.reset();
   picture_info->gl_image->Destroy(false);
   picture_info->gl_image = nullptr;
@@ -940,12 +957,7 @@ bool VTVideoDecodeAccelerator::ProcessTaskQueue() {
     case TASK_RESET:
       DCHECK_EQ(task.type, pending_flush_tasks_.front());
       if (reorder_queue_.size() == 0) {
-        last_sps_id_ = -1;
-        last_pps_id_ = -1;
-        last_sps_.clear();
-        last_spsext_.clear();
-        last_pps_.clear();
-        poc_.Reset();
+        waiting_for_idr_ = true;
         pending_flush_tasks_.pop();
         client_->NotifyResetDone();
         task_queue_.pop();
@@ -954,7 +966,7 @@ bool VTVideoDecodeAccelerator::ProcessTaskQueue() {
       return false;
 
     case TASK_DESTROY:
-      NOTREACHED() << "Can't destroy while in STATE_DECODING.";
+      NOTREACHED() << "Can't destroy while in STATE_DECODING";
       NotifyError(ILLEGAL_STATE, SFT_PLATFORM_ERROR);
       return false;
   }

@@ -282,7 +282,7 @@ void ImportFromFile(Profile* profile,
 
 // Imports settings from the first profile in |importer_list|.
 void ImportSettings(Profile* profile,
-                    scoped_ptr<ImporterList> importer_list,
+                    std::unique_ptr<ImporterList> importer_list,
                     int items_to_import) {
   const importer::SourceProfile& source_profile =
       importer_list->GetSourceProfileAt(0);
@@ -463,9 +463,9 @@ installer::MasterPreferences* LoadMasterPrefs() {
 // Makes chrome the user's default browser according to policy or
 // |make_chrome_default_for_user| if no policy is set.
 void ProcessDefaultBrowserPolicy(bool make_chrome_default_for_user) {
-  // Only proceed if chrome can be made default unattended. The interactive case
-  // (Windows 8+) is handled by the first run default browser prompt.
-  if (shell_integration::CanSetAsDefaultBrowser() ==
+  // Only proceed if chrome can be made default unattended. In other cases, this
+  // is handled by the first run default browser prompt (on Windows 8+).
+  if (shell_integration::GetDefaultWebClientSetPermission() ==
       shell_integration::SET_DEFAULT_UNATTENDED) {
     // The policy has precedence over the user's choice.
     if (g_browser_process->local_state()->IsManagedPreference(
@@ -724,7 +724,8 @@ ProcessMasterPreferencesResult ProcessMasterPreferences(
     MasterPrefs* out_prefs) {
   DCHECK(!user_data_dir.empty());
 
-  scoped_ptr<installer::MasterPreferences> install_prefs(LoadMasterPrefs());
+  std::unique_ptr<installer::MasterPreferences> install_prefs(
+      LoadMasterPrefs());
 
   // Default value in case master preferences is missing or corrupt, or
   // ping_delay is missing.
@@ -760,7 +761,7 @@ void AutoImport(
   // It may be possible to do the if block below asynchronously. In which case,
   // get rid of this RunLoop. http://crbug.com/366116.
   base::RunLoop run_loop;
-  scoped_ptr<ImporterList> importer_list(new ImporterList());
+  std::unique_ptr<ImporterList> importer_list(new ImporterList());
   importer_list->DetectSourceProfiles(
       g_browser_process->GetApplicationLocale(),
       false,  // include_interactive_profiles?

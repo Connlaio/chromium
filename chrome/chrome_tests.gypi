@@ -38,6 +38,11 @@
       '../extensions/renderer/console_apitest.cc',
       '../extensions/renderer/script_context_browsertest.cc'
     ],
+    'chrome_browser_tests_display_source_apitest': [
+      'browser/extensions/api/display_source/display_source_wifi_display_apitest.cc',
+      '../extensions/browser/api/display_source/display_source_apitestbase.h',
+      '../extensions/browser/api/display_source/display_source_apitestbase.cc',
+    ],
     'chrome_browser_tests_sources': [
       # The list of sources which is only used by chrome browser tests.
       '../apps/app_restore_service_browsertest.cc',
@@ -84,6 +89,7 @@
       'browser/chrome_browser_main_mac_browsertest.mm',
       'browser/chrome_content_browser_client_browsertest.cc',
       'browser/chrome_main_browsertest.cc',
+      'browser/chrome_navigation_browsertest.cc',
       'browser/chrome_plugin_browsertest.cc',
       'browser/chrome_security_exploit_browsertest.cc',
       'browser/chrome_service_worker_browsertest.cc',
@@ -208,6 +214,7 @@
       'browser/extensions/api/web_request/web_request_apitest.cc',
       'browser/extensions/api/webrtc_audio_private/webrtc_audio_private_browsertest.cc',
       'browser/extensions/api/webrtc_from_web_accessible_resource_browsertest.cc',
+      'browser/extensions/api/webrtc_logging_private/webrtc_event_log_apitest.cc',
       'browser/extensions/api/webrtc_logging_private/webrtc_logging_private_apitest.cc',
       'browser/extensions/api/webstore_private/webstore_private_apitest.cc',
       'browser/extensions/app_background_page_apitest.cc',
@@ -495,7 +502,7 @@
       'browser/ui/settings_window_manager_browsertest.cc',
       'browser/ui/startup/startup_browser_creator_browsertest.cc',
       'browser/ui/startup/startup_browser_creator_triggered_reset_browsertest_win.cc',
-      'browser/ui/sync/one_click_signin_bubble_links_delegate_browsertest.cc',
+      'browser/ui/sync/one_click_signin_links_delegate_impl_browsertest.cc',
       'browser/ui/sync/profile_signin_confirmation_helper_browsertest.cc',
       'browser/ui/tab_modal_confirm_dialog_browsertest.cc',
       'browser/ui/tab_modal_confirm_dialog_browsertest.h',
@@ -622,8 +629,6 @@
       'browser/ui/cocoa/find_bar/find_bar_browsertest.mm',
       'browser/ui/cocoa/location_bar/zoom_decoration_browsertest.mm',
       'browser/ui/cocoa/omnibox/omnibox_view_mac_browsertest.mm',
-      'browser/ui/cocoa/one_click_signin_bubble_controller_browsertest.mm',
-      'browser/ui/cocoa/one_click_signin_dialog_controller_browsertest.mm',
       'browser/ui/cocoa/passwords/passwords_bubble_browsertest.mm',
       'browser/ui/cocoa/profiles/profile_signin_confirmation_view_controller_browsertest.mm',
       'browser/ui/cocoa/renderer_context_menu/render_view_context_menu_mac_browsertest.mm',
@@ -631,6 +636,10 @@
       'browser/ui/cocoa/view_id_util_browsertest.mm',
       'browser/ui/cocoa/web_contents_modal_dialog_manager_views_mac_browsertest.mm',
       'browser/ui/cocoa/website_settings/permission_bubble_cocoa_browser_test.mm',
+    ],
+    'chrome_browser_app_list_ash_test_support_sources': [
+      'browser/ui/ash/app_list/test/app_list_service_ash_test_api.cc',
+      'browser/ui/ash/app_list/test/app_list_service_ash_test_api.h',
     ],
     'chrome_browser_tests_ash_sources': [
       'browser/ui/ash/accelerator_commands_browsertest.cc',
@@ -651,6 +660,7 @@
     'chrome_browser_tests_views_sources': [
       'browser/ui/global_error/global_error_service_browsertest.cc',
       'browser/ui/views/extensions/extension_uninstall_dialog_view_browsertest.cc',
+      'browser/ui/views/frame/browser_non_client_frame_view_browsertest_win.cc',
       'browser/ui/views/frame/browser_window_property_manager_browsertest_win.cc',
       'browser/ui/views/select_file_dialog_extension_browsertest.cc',
     ],
@@ -701,6 +711,7 @@
       'browser/chromeos/accessibility/speech_monitor.cc',
       'browser/chromeos/accessibility/speech_monitor.h',
       'browser/chromeos/accessibility/touch_exploration_controller_browsertest.cc',
+      'browser/chromeos/app_mode/kiosk_crash_restore_browsertest.cc',
       'browser/chromeos/app_mode/kiosk_app_manager_browsertest.cc',
       'browser/chromeos/app_mode/kiosk_app_update_service_browsertest.cc',
       'browser/chromeos/attestation/attestation_policy_browsertest.cc',
@@ -1003,10 +1014,8 @@
       'test/data/webui/print_preview.js',
       'test/data/webui/sandboxstatus_browsertest.js',
       'test/data/webui/settings/advanced_page_browsertest.js',
-      'test/data/webui/settings/appearance_browsertest.js',
       'test/data/webui/settings/basic_page_browsertest.js',
       'test/data/webui/settings/bluetooth_page_browsertest_chromeos.js',
-      'test/data/webui/settings/change_picture_browsertest_chromeos.js',
       'test/data/webui/settings/cr_settings_browsertest.js',
       'test/data/webui/settings/easy_unlock_browsertest_chromeos.js',
       'test/data/webui/settings/languages_page_browsertest.js',
@@ -1056,6 +1065,7 @@
       'browser/password_manager/password_manager_interactive_uitest.cc',
       'browser/renderer_context_menu/render_view_context_menu_browsertest_util.cc',
       'browser/renderer_context_menu/render_view_context_menu_browsertest_util.h',
+      'browser/site_per_process_interactive_browsertest.cc',
       'browser/task_manager/task_manager_browsertest_util.cc',
       'browser/ui/autofill/autofill_popup_controller_interactive_uitest.cc',
       'browser/ui/browser_focus_uitest.cc',
@@ -1329,6 +1339,8 @@
       'test/chromedriver/net/sync_websocket_factory.h',
       'test/chromedriver/net/sync_websocket_impl.cc',
       'test/chromedriver/net/sync_websocket_impl.h',
+      'test/chromedriver/net/timeout.cc',
+      'test/chromedriver/net/timeout.h',
       'test/chromedriver/net/url_request_context_getter.cc',
       'test/chromedriver/net/url_request_context_getter.h',
       'test/chromedriver/net/websocket.cc',
@@ -1431,6 +1443,7 @@
       'test/chromedriver/command_listener_proxy_unittest.cc',
       'test/chromedriver/commands_unittest.cc',
       'test/chromedriver/logging_unittest.cc',
+      'test/chromedriver/net/timeout_unittest.cc',
       'test/chromedriver/performance_logger_unittest.cc',
       'test/chromedriver/server/http_handler_unittest.cc',
       'test/chromedriver/session_commands_unittest.cc',
@@ -2280,6 +2293,11 @@
             }]
           ]
         }],
+        ['enable_wifi_display==1', {
+          'sources': [
+            '<@(chrome_browser_tests_display_source_apitest)',
+          ],
+        }],
         [ 'cld_version==2', {
           'dependencies': [
             # Because the browser_tests use translate, they need CLD data.
@@ -2287,7 +2305,7 @@
         }],
         ['enable_one_click_signin==0', {
           'sources!': [
-            'browser/ui/sync/one_click_signin_bubble_links_delegate_browsertest.cc',
+            'browser/ui/sync/one_click_signin_links_delegate_impl_browsertest.cc',
           ]
         }],
         ['enable_autofill_dialog==0', {
@@ -2381,6 +2399,16 @@
           'dependencies': [
             '../ash/ash.gyp:ash_test_support',
           ],
+          'conditions': [
+            ['enable_app_list==1', {
+              'sources': [
+                '<@(chrome_browser_app_list_ash_test_support_sources)'
+              ],
+              'dependencies': [
+                '../ui/app_list/presenter/app_list_presenter.gyp:app_list_presenter_test_support',
+              ],
+            }],
+          ],
         }],
         ['use_aura==1 or toolkit_views==1', {
           'dependencies': [
@@ -2429,7 +2457,6 @@
             'test/data/webui/certificate_viewer_dialog_test.js',
             'test/data/webui/certificate_viewer_ui_test-inl.h',
             'test/data/webui/settings/bluetooth_page_browsertest_chromeos.js',
-            'test/data/webui/settings/change_picture_browsertest_chromeos.js',
             'test/data/webui/settings/easy_unlock_browsertest_chromeos.js',
           ],
           'conditions': [
@@ -2456,6 +2483,7 @@
         ['enable_webrtc==0', {
           'sources!': [
             'browser/extensions/api/webrtc_audio_private/webrtc_audio_private_browsertest.cc',
+            'browser/extensions/api/webrtc_logging_private/webrtc_event_log_apitest.cc',
             'browser/extensions/api/webrtc_logging_private/webrtc_logging_private_apitest.cc',
             'browser/media/webrtc_apprtc_browsertest.cc',
             'browser/media/webrtc_audio_quality_browsertest.cc',
@@ -2609,6 +2637,9 @@
         }],
         ['toolkit_views==1 and OS!="mac" and chromeos == 0', {
           'sources': [ '<@(chrome_browser_tests_views_non_cros_or_mac_sources)' ],
+        }],
+        ['OS=="linux" or OS=="win"', {
+          'sources': [ '<@(chrome_browser_tests_non_mac_desktop_sources)' ],
         }],
         ['OS=="ios"', {
           'sources!': [
@@ -3157,6 +3188,8 @@
           'target_name': 'chrome_junit_tests',
           'type': 'none',
           'dependencies': [
+            # Allow unit-testing Chrome UI components
+            'android/chrome_apk.gyp:chrome_public_apk_java',
             'chrome_java',
             '../base/base.gyp:base',
             '../base/base.gyp:base_java_test_support',
@@ -3262,13 +3295,11 @@
             }],
             ['OS=="mac" or OS=="win"', {
               'dependencies': [
-                # TODO(kbr): port this dependency to GN.
                 '../third_party/crashpad/crashpad/tools/tools.gyp:crashpad_database_util',
               ],
             }],
             ['OS=="win"', {
               'dependencies': [
-                # TODO(kbr): port this dependency to GN.
                 'copy_cdb_to_output',
               ],
             }],
@@ -3431,7 +3462,6 @@
         ['OS=="win"', {
           'targets': [
             {
-              # TODO(kbr): port this target to GN.
               'target_name': 'copy_cdb_to_output',
               'type': 'none',
               'actions': [

@@ -5,12 +5,12 @@
 #include "net/http/http_server_properties_impl.h"
 
 #include <algorithm>
+#include <memory>
 #include <utility>
 
 #include "base/bind.h"
 #include "base/location.h"
 #include "base/logging.h"
-#include "base/memory/scoped_ptr.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/single_thread_task_runner.h"
 #include "base/stl_util.h"
@@ -35,6 +35,7 @@ HttpServerPropertiesImpl::HttpServerPropertiesImpl()
       quic_server_info_map_(QuicServerInfoMap::NO_AUTO_EVICT),
       max_server_configs_stored_in_properties_(kMaxQuicServersToPersist),
       weak_ptr_factory_(this) {
+  canonical_suffixes_.push_back(".ggpht.com");
   canonical_suffixes_.push_back(".c.youtube.com");
   canonical_suffixes_.push_back(".googlevideo.com");
   canonical_suffixes_.push_back(".googleusercontent.com");
@@ -521,12 +522,12 @@ const AlternativeServiceMap& HttpServerPropertiesImpl::alternative_service_map()
   return alternative_service_map_;
 }
 
-scoped_ptr<base::Value>
-HttpServerPropertiesImpl::GetAlternativeServiceInfoAsValue()
-    const {
-  scoped_ptr<base::ListValue> dict_list(new base::ListValue);
+std::unique_ptr<base::Value>
+HttpServerPropertiesImpl::GetAlternativeServiceInfoAsValue() const {
+  std::unique_ptr<base::ListValue> dict_list(new base::ListValue);
   for (const auto& alternative_service_map_item : alternative_service_map_) {
-    scoped_ptr<base::ListValue> alternative_service_list(new base::ListValue);
+    std::unique_ptr<base::ListValue> alternative_service_list(
+        new base::ListValue);
     const HostPortPair& host_port_pair = alternative_service_map_item.first;
     for (const AlternativeServiceInfo& alternative_service_info :
          alternative_service_map_item.second) {
@@ -545,10 +546,10 @@ HttpServerPropertiesImpl::GetAlternativeServiceInfoAsValue()
     }
     if (alternative_service_list->empty())
       continue;
-    scoped_ptr<base::DictionaryValue> dict(new base::DictionaryValue());
+    std::unique_ptr<base::DictionaryValue> dict(new base::DictionaryValue());
     dict->SetString("host_port_pair", host_port_pair.ToString());
-    dict->Set("alternative_service",
-              scoped_ptr<base::Value>(std::move(alternative_service_list)));
+    dict->Set("alternative_service", std::unique_ptr<base::Value>(
+                                         std::move(alternative_service_list)));
     dict_list->Append(std::move(dict));
   }
   return std::move(dict_list);

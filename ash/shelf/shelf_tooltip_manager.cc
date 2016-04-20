@@ -21,6 +21,7 @@
 #include "ui/views/controls/label.h"
 #include "ui/views/layout/fill_layout.h"
 #include "ui/views/widget/widget.h"
+#include "ui/wm/core/window_animations.h"
 
 namespace ash {
 namespace {
@@ -137,7 +138,8 @@ void ShelfTooltipManager::ShowTooltip(views::View* view) {
   if (bubble_) {
     // Cancel the hiding animation to hide the old bubble immediately.
     gfx::NativeView native_view = bubble_->GetWidget()->GetNativeView();
-    wm::SetWindowVisibilityAnimationTransition(native_view, wm::ANIMATE_NONE);
+    ::wm::SetWindowVisibilityAnimationTransition(native_view,
+                                                 ::wm::ANIMATE_NONE);
     Close();
   }
 
@@ -152,9 +154,9 @@ void ShelfTooltipManager::ShowTooltip(views::View* view) {
   base::string16 text = shelf_view_->GetTitleForView(view);
   bubble_ = new ShelfTooltipBubble(view, arrow, text);
   gfx::NativeView native_view = bubble_->GetWidget()->GetNativeView();
-  wm::SetWindowVisibilityAnimationType(
-      native_view, wm::WINDOW_VISIBILITY_ANIMATION_TYPE_VERTICAL);
-  wm::SetWindowVisibilityAnimationTransition(native_view, wm::ANIMATE_HIDE);
+  ::wm::SetWindowVisibilityAnimationType(
+      native_view, ::wm::WINDOW_VISIBILITY_ANIMATION_TYPE_VERTICAL);
+  ::wm::SetWindowVisibilityAnimationTransition(native_view, ::wm::ANIMATE_HIDE);
   bubble_->GetWidget()->Show();
 }
 

@@ -513,6 +513,7 @@ public class NewTabPage
             mIsLoaded = true;
             mIsVisible = true;
             StartupMetrics.getInstance().recordOpenedNTP();
+            NewTabPageUma.recordNTPImpression(NewTabPageUma.NTP_IMPRESSION_REGULAR);
 
             if (mIsDestroyed) return;
 
@@ -533,14 +534,20 @@ public class NewTabPage
                     }
                 }
             }
-
             SyncSessionsMetrics.recordYoungestForeignTabAgeOnNTP();
         }
 
         @Override
         public void onSnippetDismissed(SnippetArticle dismissedSnippet) {
             if (mIsDestroyed) return;
+            NewTabPageUma.recordSnippetAction(NewTabPageUma.SNIPPETS_ACTION_DISMISSED);
             mSnippetsBridge.discardSnippet(dismissedSnippet);
+        }
+
+        @Override
+        public void addTabObserver(TabObserver tabObserver) {
+            if (mIsDestroyed) return;
+            mTab.addObserver(tabObserver);
         }
     };
 

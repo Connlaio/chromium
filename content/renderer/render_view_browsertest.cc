@@ -27,7 +27,6 @@
 #include "content/common/frame_replication_state.h"
 #include "content/common/site_isolation_policy.h"
 #include "content/common/ssl_status_serialization.h"
-#include "content/common/text_input_state.h"
 #include "content/common/view_messages.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/native_web_keyboard_event.h"
@@ -373,7 +372,7 @@ class RenderViewImplTest : public RenderViewTest {
   }
 
  private:
-  scoped_ptr<MockKeyboard> mock_keyboard_;
+  std::unique_ptr<MockKeyboard> mock_keyboard_;
 };
 
 class DevToolsAgentTest : public RenderViewImplTest {
@@ -406,8 +405,9 @@ class DevToolsAgentTest : public RenderViewImplTest {
 
   void OnDevToolsMessage(
       int, int, const std::string& message, const std::string&) {
-    scoped_ptr<base::DictionaryValue> root(static_cast<base::DictionaryValue*>(
-        base::JSONReader::Read(message).release()));
+    std::unique_ptr<base::DictionaryValue> root(
+        static_cast<base::DictionaryValue*>(
+            base::JSONReader::Read(message).release()));
     int id;
     if (!root->GetInteger("id", &id)) {
       std::string notification;
@@ -617,11 +617,11 @@ TEST_F(RenderViewImplTest, OnNavigationHttpPost) {
   FrameHostMsg_DidCommitProvisionalLoad::Param host_nav_params;
   FrameHostMsg_DidCommitProvisionalLoad::Read(frame_navigate_msg,
                                               &host_nav_params);
-  EXPECT_TRUE(base::get<0>(host_nav_params).is_post);
+  EXPECT_EQ("POST", base::get<0>(host_nav_params).method);
 
   // Check post data sent to browser matches
   EXPECT_TRUE(base::get<0>(host_nav_params).page_state.IsValid());
-  scoped_ptr<HistoryEntry> entry =
+  std::unique_ptr<HistoryEntry> entry =
       PageStateToHistoryEntry(base::get<0>(host_nav_params).page_state);
   blink::WebHTTPBody body = entry->root().httpBody();
   blink::WebHTTPBody::Element element;
@@ -1124,7 +1124,7 @@ TEST_F(RenderViewImplTest, OnImeTypeChanged) {
     EXPECT_EQ(ViewHostMsg_TextInputStateChanged::ID, msg->type());
     ViewHostMsg_TextInputStateChanged::Param params;
     ViewHostMsg_TextInputStateChanged::Read(msg, &params);
-    TextInputState p = base::get<0>(params);
+    ViewHostMsg_TextInputState_Params p = base::get<0>(params);
     ui::TextInputType type = p.type;
     ui::TextInputMode input_mode = p.mode;
     bool can_compose_inline = p.can_compose_inline;

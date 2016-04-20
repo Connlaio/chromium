@@ -24,33 +24,72 @@ namespace arc {
 
 namespace {
 
+const char* kArcGlobalAppRestrictions = "globalAppRestrictions";
+
 // invert_bool_value: If the Chrome policy and the ARC policy with boolean value
 // have opposite semantics, set this to true so the bool is inverted before
 // being added. Otherwise, set it to false.
-void AddPolicy(const std::string arc_policy_name,
-               const std::string policy_name,
-               const policy::PolicyMap& policy_map,
-               bool invert_bool_value,
-               base::DictionaryValue& filtered_policies) {
+void MapBoolToBool(const std::string& arc_policy_name,
+                   const std::string& policy_name,
+                   const policy::PolicyMap& policy_map,
+                   bool invert_bool_value,
+                   base::DictionaryValue* filtered_policies) {
+  const base::Value* const policy_value = policy_map.GetValue(policy_name);
+  if (!policy_value)
+    return;
+  if (!policy_value->IsType(base::Value::TYPE_BOOLEAN)) {
+    LOG(ERROR) << "Policy " << policy_name << " is not a boolean.";
+    return;
+  }
+  bool bool_value;
+  policy_value->GetAsBoolean(&bool_value);
+  filtered_policies->SetBoolean(arc_policy_name,
+                                bool_value != invert_bool_value);
+}
+
+// int_true: value of Chrome OS policy for which arc policy is set to true.
+// It is set to false for all other values.
+void MapIntToBool(const std::string& arc_policy_name,
+                  const std::string& policy_name,
+                  const policy::PolicyMap& policy_map,
+                  int int_true,
+                  base::DictionaryValue* filtered_policies) {
+  const base::Value* const policy_value = policy_map.GetValue(policy_name);
+  if (!policy_value)
+    return;
+  if (!policy_value->IsType(base::Value::TYPE_INTEGER)) {
+    LOG(ERROR) << "Policy " << policy_name << " is not an integer.";
+    return;
+  }
+  int int_value;
+  policy_value->GetAsInteger(&int_value);
+  filtered_policies->SetBoolean(arc_policy_name, int_value == int_true);
+}
+
+void AddGlobalAppRestriction(const std::string& arc_app_restriction_name,
+                             const std::string& policy_name,
+                             const policy::PolicyMap& policy_map,
+                             base::DictionaryValue* filtered_policies) {
   const base::Value* const policy_value = policy_map.GetValue(policy_name);
   if (policy_value) {
-    if (invert_bool_value && policy_value->IsType(base::Value::TYPE_BOOLEAN)) {
-      bool bool_value;
-      policy_value->GetAsBoolean(&bool_value);
-      filtered_policies.SetBoolean(arc_policy_name, !bool_value);
-    } else {
-      filtered_policies.Set(arc_policy_name,
-                            policy_value->CreateDeepCopy().release());
+    base::DictionaryValue* global_app_restrictions = nullptr;
+    if (!filtered_policies->GetDictionary(kArcGlobalAppRestrictions,
+                                          &global_app_restrictions)) {
+      global_app_restrictions = new base::DictionaryValue();
+      filtered_policies->Set(kArcGlobalAppRestrictions,
+                             global_app_restrictions);
     }
+    global_app_restrictions->SetWithoutPathExpansion(
+        arc_app_restriction_name, policy_value->CreateDeepCopy());
   }
 }
 
 std::string GetFilteredJSONPolicies(const policy::PolicyMap& policy_map) {
   base::DictionaryValue filtered_policies;
-  // Parse ArcApplicationPolicy as JSON string before adding other policies to
-  // the dictionary.
+  // Parse ArcPolicy as JSON string before adding other policies to the
+  // dictionary.
   const base::Value* const app_policy_value =
-      policy_map.GetValue(policy::key::kArcApplicationPolicy);
+      policy_map.GetValue(policy::key::kArcPolicy);
   if (app_policy_value) {
     std::string app_policy_string;
     app_policy_value->GetAsString(&app_policy_string);
@@ -62,14 +101,28 @@ std::string GetFilteredJSONPolicies(const policy::PolicyMap& policy_map) {
       // JSONStringValues which are based on StringPiece instead of string.
       filtered_policies.MergeDictionary(app_policy_dict.get());
     } else {
-      LOG(ERROR) << "Value of ArcApplicationPolicy has invalid format: "
+      LOG(ERROR) << "Value of ArcPolicy has invalid format: "
                  << app_policy_string;
     }
   }
 
   // Keep them sorted by the ARC policy names.
-  AddPolicy("cameraDisabled", policy::key::kVideoCaptureAllowed, policy_map,
-            true, filtered_policies);
+  MapBoolToBool("cameraDisabled", policy::key::kVideoCaptureAllowed, policy_map,
+                true, &filtered_policies);
+  MapBoolToBool("screenCaptureDisabled", policy::key::kDisableScreenshots,
+                policy_map, false, &filtered_policies);
+  MapIntToBool("shareLocationDisabled", policy::key::kDefaultGeolocationSetting,
+               policy_map, 2 /*BlockGeolocation*/, &filtered_policies);
+  MapBoolToBool("unmuteMicrophoneDisabled", policy::key::kAudioCaptureAllowed,
+                policy_map, true, &filtered_policies);
+
+  // Add global app restrictions.
+  AddGlobalAppRestriction("com.android.browser:URLBlacklist",
+                          policy::key::kURLBlacklist, policy_map,
+                          &filtered_policies);
+  AddGlobalAppRestriction("com.android.browser:URLWhitelist",
+                          policy::key::kURLWhitelist, policy_map,
+                          &filtered_policies);
 
   std::string policy_json;
   JSONStringValueSerializer serializer(&policy_json);
@@ -106,7 +159,7 @@ void ArcPolicyBridge::OnPolicyInstanceReady() {
   }
   policy_service_->AddObserver(policy::POLICY_DOMAIN_CHROME, this);
 
-  PolicyInstance* const policy_instance =
+  mojom::PolicyInstance* const policy_instance =
       arc_bridge_service()->policy_instance();
   if (!policy_instance) {
     LOG(ERROR) << "OnPolicyInstanceReady called, but no policy instance found";

@@ -5,20 +5,20 @@
 #include "chrome/browser/chromeos/chrome_interface_factory.h"
 
 #include "chrome/browser/ui/ash/keyboard_ui_service.h"
-#include "mojo/shell/public/cpp/connection.h"
+#include "services/shell/public/cpp/connection.h"
 
 namespace chromeos {
 
 ChromeInterfaceFactory::ChromeInterfaceFactory() {}
 ChromeInterfaceFactory::~ChromeInterfaceFactory() {}
 
-bool ChromeInterfaceFactory::AcceptConnection(mojo::Connection* connection) {
+bool ChromeInterfaceFactory::AcceptConnection(shell::Connection* connection) {
   connection->AddInterface(this);
   return true;
 }
 
 void ChromeInterfaceFactory::Create(
-    mojo::Connection* connection,
+    shell::Connection* connection,
     mojo::InterfaceRequest<keyboard::mojom::Keyboard> request) {
   if (!keyboard_ui_service_)
     keyboard_ui_service_.reset(new KeyboardUIService);

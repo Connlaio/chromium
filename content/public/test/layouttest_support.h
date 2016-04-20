@@ -7,6 +7,7 @@
 
 #include <stddef.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -74,7 +75,7 @@ void FetchManifest(blink::WebView* view, const GURL& url,
                    const FetchManifestCallback&);
 
 // Sets gamepad provider to be used for layout tests.
-void SetMockGamepadProvider(scoped_ptr<RendererGamepadProvider> provider);
+void SetMockGamepadProvider(std::unique_ptr<RendererGamepadProvider> provider);
 
 // Sets a double that should be used when registering
 // a listener through BlinkPlatformImpl::setDeviceLightListener().
@@ -141,6 +142,9 @@ void DisableAutoResizeMode(RenderView* render_view,
 // Provides a text dump of the contents of the given page state.
 std::string DumpBackForwardList(std::vector<PageState>& page_state,
                                 size_t current_index);
+
+// Run all pending idle tasks immediately, and then invoke callback.
+void SchedulerRunIdleTasks(const base::Closure& callback);
 
 }  // namespace content
 

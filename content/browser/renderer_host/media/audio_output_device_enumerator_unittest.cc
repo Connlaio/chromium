@@ -2,18 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "content/browser/renderer_host/media/audio_output_device_enumerator.h"
+
+#include <memory>
 #include <string>
 
 #include "base/bind.h"
 #include "base/location.h"
 #include "base/macros.h"
 #include "base/memory/ref_counted.h"
-#include "base/memory/scoped_ptr.h"
 #include "base/run_loop.h"
-#include "base/single_thread_task_runner.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/thread_task_runner_handle.h"
-#include "content/browser/renderer_host/media/audio_output_device_enumerator.h"
 #include "content/public/test/test_browser_thread_bundle.h"
 #include "media/audio/audio_manager_base.h"
 #include "media/audio/fake_audio_log_factory.h"
@@ -30,7 +30,10 @@ namespace {
 class MockAudioManager : public media::FakeAudioManager {
  public:
   MockAudioManager(size_t num_devices)
-      : FakeAudioManager(&fake_audio_log_factory_), num_devices_(num_devices) {}
+      : FakeAudioManager(base::ThreadTaskRunnerHandle::Get(),
+                         base::ThreadTaskRunnerHandle::Get(),
+                         &fake_audio_log_factory_),
+        num_devices_(num_devices) {}
   MockAudioManager() : MockAudioManager(0) {}
   ~MockAudioManager() override {}
 
@@ -80,9 +83,7 @@ class OnlyDefaultDeviceAudioManager : public MockAudioManager {
 
 class AudioOutputDeviceEnumeratorTest : public ::testing::Test {
  public:
-  AudioOutputDeviceEnumeratorTest()
-      : thread_bundle_(), task_runner_(base::ThreadTaskRunnerHandle::Get()) {}
-
+  AudioOutputDeviceEnumeratorTest() {}
   ~AudioOutputDeviceEnumeratorTest() override {}
 
   MOCK_METHOD1(MockCallback, void(const AudioOutputDeviceEnumeration&));
@@ -109,18 +110,19 @@ class AudioOutputDeviceEnumeratorTest : public ::testing::Test {
                               const AudioOutputDeviceEnumeration& result) {
     EXPECT_EQ(actual_devices_expected, result.has_actual_devices);
     EXPECT_EQ(num_entries_expected, result.devices.size());
-    task_runner_->PostTask(FROM_HERE, run_loop_.QuitClosure());
+    base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                                  run_loop_.QuitClosure());
   }
 
   void QuitCallback(const AudioOutputDeviceEnumeration& result) {
     MockCallback(result);
-    task_runner_->PostTask(FROM_HERE, run_loop_.QuitClosure());
+    base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                                  run_loop_.QuitClosure());
   }
 
  protected:
-  scoped_ptr<MockAudioManager> audio_manager_;
   TestBrowserThreadBundle thread_bundle_;
-  scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
+  std::unique_ptr<MockAudioManager, media::AudioManagerDeleter> audio_manager_;
   base::RunLoop run_loop_;
 
  private:

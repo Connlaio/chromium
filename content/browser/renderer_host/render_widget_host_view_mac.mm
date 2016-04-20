@@ -72,6 +72,7 @@
 #include "third_party/WebKit/public/web/WebInputEvent.h"
 #import "ui/base/clipboard/clipboard_util_mac.h"
 #include "ui/base/cocoa/animation_utils.h"
+#import "ui/base/cocoa/appkit_utils.h"
 #include "ui/base/cocoa/cocoa_base_utils.h"
 #import "ui/base/cocoa/fullscreen_window_manager.h"
 #import "ui/base/cocoa/underlay_opengl_hosting_window.h"
@@ -446,11 +447,11 @@ bool RenderWidgetHostViewMac::DelegatedFrameCanCreateResizeLock() const {
   return false;
 }
 
-scoped_ptr<ResizeLock>
+std::unique_ptr<ResizeLock>
 RenderWidgetHostViewMac::DelegatedFrameHostCreateResizeLock(
     bool defer_compositor_lock) {
   NOTREACHED();
-  return scoped_ptr<ResizeLock>();
+  return std::unique_ptr<ResizeLock>();
 }
 
 void RenderWidgetHostViewMac::DelegatedFrameHostResizeLockWasReleased() {
@@ -479,6 +480,44 @@ void RenderWidgetHostViewMac::DelegatedFrameHostUpdateVSyncParameters(
     const base::TimeTicks& timebase,
     const base::TimeDelta& interval) {
   render_widget_host_->UpdateVSyncParameters(timebase, interval);
+}
+
+void RenderWidgetHostViewMac::SetBeginFrameSource(
+    cc::BeginFrameSource* source) {
+  if (begin_frame_source_ && needs_begin_frames_)
+    begin_frame_source_->RemoveObserver(this);
+  begin_frame_source_ = source;
+  if (begin_frame_source_ && needs_begin_frames_)
+    begin_frame_source_->AddObserver(this);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// cc::BeginFrameSourceBase, public:
+
+void RenderWidgetHostViewMac::OnSetNeedsBeginFrames(bool needs_begin_frames) {
+  if (needs_begin_frames_ == needs_begin_frames)
+    return;
+
+  needs_begin_frames_ = needs_begin_frames;
+  if (begin_frame_source_) {
+    if (needs_begin_frames_)
+      begin_frame_source_->AddObserver(this);
+    else
+      begin_frame_source_->RemoveObserver(this);
+  }
+}
+
+bool RenderWidgetHostViewMac::OnBeginFrameDerivedImpl(
+    const cc::BeginFrameArgs& args) {
+  delegated_frame_host_->SetVSyncParameters(args.frame_time, args.interval);
+  render_widget_host_->Send(
+      new ViewMsg_BeginFrame(render_widget_host_->GetRoutingID(), args));
+  return true;
+}
+
+void RenderWidgetHostViewMac::OnBeginFrameSourcePausedChanged(
+    bool paused) {
+  // Nothing to do here.
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -526,7 +565,9 @@ RenderWidgetHostViewMac::RenderWidgetHostViewMac(RenderWidgetHost* widget,
       allow_pause_for_resize_or_repaint_(true),
       is_guest_view_hack_(is_guest_view_hack),
       wheel_gestures_enabled_(UseGestureBasedWheelScrolling()),
-      fullscreen_parent_host_view_(NULL),
+      fullscreen_parent_host_view_(nullptr),
+      begin_frame_source_(nullptr),
+      needs_begin_frames_(false),
       weak_factory_(this) {
   // |cocoa_view_| owns us and we will be deleted when |cocoa_view_|
   // goes away.  Since we autorelease it, our caller must put
@@ -686,6 +727,8 @@ bool RenderWidgetHostViewMac::OnMessageReceived(const IPC::Message& message) {
   IPC_BEGIN_MESSAGE_MAP(RenderWidgetHostViewMac, message)
     IPC_MESSAGE_HANDLER(ViewMsg_GetRenderedTextCompleted,
         OnGetRenderedTextCompleted)
+    IPC_MESSAGE_HANDLER(ViewHostMsg_SetNeedsBeginFrames,
+                        OnSetNeedsBeginFrames)
     IPC_MESSAGE_UNHANDLED(handled = false)
   IPC_END_MESSAGE_MAP()
   return handled;
@@ -1010,23 +1053,23 @@ void RenderWidgetHostViewMac::SetIsLoading(bool is_loading) {
   // like Chrome does on Windows, call |UpdateCursor()| here.
 }
 
-void RenderWidgetHostViewMac::UpdateInputMethodIfNecessary(
-    bool text_input_state_changed) {
-  if (!text_input_state_changed)
-    return;
+void RenderWidgetHostViewMac::TextInputStateChanged(
+const ViewHostMsg_TextInputState_Params& params) {
+  if (text_input_type_ != params.type
+      || can_compose_inline_ != params.can_compose_inline) {
+    text_input_type_ = params.type;
+    can_compose_inline_ = params.can_compose_inline;
+    if (HasFocus()) {
+      SetTextInputActive(true);
 
-  if (HasFocus()) {
-    SetTextInputActive(true);
-
-    // Let AppKit cache the new input context to make IMEs happy.
-    // See http://crbug.com/73039.
-    [NSApp updateWindows];
+      // Let AppKit cache the new input context to make IMEs happy.
+      // See http://crbug.com/73039.
+      [NSApp updateWindows];
 
 #ifndef __LP64__
-    UseInputWindow(TSMGetActiveDocument(), !render_widget_host_->delegate()
-                                                ->GetTextInputState()
-                                                ->can_compose_inline);
+      UseInputWindow(TSMGetActiveDocument(), !can_compose_inline_);
 #endif
+    }
   }
 }
 
@@ -1082,10 +1125,6 @@ void RenderWidgetHostViewMac::Destroy() {
   // Make sure none of our observers send events for us to process after
   // we release render_widget_host_.
   NotifyObserversAboutShutdown();
-
-  // The WebContentsImpl should be notified about us so that it will not hold
-  // an invalid text input state which was due to active text on this view.
-  NotifyHostDelegateAboutShutdown();
 
   // We get this call just before |render_widget_host_| deletes
   // itself.  But we are owned by |cocoa_view_|, which may be retained
@@ -1242,7 +1281,7 @@ bool RenderWidgetHostViewMac::CanCopyToVideoFrame() const {
 }
 
 void RenderWidgetHostViewMac::BeginFrameSubscription(
-    scoped_ptr<RenderWidgetHostViewFrameSubscriber> subscriber) {
+    std::unique_ptr<RenderWidgetHostViewFrameSubscriber> subscriber) {
   DCHECK(delegated_frame_host_);
   delegated_frame_host_->BeginFrameSubscription(std::move(subscriber));
 }
@@ -1423,7 +1462,7 @@ bool RenderWidgetHostViewMac::HasAcceleratedSurface(
 
 void RenderWidgetHostViewMac::OnSwapCompositorFrame(
     uint32_t output_surface_id,
-    scoped_ptr<cc::CompositorFrame> frame) {
+    std::unique_ptr<cc::CompositorFrame> frame) {
   TRACE_EVENT0("browser", "RenderWidgetHostViewMac::OnSwapCompositorFrame");
 
   last_scroll_offset_ = frame->metadata.root_scroll_offset;
@@ -1553,11 +1592,11 @@ void RenderWidgetHostViewMac::GestureEventAck(
   }
 }
 
-scoped_ptr<SyntheticGestureTarget>
+std::unique_ptr<SyntheticGestureTarget>
 RenderWidgetHostViewMac::CreateSyntheticGestureTarget() {
   RenderWidgetHostImpl* host =
       RenderWidgetHostImpl::From(GetRenderWidgetHost());
-  return scoped_ptr<SyntheticGestureTarget>(
+  return std::unique_ptr<SyntheticGestureTarget>(
       new SyntheticGestureTargetMac(host, cocoa_view_));
 }
 
@@ -2307,7 +2346,8 @@ void RenderWidgetHostViewMac::OnDisplayMetricsChanged(
 }
 
 - (void)forceTouchEvent:(NSEvent*)theEvent {
-  [self quickLookWithEvent:theEvent];
+  if (ui::ForceClickInvokesQuickLook())
+    [self quickLookWithEvent:theEvent];
 }
 
 - (void)shortCircuitScrollWheelEvent:(NSEvent*)event {

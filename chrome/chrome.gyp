@@ -32,6 +32,7 @@
         ],
         'chromium_child_dependencies': [
           'child',
+          'gpu',
           'renderer',
           'utility',
           '../content/content.gyp:content_gpu',
@@ -112,6 +113,7 @@
         'chrome_debugger.gypi',
         'chrome_dll.gypi',
         'chrome_exe.gypi',
+        'chrome_gpu.gypi',
         'chrome_installer.gypi',
         'chrome_renderer.gypi',
         'chrome_tests.gypi',
@@ -228,6 +230,7 @@
               # never placed into the helper.
               'postbuild_name': 'Tweak Info.plist',
               'action': ['<(tweak_info_plist_path)',
+                         '--plist=${TARGET_BUILD_DIR}/${INFOPLIST_PATH}',
                          '--breakpad=0',
                          '--keystone=0',
                          '--scm=0'],
@@ -568,6 +571,7 @@
             '../components/components.gyp:dom_distiller_core_java',
             '../components/components.gyp:gcm_driver_java',
             '../components/components.gyp:infobar_delegate_java',
+            '../components/components.gyp:instance_id_driver_java',
             '../components/components.gyp:invalidation_java',
             '../components/components.gyp:investigated_scenario_java',
             '../components/components.gyp:navigation_interception_java',

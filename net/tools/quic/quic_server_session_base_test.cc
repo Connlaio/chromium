@@ -150,8 +150,8 @@ class QuicServerSessionBaseTest : public ::testing::TestWithParam<QuicVersion> {
   QuicConfig config_;
   QuicCryptoServerConfig crypto_config_;
   QuicCompressedCertsCache compressed_certs_cache_;
-  scoped_ptr<TestServerSession> session_;
-  scoped_ptr<CryptoHandshakeMessage> handshake_message_;
+  std::unique_ptr<TestServerSession> session_;
+  std::unique_ptr<CryptoHandshakeMessage> handshake_message_;
   QuicConnectionVisitorInterface* visitor_;
 };
 
@@ -174,6 +174,16 @@ MATCHER_P(EqualsProto, network_params, "") {
 INSTANTIATE_TEST_CASE_P(Tests,
                         QuicServerSessionBaseTest,
                         ::testing::ValuesIn(QuicSupportedVersions()));
+
+TEST_P(QuicServerSessionBaseTest, ServerPushDisabledByDefault) {
+  // Without the client explicitly sending kSPSH, server push will be disabled
+  // at the server.
+  EXPECT_FALSE(
+      session_->config()->HasReceivedConnectionOptions() &&
+      ContainsQuicTag(session_->config()->ReceivedConnectionOptions(), kSPSH));
+  session_->OnConfigNegotiated();
+  EXPECT_FALSE(session_->server_push_enabled());
+}
 
 TEST_P(QuicServerSessionBaseTest, CloseStreamDueToReset) {
   // Open a stream, then reset it.
@@ -322,6 +332,15 @@ TEST_P(QuicServerSessionBaseTest, MaxAvailableStreams) {
   // violates the quota.
   EXPECT_FALSE(QuicServerSessionBasePeer::GetOrCreateDynamicStream(
       session_.get(), kLimitingStreamId + 4));
+}
+
+TEST_P(QuicServerSessionBaseTest, EnableServerPushThroughConnectionOption) {
+  // Assume server received server push connection option.
+  QuicTagVector copt;
+  copt.push_back(kSPSH);
+  QuicConfigPeer::SetReceivedConnectionOptions(session_->config(), copt);
+  session_->OnConfigNegotiated();
+  EXPECT_TRUE(session_->server_push_enabled());
 }
 
 TEST_P(QuicServerSessionBaseTest, GetEvenIncomingError) {

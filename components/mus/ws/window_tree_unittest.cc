@@ -31,7 +31,7 @@
 #include "components/mus/ws/window_tree.h"
 #include "components/mus/ws/window_tree_binding.h"
 #include "mojo/converters/geometry/geometry_type_converters.h"
-#include "mojo/shell/public/interfaces/connector.mojom.h"
+#include "services/shell/public/interfaces/connector.mojom.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/events/event.h"
 #include "ui/events/event_utils.h"
@@ -111,10 +111,6 @@ class WindowTreeTest : public testing::Test {
 
   WindowServer* window_server() { return window_server_.get(); }
 
-  ServerWindow* GetWindowById(const WindowId& id) {
-    return window_server_->GetWindow(id);
-  }
-
   TestWindowTreeClient* wm_client() { return wm_client_; }
   mus::mojom::Cursor cursor_id() {
     return static_cast<mus::mojom::Cursor>(cursor_id_);
@@ -131,8 +127,10 @@ class WindowTreeTest : public testing::Test {
 
   void AckPreviousEvent() {
     WindowManagerStateTestApi test_api(display_->GetActiveWindowManagerState());
-    while (test_api.tree_awaiting_input_ack())
-      test_api.tree_awaiting_input_ack()->OnWindowInputEventAck(0, true);
+    while (test_api.tree_awaiting_input_ack()) {
+      test_api.tree_awaiting_input_ack()->OnWindowInputEventAck(
+          0, mojom::EventResult::HANDLED);
+    }
   }
 
   void DispatchEventAndAckImmediately(const ui::Event& event) {

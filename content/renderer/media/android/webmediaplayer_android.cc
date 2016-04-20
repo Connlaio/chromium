@@ -57,6 +57,7 @@
 #include "third_party/WebKit/public/platform/WebGraphicsContext3DProvider.h"
 #include "third_party/WebKit/public/platform/WebMediaPlayerClient.h"
 #include "third_party/WebKit/public/platform/WebMediaPlayerEncryptedMediaClient.h"
+#include "third_party/WebKit/public/platform/WebMediaPlayerSource.h"
 #include "third_party/WebKit/public/platform/WebSecurityOrigin.h"
 #include "third_party/WebKit/public/platform/WebString.h"
 #include "third_party/WebKit/public/platform/WebURL.h"
@@ -225,7 +226,6 @@ WebMediaPlayerAndroid::WebMediaPlayerAndroid(
   DCHECK(player_manager_);
 
   DCHECK(main_thread_checker_.CalledOnValidThread());
-  stream_texture_factory_->AddObserver(this);
 
   if (delegate_)
     delegate_id_ = delegate_->AddObserver(this);
@@ -283,8 +283,6 @@ WebMediaPlayerAndroid::~WebMediaPlayerAndroid() {
     delegate_->RemoveObserver(delegate_id_);
   }
 
-  stream_texture_factory_->RemoveObserver(this);
-
   if (media_source_delegate_) {
     // Part of |media_source_delegate_| needs to be stopped on the media thread.
     // Wait until |media_source_delegate_| is fully stopped before tearing
@@ -297,8 +295,11 @@ WebMediaPlayerAndroid::~WebMediaPlayerAndroid() {
 }
 
 void WebMediaPlayerAndroid::load(LoadType load_type,
-                                 const blink::WebURL& url,
+                                 const blink::WebMediaPlayerSource& source,
                                  CORSMode cors_mode) {
+  // Only URL or MSE blob URL is supported.
+  DCHECK(source.isURL());
+  blink::WebURL url = source.getAsURL();
   if (!defer_load_cb_.is_null()) {
     defer_load_cb_.Run(base::Bind(&WebMediaPlayerAndroid::DoLoad,
                                   weak_factory_.GetWeakPtr(), load_type, url,
@@ -517,7 +518,7 @@ void WebMediaPlayerAndroid::setSinkId(
     const blink::WebSecurityOrigin& security_origin,
     blink::WebSetSinkIdCallbacks* web_callback) {
   DCHECK(main_thread_checker_.CalledOnValidThread());
-  scoped_ptr<blink::WebSetSinkIdCallbacks> callback(web_callback);
+  std::unique_ptr<blink::WebSetSinkIdCallbacks> callback(web_callback);
   callback->onError(blink::WebSetSinkIdError::NotSupported);
 }
 
@@ -650,7 +651,7 @@ void WebMediaPlayerAndroid::paint(blink::WebCanvas* canvas,
                                   unsigned char alpha,
                                   SkXfermode::Mode mode) {
   DCHECK(main_thread_checker_.CalledOnValidThread());
-  scoped_ptr<blink::WebGraphicsContext3DProvider> provider(
+  std::unique_ptr<blink::WebGraphicsContext3DProvider> provider(
       blink::Platform::current()
           ->createSharedOffscreenGraphicsContext3DProvider());
   if (!provider)
@@ -1302,21 +1303,6 @@ scoped_refptr<media::VideoFrame> WebMediaPlayerAndroid::GetCurrentFrame() {
 }
 
 void WebMediaPlayerAndroid::PutCurrentFrame() {
-}
-
-void WebMediaPlayerAndroid::ResetStreamTextureProxy() {
-  DCHECK(main_thread_checker_.CalledOnValidThread());
-  // When suppress_deleting_texture_ is true,  OnDidExitFullscreen has already
-  // re-connected surface texture for embedded playback. There is no need to
-  // delete them and create again. In fact, Android gives MediaPlayer erorr
-  // code: what == 1, extra == -19 when Android WebView tries to create, delete
-  // then create the surface textures for a video in quick succession.
-  if (!suppress_deleting_texture_)
-    RemoveSurfaceTextureAndProxy();
-
-  TryCreateStreamTextureProxyIfNeeded();
-  if (needs_establish_peer_ && is_playing_)
-    EstablishSurfaceTexturePeer();
 }
 
 void WebMediaPlayerAndroid::RemoveSurfaceTextureAndProxy() {

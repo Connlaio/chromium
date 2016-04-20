@@ -37,7 +37,6 @@ public class ContextualSearchSelectionController {
     // a new selection in time.  This is because selectWordAroundCaret doesn't always select.
     // TODO(donnd): Fix in Blink, crbug.com/435778.
     private static final int INVALID_IF_NO_SELECTION_CHANGE_AFTER_TAP_MS = 50;
-    private static final double RETAP_DISTANCE_SQUARED_DP = Math.pow(75, 2);
 
     // The default navigation-detection-delay in milliseconds.
     private static final int TAP_NAVIGATION_DETECTION_DELAY = 16;
@@ -55,6 +54,8 @@ public class ContextualSearchSelectionController {
     // Max selection length must be limited or the entire request URL can go past the 2K limit.
     private static final int MAX_SELECTION_LENGTH = 100;
 
+    private static final int MILLISECONDS_TO_NANOSECONDS = 1000000;
+
     private final ChromeActivity mActivity;
     private final ContextualSearchSelectionHandler mHandler;
     private final Runnable mHandleInvalidTapRunnable;
@@ -65,6 +66,7 @@ public class ContextualSearchSelectionController {
     private String mSelectedText;
     private SelectionType mSelectionType;
     private boolean mWasTapGestureDetected;
+    // Reflects whether the last tap was valid and whether we still have a tap-based selection.
     private boolean mWasLastTapValid;
     private boolean mIsWaitingForInvalidTapDetection;
     private boolean mIsSelectionEstablished;
@@ -74,10 +76,25 @@ public class ContextualSearchSelectionController {
     private float mX;
     private float mY;
 
+    // The time of the most last scroll activity, or 0 if none.
+    private long mLastScrollTimeNs;
+
     private class ContextualSearchGestureStateListener extends GestureStateListener {
         @Override
         public void onScrollStarted(int scrollOffsetY, int scrollExtentY) {
             mHandler.handleScroll();
+        }
+
+        @Override
+        public void onScrollEnded(int scrollOffsetY, int scrollExtentY) {
+            mLastScrollTimeNs = System.nanoTime();
+        }
+
+        @Override
+        public void onScrollUpdateGestureConsumed() {
+            // The onScrollEnded notification is unreliable, so mark time during scroll updates too.
+            // See crbug.com/600863.
+            mLastScrollTimeNs = System.nanoTime();
         }
 
         // TODO(donnd): Remove this once we get notification of the selection changing
@@ -155,6 +172,14 @@ public class ContextualSearchSelectionController {
     }
 
     /**
+     * @return the {@link ChromeActivity}.
+     */
+    ChromeActivity getActivity() {
+        // TODO(donnd): don't expose the activity.
+        return mActivity;
+    }
+
+    /**
      * @return the type of the selection.
      */
     SelectionType getSelectionType() {
@@ -166,6 +191,41 @@ public class ContextualSearchSelectionController {
      */
     String getSelectedText() {
         return mSelectedText;
+    }
+
+    /**
+     * @return Whether the last Tap was valid (and the tap-selection still in place).
+     */
+    boolean getWasLastTapValid() {
+        return mWasLastTapValid;
+    }
+
+    /**
+     * @return The last X coordinate;
+     */
+    float getLastX() {
+        return mX;
+    }
+
+    /**
+     * @return The last Y coordinate;
+     */
+    float getLastY() {
+        return mY;
+    }
+
+    /**
+     * @return The Pixel to Device independent Pixel ratio.
+     */
+    float getPxToDp() {
+        return mPxToDp;
+    }
+
+    /**
+     * @return The time of the most recent scroll, or 0 if none.
+     */
+    long getLastScrollTime() {
+        return mLastScrollTimeNs;
     }
 
     /**
@@ -280,6 +340,7 @@ public class ContextualSearchSelectionController {
     private void resetAllStates() {
         resetSelectionStates();
         mWasLastTapValid = false;
+        mLastScrollTimeNs = 0;
     }
 
     /**
@@ -297,22 +358,34 @@ public class ContextualSearchSelectionController {
      */
     void handleShowUnhandledTapUIIfNeeded(int x, int y) {
         mWasTapGestureDetected = false;
-        if (mSelectionType != SelectionType.LONG_PRESS && shouldHandleTap(x, y)) {
+        // TODO(donnd): shouldn't we check == TAP here instead of LONG_PRESS?
+        // TODO(donnd): refactor to avoid needing a new handler API method as suggested by Pedro.
+        if (mSelectionType != SelectionType.LONG_PRESS) {
+            mWasTapGestureDetected = true;
+            TapSuppressionHeuristics tapHeuristics = new TapSuppressionHeuristics(this, x, y);
+            // TODO(donnd): Move to be called when the panel closes to work with states that change.
+            tapHeuristics.logConditionState();
+            // Tell the manager what it needs in order to log metrics on whether the tap would have
+            // been suppressed if each of the heuristics were satisfied.
+            mHandler.handleMetricsForWouldSuppressTap(tapHeuristics);
             mX = x;
             mY = y;
-            mWasLastTapValid = true;
-            mWasTapGestureDetected = true;
-            // TODO(donnd): Find a better way to determine that a navigation will be triggered
-            // by the tap, or merge with other time-consuming actions like gathering surrounding
-            // text or detecting page mutations.
-            new Handler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    mHandler.handleValidTap();
-                }
-            }, TAP_NAVIGATION_DETECTION_DELAY);
-        }
-        if (!mWasTapGestureDetected) {
+            if (tapHeuristics.shouldSuppressTap()) {
+                mWasLastTapValid = false;
+                mHandler.handleSuppressedTap();
+            } else {
+                mWasLastTapValid = true;
+                // TODO(donnd): Find a better way to determine that a navigation will be triggered
+                // by the tap, or merge with other time-consuming actions like gathering surrounding
+                // text or detecting page mutations.
+                new Handler().postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        mHandler.handleValidTap();
+                    }
+                }, TAP_NAVIGATION_DETECTION_DELAY);
+            }
+        } else {
             mWasLastTapValid = false;
             mHandler.handleInvalidTap();
         }
@@ -346,23 +419,9 @@ public class ContextualSearchSelectionController {
         }
     }
 
-    /**
-     * @return whether a tap at the given coordinates should be handled or not.
-     */
-    private boolean shouldHandleTap(int x, int y) {
-        return !mWasLastTapValid || wasTapCloseToPreviousTap(x, y);
-    }
-
-    /**
-     * Determines whether a tap at the given coordinates is considered "close" to the previous
-     * tap.
-     */
-    private boolean wasTapCloseToPreviousTap(int x, int y) {
-        float deltaXDp = (mX - x) * mPxToDp;
-        float deltaYDp = (mY - y) * mPxToDp;
-        float distanceSquaredDp =  deltaXDp * deltaXDp + deltaYDp * deltaYDp;
-        return distanceSquaredDp <= RETAP_DISTANCE_SQUARED_DP;
-    }
+    // ============================================================================================
+    // Invalid Tap Notification
+    // ============================================================================================
 
     /**
      * Schedules a notification to check if the tap was invalid.
@@ -393,6 +452,10 @@ public class ContextualSearchSelectionController {
         mIsWaitingForInvalidTapDetection = false;
     }
 
+    // ============================================================================================
+    // Selection Modification
+    // ============================================================================================
+
     /**
      * This method checks whether the selection modification should be handled. This method
      * is needed to allow modifying selections that are occluded by the Panel.
@@ -419,6 +482,10 @@ public class ContextualSearchSelectionController {
     private void preventHandlingCurrentSelectionModification() {
         mShouldHandleSelectionModification = false;
     }
+
+    // ============================================================================================
+    // Misc.
+    // ============================================================================================
 
     /**
      * @return whether a tap gesture has been detected, for testing.

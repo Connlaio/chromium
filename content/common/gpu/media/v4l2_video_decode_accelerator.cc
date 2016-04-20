@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "content/common/gpu/media/v4l2_video_decode_accelerator.h"
+
 #include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -12,6 +14,8 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 
+#include <memory>
+
 #include "base/bind.h"
 #include "base/command_line.h"
 #include "base/macros.h"
@@ -21,7 +25,6 @@
 #include "base/trace_event/trace_event.h"
 #include "build/build_config.h"
 #include "content/common/gpu/media/shared_memory_region.h"
-#include "content/common/gpu/media/v4l2_video_decode_accelerator.h"
 #include "media/base/media_switches.h"
 #include "media/filters/h264_parser.h"
 #include "ui/gfx/geometry/rect.h"
@@ -66,12 +69,12 @@ struct V4L2VideoDecodeAccelerator::BitstreamBufferRef {
   BitstreamBufferRef(
       base::WeakPtr<Client>& client,
       scoped_refptr<base::SingleThreadTaskRunner>& client_task_runner,
-      scoped_ptr<SharedMemoryRegion> shm,
+      std::unique_ptr<SharedMemoryRegion> shm,
       int32_t input_id);
   ~BitstreamBufferRef();
   const base::WeakPtr<Client> client;
   const scoped_refptr<base::SingleThreadTaskRunner> client_task_runner;
-  const scoped_ptr<SharedMemoryRegion> shm;
+  const std::unique_ptr<SharedMemoryRegion> shm;
   size_t bytes_used;
   const int32_t input_id;
 };
@@ -93,7 +96,7 @@ struct V4L2VideoDecodeAccelerator::PictureRecord {
 V4L2VideoDecodeAccelerator::BitstreamBufferRef::BitstreamBufferRef(
     base::WeakPtr<Client>& client,
     scoped_refptr<base::SingleThreadTaskRunner>& client_task_runner,
-    scoped_ptr<SharedMemoryRegion> shm,
+    std::unique_ptr<SharedMemoryRegion> shm,
     int32_t input_id)
     : client(client),
       client_task_runner(client_task_runner),
@@ -205,8 +208,10 @@ bool V4L2VideoDecodeAccelerator::Initialize(const Config& config,
   DCHECK(child_task_runner_->BelongsToCurrentThread());
   DCHECK_EQ(decoder_state_, kUninitialized);
 
-  if (get_gl_context_cb_.is_null() || make_context_current_cb_.is_null()) {
-    NOTREACHED() << "GL callbacks are required for this VDA";
+  if (!device_->SupportsDecodeProfileForV4L2PixelFormats(
+          config.profile, arraysize(supported_input_fourccs_),
+          supported_input_fourccs_)) {
+    DVLOG(1) << "Initialize(): unsupported profile=" << config.profile;
     return false;
   }
 
@@ -215,10 +220,13 @@ bool V4L2VideoDecodeAccelerator::Initialize(const Config& config,
     return false;
   }
 
-  if (!device_->SupportsDecodeProfileForV4L2PixelFormats(
-          config.profile, arraysize(supported_input_fourccs_),
-          supported_input_fourccs_)) {
-    DVLOG(1) << "Initialize(): unsupported profile=" << config.profile;
+  if (config.output_mode != Config::OutputMode::ALLOCATE) {
+    NOTREACHED() << "Only ALLOCATE OutputMode is supported by this VDA";
+    return false;
+  }
+
+  if (get_gl_context_cb_.is_null() || make_context_current_cb_.is_null()) {
+    NOTREACHED() << "GL callbacks are required for this VDA";
     return false;
   }
 
@@ -375,9 +383,21 @@ void V4L2VideoDecodeAccelerator::AssignPictureBuffers(
     DCHECK_EQ(output_record.cleared, false);
     DCHECK_LE(1u, buffers[i].texture_ids().size());
 
-    EGLImageKHR egl_image = device_->CreateEGLImage(
-        egl_display_, gl_context->GetHandle(), buffers[i].texture_ids()[0],
-        coded_size_, i, output_format_fourcc_, output_planes_count_);
+    std::vector<base::ScopedFD> dmabuf_fds;
+    dmabuf_fds = device_->GetDmabufsForV4L2Buffer(
+        i, output_planes_count_, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
+    if (dmabuf_fds.empty()) {
+      NOTIFY_ERROR(PLATFORM_FAILURE);
+      return;
+    }
+
+    EGLImageKHR egl_image = device_->CreateEGLImage(egl_display_,
+                                                    gl_context->GetHandle(),
+                                                    buffers[i].texture_ids()[0],
+                                                    coded_size_,
+                                                    i,
+                                                    output_format_fourcc_,
+                                                    dmabuf_fds);
     if (egl_image == EGL_NO_IMAGE_KHR) {
       LOG(ERROR) << "AssignPictureBuffers(): could not create EGLImageKHR";
       // Ownership of EGLImages allocated in previous iterations of this loop
@@ -419,8 +439,8 @@ void V4L2VideoDecodeAccelerator::ReusePictureBuffer(int32_t picture_buffer_id) {
   }
 #endif
 
-  scoped_ptr<EGLSyncKHRRef> egl_sync_ref(new EGLSyncKHRRef(
-      egl_display_, egl_sync));
+  std::unique_ptr<EGLSyncKHRRef> egl_sync_ref(
+      new EGLSyncKHRRef(egl_display_, egl_sync));
   decoder_thread_.message_loop()->PostTask(FROM_HERE, base::Bind(
       &V4L2VideoDecodeAccelerator::ReusePictureBufferTask,
       base::Unretained(this), picture_buffer_id, base::Passed(&egl_sync_ref)));
@@ -471,6 +491,10 @@ bool V4L2VideoDecodeAccelerator::TryToSetupDecodeOnSeparateThread(
   return true;
 }
 
+media::VideoPixelFormat V4L2VideoDecodeAccelerator::GetOutputFormat() const {
+  return V4L2Device::V4L2PixFmtToVideoPixelFormat(output_format_fourcc_);
+}
+
 // static
 media::VideoDecodeAccelerator::SupportedProfiles
 V4L2VideoDecodeAccelerator::GetSupportedProfiles() {
@@ -490,9 +514,9 @@ void V4L2VideoDecodeAccelerator::DecodeTask(
   TRACE_EVENT1("Video Decoder", "V4L2VDA::DecodeTask", "input_id",
                bitstream_buffer.id());
 
-  scoped_ptr<BitstreamBufferRef> bitstream_record(new BitstreamBufferRef(
+  std::unique_ptr<BitstreamBufferRef> bitstream_record(new BitstreamBufferRef(
       decode_client_, decode_task_runner_,
-      scoped_ptr<SharedMemoryRegion>(
+      std::unique_ptr<SharedMemoryRegion>(
           new SharedMemoryRegion(bitstream_buffer, true)),
       bitstream_buffer.id()));
   if (!bitstream_record->shm->Map()) {
@@ -1086,7 +1110,7 @@ void V4L2VideoDecodeAccelerator::Dequeue() {
   while (output_buffer_queued_count_ > 0) {
     DCHECK(output_streamon_);
     struct v4l2_buffer dqbuf;
-    scoped_ptr<struct v4l2_plane[]> planes(
+    std::unique_ptr<struct v4l2_plane[]> planes(
         new v4l2_plane[output_planes_count_]);
     memset(&dqbuf, 0, sizeof(dqbuf));
     memset(planes.get(), 0, sizeof(struct v4l2_plane) * output_planes_count_);
@@ -1190,7 +1214,7 @@ bool V4L2VideoDecodeAccelerator::EnqueueOutputRecord() {
     output_record.egl_sync = EGL_NO_SYNC_KHR;
   }
   struct v4l2_buffer qbuf;
-  scoped_ptr<struct v4l2_plane[]> qbuf_planes(
+  std::unique_ptr<struct v4l2_plane[]> qbuf_planes(
       new v4l2_plane[output_planes_count_]);
   memset(&qbuf, 0, sizeof(qbuf));
   memset(
@@ -1209,7 +1233,7 @@ bool V4L2VideoDecodeAccelerator::EnqueueOutputRecord() {
 
 void V4L2VideoDecodeAccelerator::ReusePictureBufferTask(
     int32_t picture_buffer_id,
-    scoped_ptr<EGLSyncKHRRef> egl_sync_ref) {
+    std::unique_ptr<EGLSyncKHRRef> egl_sync_ref) {
   DVLOG(3) << "ReusePictureBufferTask(): picture_buffer_id="
            << picture_buffer_id;
   DCHECK_EQ(decoder_thread_.message_loop(), base::MessageLoop::current());

@@ -64,11 +64,6 @@ public:
     static ContextType contextTypeFromId(const String& id);
     static ContextType resolveContextTypeAliases(ContextType);
 
-#if !ENABLE(OILPAN)
-    void ref() { m_canvas->ref(); }
-    void deref() { m_canvas->deref(); }
-#endif
-
     HTMLCanvasElement* canvas() const { return m_canvas; }
 
     virtual ContextType getContextType() const = 0;
@@ -108,6 +103,7 @@ public:
     virtual void setFont(const String&) { }
     virtual void styleDidChange(const ComputedStyle* oldStyle, const ComputedStyle& newStyle) { }
     virtual std::pair<Element*, String> getControlAndIdIfHitRegionExists(const LayoutPoint& location) { ASSERT_NOT_REACHED(); return std::make_pair(nullptr, String()); }
+    virtual String getIdFromControl(const Element* element) { return String(); }
 
     // WebGL-specific interface
     virtual bool is3d() const { return false; }

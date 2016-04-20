@@ -5,7 +5,8 @@
 #ifndef CONTENT_BROWSER_ANDROID_SYNCHRONOUS_COMPOSITOR_BASE_H_
 #define CONTENT_BROWSER_ANDROID_SYNCHRONOUS_COMPOSITOR_BASE_H_
 
-#include "base/memory/scoped_ptr.h"
+#include <memory>
+
 #include "content/common/input/input_event_ack_state.h"
 #include "content/public/browser/android/synchronous_compositor.h"
 
@@ -24,13 +25,13 @@ struct BeginFrameArgs;
 namespace content {
 
 class RenderWidgetHostViewAndroid;
-class SynchronousCompositorStreamTextureFactoryImpl;
 class WebContents;
 struct DidOverscrollParams;
 
+// TODO(boliu): Merge this into SynchronousCompositorHost.
 class SynchronousCompositorBase : public SynchronousCompositor {
  public:
-  static scoped_ptr<SynchronousCompositorBase> Create(
+  static std::unique_ptr<SynchronousCompositorBase> Create(
       RenderWidgetHostViewAndroid* rwhva,
       WebContents* web_contents);
 

@@ -79,11 +79,14 @@
 #include "platform/audio/AudioBus.h"
 #include "platform/audio/AudioSourceProviderClient.h"
 #include "platform/graphics/GraphicsLayer.h"
+#include "platform/mediastream/MediaStreamDescriptor.h"
 #include "platform/weborigin/SecurityOrigin.h"
 #include "public/platform/Platform.h"
 #include "public/platform/WebAudioSourceProvider.h"
 #include "public/platform/WebContentDecryptionModule.h"
 #include "public/platform/WebInbandTextTrack.h"
+#include "public/platform/WebMediaPlayerSource.h"
+#include "public/platform/WebMediaStream.h"
 #include "public/platform/modules/remoteplayback/WebRemotePlaybackClient.h"
 #include "public/platform/modules/remoteplayback/WebRemotePlaybackState.h"
 #include "wtf/CurrentTime.h"
@@ -284,7 +287,7 @@ class HTMLMediaElement::AutoplayHelperClientImpl :
     public AutoplayExperimentHelper::Client {
 
 public:
-    static RawPtr<AutoplayHelperClientImpl> create(HTMLMediaElement* element)
+    static AutoplayHelperClientImpl* create(HTMLMediaElement* element)
     {
         return new AutoplayHelperClientImpl(element);
     }
@@ -416,7 +419,6 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
     , m_processingPreferenceChange(false)
     , m_remoteRoutesAvailable(false)
     , m_playingRemotely(false)
-    , m_isFinalizing(false)
     , m_inOverlayFullscreenVideo(false)
     , m_audioTracks(AudioTrackList::create(*this))
     , m_videoTracks(VideoTrackList::create(*this))
@@ -427,13 +429,8 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
     , m_autoplayHelperClient(AutoplayHelperClientImpl::create(this))
     , m_autoplayHelper(AutoplayExperimentHelper::create(m_autoplayHelperClient.get()))
     , m_remotePlaybackClient(nullptr)
-#if !ENABLE(OILPAN)
-    , m_weakPtrFactory(this)
-#endif
 {
-#if ENABLE(OILPAN)
     ThreadState::current()->registerPreFinalizer(this);
-#endif
 
     WTF_LOG(Media, "HTMLMediaElement::HTMLMediaElement(%p)", this);
 
@@ -450,41 +447,6 @@ HTMLMediaElement::~HTMLMediaElement()
 {
     WTF_LOG(Media, "HTMLMediaElement::~HTMLMediaElement(%p)", this);
 
-#if !ENABLE(OILPAN)
-    // Destruction of the autoplay helper requires the client, so be sure that
-    // this happens before the client is destructed.
-    if (m_autoplayHelper)
-        m_autoplayHelper.clear();
-
-    // HTMLMediaElement and m_asyncEventQueue always become unreachable
-    // together. So HTMLMediaElement and m_asyncEventQueue are destructed in
-    // the same GC. We don't need to close it explicitly in Oilpan.
-    m_asyncEventQueue->close();
-
-    setShouldDelayLoadEvent(false);
-
-    if (m_textTracks)
-        m_textTracks->clearOwner();
-    m_audioTracks->shutdown();
-    m_videoTracks->shutdown();
-
-    closeMediaSource();
-
-    removeElementFromDocumentMap(this, &document());
-
-    // Destroying the player may cause a resource load to be canceled,
-    // which could result in LocalDOMWindow::dispatchWindowLoadEvent() being
-    // called via ResourceFetch::didLoadResource() then
-    // FrameLoader::checkCompleted(). To prevent load event dispatching during
-    // object destruction, we use Document::incrementLoadEventDelayCount().
-    // See http://crbug.com/275223 for more details.
-    document().incrementLoadEventDelayCount();
-
-    clearMediaPlayerAndAudioSourceProviderClientWithoutLocking();
-
-    document().decrementLoadEventDelayCount();
-#endif
-
     // m_audioSourceNode is explicitly cleared by AudioNode::dispose().
     // Since AudioNode::dispose() is guaranteed to be always called before
     // the AudioNode is destructed, m_audioSourceNode is explicitly cleared
@@ -492,51 +454,19 @@ HTMLMediaElement::~HTMLMediaElement()
     ASSERT(!m_audioSourceNode);
 }
 
-#if ENABLE(OILPAN)
 void HTMLMediaElement::dispose()
 {
-    // This must happen before we're destructed.
-    if (m_autoplayHelper)
-        m_autoplayHelper->dispose();
+    closeMediaSource();
 
-    // If the HTMLMediaElement dies with the Document we are not
-    // allowed to touch the Document to adjust delay load event counts
-    // from the destructor, as the Document could have been already
-    // destructed.
-    //
-    // Work around that restriction by accessing the Document from
-    // a prefinalizer action instead, updating its delayed load count.
-    // If needed - if the Document has been detached and informed its
-    // ContextLifecycleObservers (which HTMLMediaElement is) that
-    // it is being destroyed, the connection to the Document will
-    // have been severed already, but in that case there is no need
-    // to update the delayed load count. But if the Document hasn't
-    // been detached cleanly from any frame or it isn't dying in the
-    // same GC, we do update the delayed load count from the prefinalizer.
-    if (ActiveDOMObject::getExecutionContext())
-        setShouldDelayLoadEvent(false);
-
-    // If the MediaSource object survived, notify that the media element
-    // didn't.
-    if (Heap::isHeapObjectAlive(m_mediaSource))
-        closeMediaSource();
-
-    // Oilpan: the player must be released, but the player object
-    // cannot safely access this player client any longer as parts of
-    // it may have been finalized already (like the media element's
-    // supplementable table.)  Handled for now by entering an
-    // is-finalizing state, which is explicitly checked for if the
-    // player tries to access the media element during shutdown.
-    //
-    // FIXME: Oilpan: move the media player to the heap instead and
-    // avoid having to finalize it from here; this whole #if block
-    // could then be removed (along with the state bit it depends on.)
-    // crbug.com/378229
-    m_isFinalizing = true;
-
+    // Destroying the player may cause a resource load to be canceled,
+    // which could result in LocalDOMWindow::dispatchWindowLoadEvent() being
+    // called via ResourceFetch::didLoadResource(), then
+    // FrameLoader::checkCompleted(). But it's guaranteed that the load event
+    // doesn't get dispatched during the object destruction.
+    // See Document::isDelayingLoadEvent().
+    // Also see http://crbug.com/275223 for more details.
     clearMediaPlayerAndAudioSourceProviderClientWithoutLocking();
 }
-#endif
 
 void HTMLMediaElement::didMoveToNewDocument(Document& oldDocument)
 {
@@ -632,7 +562,7 @@ Node::InsertionNotificationRequest HTMLMediaElement::insertedInto(ContainerNode*
     HTMLElement::insertedInto(insertionPoint);
     if (insertionPoint->inShadowIncludingDocument()) {
         UseCounter::count(document(), UseCounter::HTMLMediaElementInDocument);
-        if (!getAttribute(srcAttr).isEmpty() && m_networkState == NETWORK_EMPTY) {
+        if ((!getAttribute(srcAttr).isEmpty() || m_srcObject) && m_networkState == NETWORK_EMPTY) {
             m_ignorePreloadNone = false;
             invokeLoadAlgorithm();
         }
@@ -694,7 +624,7 @@ void HTMLMediaElement::scheduleEvent(const AtomicString& eventName)
     scheduleEvent(Event::createCancelable(eventName));
 }
 
-void HTMLMediaElement::scheduleEvent(RawPtr<Event> event)
+void HTMLMediaElement::scheduleEvent(Event* event)
 {
 #if LOG_MEDIA_EVENTS
     WTF_LOG(Media, "HTMLMediaElement::scheduleEvent(%p) - scheduling '%s'", this, event->type().ascii().data());
@@ -725,6 +655,12 @@ MediaError* HTMLMediaElement::error() const
 void HTMLMediaElement::setSrc(const AtomicString& url)
 {
     setAttribute(srcAttr, url);
+}
+
+void HTMLMediaElement::setSrcObject(MediaStreamDescriptor* srcObject)
+{
+    m_srcObject = srcObject;
+    invokeLoadAlgorithm();
 }
 
 HTMLMediaElement::NetworkState HTMLMediaElement::getNetworkState() const
@@ -905,68 +841,97 @@ void HTMLMediaElement::selectMediaResource()
 {
     WTF_LOG(Media, "HTMLMediaElement::selectMediaResource(%p)", this);
 
-    enum Mode { attribute, children };
+    enum Mode { Object, Attribute, Children, Nothing };
+    Mode mode = Nothing;
 
-    // 3 - If the media element has a src attribute, then let mode be attribute.
-    Mode mode = attribute;
-    if (!fastHasAttribute(srcAttr)) {
-        // Otherwise, if the media element does not have a src attribute but has a source
-        // element child, then let mode be children and let candidate be the first such
-        // source element child in tree order.
-        if (HTMLSourceElement* element = Traversal<HTMLSourceElement>::firstChild(*this)) {
-            mode = children;
-            m_nextChildNodeToConsider = element;
-            m_currentSourceNode = nullptr;
-        } else {
-            // Otherwise the media element has neither a src attribute nor a source element
-            // child: set the networkState to NETWORK_EMPTY, and abort these steps; the
-            // synchronous section ends.
-            m_loadState = WaitingForSource;
-            setShouldDelayLoadEvent(false);
-            setNetworkState(NETWORK_EMPTY);
-            updateDisplayState();
+    // 6 - If the media element has an assigned media provider object, then let
+    //     mode be object.
+    if (m_srcObject) {
+        mode = Object;
+    } else if (fastHasAttribute(srcAttr)) {
+        // Otherwise, if the media element has no assigned media provider object
+        // but has a src attribute, then let mode be attribute.
+        mode = Attribute;
+    } else if (HTMLSourceElement* element = Traversal<HTMLSourceElement>::firstChild(*this)) {
+        // Otherwise, if the media element does not have an assigned media
+        // provider object and does not have a src attribute, but does have a
+        // source element child, then let mode be children and let candidate be
+        // the first such source element child in tree order.
+        mode = Children;
+        m_nextChildNodeToConsider = element;
+        m_currentSourceNode = nullptr;
+    } else {
+        // Otherwise the media element has no assigned media provider object and
+        // has neither a src attribute nor a source element child: set the
+        // networkState to NETWORK_EMPTY, and abort these steps; the synchronous
+        // section ends.
+        m_loadState = WaitingForSource;
+        setShouldDelayLoadEvent(false);
+        setNetworkState(NETWORK_EMPTY);
+        updateDisplayState();
 
-            WTF_LOG(Media, "HTMLMediaElement::selectMediaResource(%p), nothing to load", this);
-            return;
-        }
-    }
-
-    // 4 - Set the media element's delaying-the-load-event flag to true (this delays the load event),
-    // and set its networkState to NETWORK_LOADING.
-    setShouldDelayLoadEvent(true);
-    setNetworkState(NETWORK_LOADING);
-
-    // 5 - Queue a task to fire a simple event named loadstart at the media element.
-    scheduleEvent(EventTypeNames::loadstart);
-
-    // 6 - If mode is attribute, then run these substeps
-    if (mode == attribute) {
-        m_loadState = LoadingFromSrcAttr;
-
-        const AtomicString& srcValue = fastGetAttribute(srcAttr);
-        // If the src attribute's value is the empty string ... jump down to the failed step below
-        if (srcValue.isEmpty()) {
-            mediaLoadingFailed(WebMediaPlayer::NetworkStateFormatError);
-            WTF_LOG(Media, "HTMLMediaElement::selectMediaResource(%p), empty 'src'", this);
-            return;
-        }
-
-        KURL mediaURL = document().completeURL(srcValue);
-        if (!isSafeToLoadURL(mediaURL, Complain)) {
-            mediaLoadingFailed(WebMediaPlayer::NetworkStateFormatError);
-            return;
-        }
-
-        // No type is available when the url comes from the 'src' attribute so MediaPlayer
-        // will have to pick a media engine based on the file extension.
-        ContentType contentType((String()));
-        loadResource(mediaURL, contentType);
-        WTF_LOG(Media, "HTMLMediaElement::selectMediaResource(%p), using 'src' attribute url", this);
+        WTF_LOG(Media, "HTMLMediaElement::selectMediaResource(%p), nothing to load", this);
         return;
     }
 
-    // Otherwise, the source elements will be used
-    loadNextSourceChild();
+    // 7 - Set the media element's networkState to NETWORK_LOADING.
+    setNetworkState(NETWORK_LOADING);
+
+    // 8 - Queue a task to fire a simple event named loadstart at the media element.
+    scheduleEvent(EventTypeNames::loadstart);
+
+    // 9 - Run the appropriate steps...
+    switch (mode) {
+    case Object:
+        loadSourceFromObject();
+        WTF_LOG(Media, "HTMLMediaElement::selectMediaResource(%p), using 'srcObject' attribute", this);
+        break;
+    case Attribute:
+        loadSourceFromAttribute();
+        WTF_LOG(Media, "HTMLMediaElement::selectMediaResource(%p), using 'src' attribute url", this);
+        break;
+    case Children:
+        loadNextSourceChild();
+        WTF_LOG(Media, "HTMLMediaElement::selectMediaResource(%p), using source element", this);
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+    }
+}
+
+void HTMLMediaElement::loadSourceFromObject()
+{
+    ASSERT(m_srcObject);
+    m_loadState = LoadingFromSrcObject;
+
+    // No type is available when the resource comes from the 'srcObject'
+    // attribute.
+    ContentType contentType((String()));
+    loadResource(WebMediaPlayerSource(WebMediaStream(m_srcObject)), contentType);
+}
+
+void HTMLMediaElement::loadSourceFromAttribute()
+{
+    m_loadState = LoadingFromSrcAttr;
+    const AtomicString& srcValue = fastGetAttribute(srcAttr);
+
+    // If the src attribute's value is the empty string ... jump down to the failed step below
+    if (srcValue.isEmpty()) {
+        mediaLoadingFailed(WebMediaPlayer::NetworkStateFormatError);
+        WTF_LOG(Media, "HTMLMediaElement::selectMediaResource(%p), empty 'src'", this);
+        return;
+    }
+
+    KURL mediaURL = document().completeURL(srcValue);
+    if (!isSafeToLoadURL(mediaURL, Complain)) {
+        mediaLoadingFailed(WebMediaPlayer::NetworkStateFormatError);
+        return;
+    }
+
+    // No type is available when the url comes from the 'src' attribute so
+    // MediaPlayer will have to pick a media engine based on the file extension.
+    ContentType contentType((String()));
+    loadResource(WebMediaPlayerSource(WebURL(mediaURL)), contentType);
 }
 
 void HTMLMediaElement::loadNextSourceChild()
@@ -982,15 +947,18 @@ void HTMLMediaElement::loadNextSourceChild()
     resetMediaPlayerAndMediaSource();
 
     m_loadState = LoadingFromSourceElement;
-    loadResource(mediaURL, contentType);
+    loadResource(WebMediaPlayerSource(WebURL(mediaURL)), contentType);
 }
 
-void HTMLMediaElement::loadResource(const KURL& url, ContentType& contentType)
+void HTMLMediaElement::loadResource(const WebMediaPlayerSource& source, ContentType& contentType)
 {
     ASSERT(isMainThread());
-    ASSERT(isSafeToLoadURL(url, Complain));
-
-    WTF_LOG(Media, "HTMLMediaElement::loadResource(%p, %s, %s)", this, urlForLoggingMedia(url).utf8().data(), contentType.raw().utf8().data());
+    KURL url;
+    if (source.isURL()) {
+        url = source.getAsURL();
+        ASSERT(isSafeToLoadURL(url, Complain));
+        WTF_LOG(Media, "HTMLMediaElement::loadResource(%p, %s, %s)", this, urlForLoggingMedia(url).utf8().data(), contentType.raw().utf8().data());
+    }
 
     LocalFrame* frame = document().frame();
     if (!frame) {
@@ -1027,8 +995,9 @@ void HTMLMediaElement::loadResource(const KURL& url, ContentType& contentType)
 
     bool attemptLoad = true;
 
-    if (url.protocolIs(mediaSourceBlobProtocol)) {
-        if (isMediaStreamURL(url.getString())) {
+    if (source.isMediaStream() || url.protocolIs(mediaSourceBlobProtocol)) {
+        bool isMediaStream = source.isMediaStream() || (source.isURL() && isMediaStreamURL(url.getString()));
+        if (isMediaStream) {
             m_autoplayHelper->removeUserGestureRequirement(GesturelessPlaybackEnabledByStream);
         } else {
             m_mediaSource = HTMLMediaSource::lookup(url.getString());
@@ -1044,7 +1013,8 @@ void HTMLMediaElement::loadResource(const KURL& url, ContentType& contentType)
         }
     }
 
-    if (attemptLoad && canLoadURL(url, contentType)) {
+    bool canLoadResource = source.isMediaStream() || canLoadURL(url, contentType);
+    if (attemptLoad && canLoadResource) {
         ASSERT(!webMediaPlayer());
 
         if (effectivePreloadType() == WebMediaPlayer::PreloadNone) {
@@ -1068,24 +1038,33 @@ void HTMLMediaElement::loadResource(const KURL& url, ContentType& contentType)
 void HTMLMediaElement::startPlayerLoad()
 {
     ASSERT(!m_webMediaPlayer);
-    // Filter out user:pass as those two URL components aren't
-    // considered for media resource fetches (including for the CORS
-    // use-credentials mode.) That behavior aligns with Gecko, with IE
-    // being more restrictive and not allowing fetches to such URLs.
-    //
-    // Spec reference: http://whatwg.org/c/#concept-media-load-resource
-    //
-    // FIXME: when the HTML spec switches to specifying resource
-    // fetches in terms of Fetch (http://fetch.spec.whatwg.org), and
-    // along with that potentially also specifying a setting for its
-    // 'authentication flag' to control how user:pass embedded in a
-    // media resource URL should be treated, then update the handling
-    // here to match.
-    KURL requestURL = m_currentSrc;
-    if (!requestURL.user().isEmpty())
-        requestURL.setUser(String());
-    if (!requestURL.pass().isEmpty())
-        requestURL.setPass(String());
+
+    WebMediaPlayerSource source;
+    if (m_srcObject) {
+        source = WebMediaPlayerSource(WebMediaStream(m_srcObject));
+    } else {
+        // Filter out user:pass as those two URL components aren't
+        // considered for media resource fetches (including for the CORS
+        // use-credentials mode.) That behavior aligns with Gecko, with IE
+        // being more restrictive and not allowing fetches to such URLs.
+        //
+        // Spec reference: http://whatwg.org/c/#concept-media-load-resource
+        //
+        // FIXME: when the HTML spec switches to specifying resource
+        // fetches in terms of Fetch (http://fetch.spec.whatwg.org), and
+        // along with that potentially also specifying a setting for its
+        // 'authentication flag' to control how user:pass embedded in a
+        // media resource URL should be treated, then update the handling
+        // here to match.
+        KURL requestURL = m_currentSrc;
+        if (!requestURL.user().isEmpty())
+            requestURL.setUser(String());
+        if (!requestURL.pass().isEmpty())
+            requestURL.setPass(String());
+
+        KURL kurl(ParsedURLString, requestURL);
+        source = WebMediaPlayerSource(WebURL(kurl));
+    }
 
     LocalFrame* frame = document().frame();
     // TODO(srirama.m): Figure out how frame can be null when
@@ -1095,8 +1074,7 @@ void HTMLMediaElement::startPlayerLoad()
         return;
     }
 
-    KURL kurl(ParsedURLString, requestURL);
-    m_webMediaPlayer = frame->loader().client()->createWebMediaPlayer(*this, kurl, this);
+    m_webMediaPlayer = frame->loader().client()->createWebMediaPlayer(*this, source, this);
     if (!m_webMediaPlayer) {
         mediaLoadingFailed(WebMediaPlayer::NetworkStateFormatError);
         return;
@@ -1112,7 +1090,7 @@ void HTMLMediaElement::startPlayerLoad()
 
     m_webMediaPlayer->setPreload(effectivePreloadType());
 
-    m_webMediaPlayer->load(loadType(), kurl, corsMode());
+    m_webMediaPlayer->load(loadType(), source, corsMode());
 
     if (isFullscreen()) {
         // This handles any transition to or from fullscreen overlay mode.
@@ -1205,7 +1183,7 @@ WebMediaPlayer::LoadType HTMLMediaElement::loadType() const
     if (m_mediaSource)
         return WebMediaPlayer::LoadTypeMediaSource;
 
-    if (isMediaStreamURL(m_currentSrc.getString()))
+    if (m_srcObject || isMediaStreamURL(m_currentSrc.getString()))
         return WebMediaPlayer::LoadTypeMediaStream;
 
     return WebMediaPlayer::LoadTypeURL;
@@ -2629,8 +2607,8 @@ bool HTMLMediaElement::havePotentialSourceChild()
 {
     // Stash the current <source> node and next nodes so we can restore them after checking
     // to see there is another potential.
-    RawPtr<HTMLSourceElement> currentSourceNode = m_currentSourceNode;
-    RawPtr<Node> nextNode = m_nextChildNodeToConsider;
+    HTMLSourceElement* currentSourceNode = m_currentSourceNode;
+    Node* nextNode = m_nextChildNodeToConsider;
 
     KURL nextURL = selectNextSourceChild(0, DoNothing);
 
@@ -3315,7 +3293,7 @@ TextTrackContainer& HTMLMediaElement::ensureTextTrackContainer()
     if (firstChild && firstChild->isTextTrackContainer())
         return toTextTrackContainer(*firstChild);
 
-    RawPtr<TextTrackContainer> textTrackContainer = TextTrackContainer::create(document());
+    TextTrackContainer* textTrackContainer = TextTrackContainer::create(document());
 
     // The text track container should be inserted before the media controls,
     // so that they are rendered behind them.
@@ -3461,7 +3439,7 @@ void HTMLMediaElement::ensureMediaControls()
     if (mediaControls())
         return;
 
-    RawPtr<MediaControls> mediaControls = MediaControls::create(*this);
+    MediaControls* mediaControls = MediaControls::create(*this);
 
     mediaControls->reset();
     if (isFullscreen())
@@ -3532,7 +3510,7 @@ void HTMLMediaElement::configureTextTrackDisplay()
     updateTextTrackDisplay();
 }
 
-void* HTMLMediaElement::preDispatchEventHandler(Event* event)
+EventDispatchHandlingState* HTMLMediaElement::preDispatchEventHandler(Event* event)
 {
     if (event && event->type() == EventTypeNames::webkitfullscreenchange)
         configureMediaControls();
@@ -3589,11 +3567,7 @@ void HTMLMediaElement::setWebLayer(WebLayer* webLayer)
         return;
 
     // If either of the layers is null we need to enable or disable compositing. This is done by triggering a style recalc.
-    if ((!m_webLayer || !webLayer)
-#if ENABLE(OILPAN)
-        && !m_isFinalizing
-#endif
-        )
+    if (!m_webLayer || !webLayer)
         setNeedsCompositingUpdate();
 
     if (m_webLayer)
@@ -3639,6 +3613,7 @@ DEFINE_TRACE(HTMLMediaElement)
     visitor->trace(m_audioSourceProvider);
     visitor->trace(m_autoplayHelperClient);
     visitor->trace(m_autoplayHelper);
+    visitor->trace(m_srcObject);
     visitor->template registerWeakMembers<HTMLMediaElement, &HTMLMediaElement::clearWeakMembers>(this);
     Supplementable<HTMLMediaElement>::trace(visitor);
     HTMLElement::trace(visitor);
@@ -3780,7 +3755,7 @@ void HTMLMediaElement::rejectPlayPromises(ExceptionCode code, const String& mess
 
 void HTMLMediaElement::clearWeakMembers(Visitor* visitor)
 {
-    if (!Heap::isHeapObjectAlive(m_audioSourceNode))
+    if (!ThreadHeap::isHeapObjectAlive(m_audioSourceNode))
         getAudioSourceProvider().setClient(nullptr);
 }
 
@@ -3882,12 +3857,5 @@ IntRect HTMLMediaElement::AutoplayHelperClientImpl::absoluteBoundingBoxRect() co
         result = object->absoluteBoundingBoxRect();
     return result;
 }
-
-#if !ENABLE(OILPAN)
-WeakPtr<HTMLMediaElement> HTMLMediaElement::createWeakPtr()
-{
-    return m_weakPtrFactory.createWeakPtr();
-}
-#endif
 
 } // namespace blink

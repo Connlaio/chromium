@@ -235,12 +235,15 @@ class WebViewChromium implements WebViewProvider, WebViewProvider.ScrollDelegate
                 mAppTargetSdkVersion < Build.VERSION_CODES.JELLY_BEAN;
         final boolean areLegacyQuirksEnabled = mAppTargetSdkVersion < Build.VERSION_CODES.KITKAT;
         final boolean allowEmptyDocumentPersistence = mAppTargetSdkVersion <= Build.VERSION_CODES.M;
+        final boolean allowGeolocationOnInsecureOrigins =
+                mAppTargetSdkVersion <= Build.VERSION_CODES.M;
 
         mContentsClientAdapter =
                 new WebViewContentsClientAdapter(mWebView, mContext, mFactory.getWebViewDelegate());
         mWebSettings = new ContentSettingsAdapter(
                 new AwSettings(mContext, isAccessFromFileURLsGrantedByDefault,
-                        areLegacyQuirksEnabled, allowEmptyDocumentPersistence));
+                        areLegacyQuirksEnabled, allowEmptyDocumentPersistence,
+                        allowGeolocationOnInsecureOrigins));
 
         if (mAppTargetSdkVersion < Build.VERSION_CODES.LOLLIPOP) {
             // Prior to Lollipop we always allowed third party cookies and mixed content.
@@ -458,10 +461,6 @@ class WebViewChromium implements WebViewProvider, WebViewProvider.ScrollDelegate
         mContentsClientAdapter.setDownloadListener(null);
 
         mAwContents.destroy();
-        if (mGLfunctor != null) {
-            mGLfunctor.destroy();
-            mGLfunctor = null;
-        }
     }
 
     @Override
@@ -2245,17 +2244,19 @@ class WebViewChromium implements WebViewProvider, WebViewProvider.ScrollDelegate
     // AwContents.NativeGLDelegate implementation --------------------------------------
     private class WebViewNativeGLDelegate implements AwContents.NativeGLDelegate {
         @Override
-        public boolean setDrawGLFunctionDetachedCallback(View view, Runnable callback) {
-            return false; // Not supported yet.
+        public boolean supportsDrawGLFunctorReleasedCallback() {
+            return DrawGLFunctor.supportsDrawGLFunctorReleasedCallback();
         }
 
         @Override
-        public boolean requestDrawGL(Canvas canvas, boolean waitForCompletion, View containerView) {
+        public boolean requestDrawGL(Canvas canvas, boolean waitForCompletion, View containerView,
+                Runnable releasedCallback) {
             if (mGLfunctor == null) {
                 mGLfunctor = new DrawGLFunctor(
                         mAwContents.getAwDrawGLViewContext(), mFactory.getWebViewDelegate());
             }
-            return mGLfunctor.requestDrawGL(canvas, containerView, waitForCompletion);
+            return mGLfunctor.requestDrawGL(
+                    canvas, containerView, waitForCompletion, releasedCallback);
         }
 
         @Override

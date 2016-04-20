@@ -228,15 +228,6 @@ void OfflinePageModel::MarkPageForDeletion(int64_t offline_id,
                  weak_ptr_factory_.GetWeakPtr(), offline_page_item, callback));
 }
 
-void OfflinePageModel::DeletePageByOfflineId(
-    int64_t offline_id,
-    const DeletePageCallback& callback) {
-  DCHECK(is_loaded_);
-  std::vector<int64_t> offline_ids_to_delete;
-  offline_ids_to_delete.push_back(offline_id);
-  DeletePagesByOfflineId(offline_ids_to_delete, callback);
-}
-
 void OfflinePageModel::DeletePagesByOfflineId(
     const std::vector<int64_t>& offline_ids,
     const DeletePageCallback& callback) {
@@ -288,33 +279,84 @@ void OfflinePageModel::ClearAll(const base::Closure& callback) {
                  weak_ptr_factory_.GetWeakPtr(), callback));
 }
 
-bool OfflinePageModel::HasOfflinePages() const {
-  // Since offline pages feature is enabled by default,
-  // NetErrorTabHelper::SetHasOfflinePages might call this before the model is
-  // fully loaded. To address this, we need to switch to asynchonous model
-  // (crbug.com/589526). But for now, we just bail out to work around the test
-  // issue.
+void OfflinePageModel::DeletePagesByURLPredicate(
+    const base::Callback<bool(const GURL&)>& predicate,
+    const DeletePageCallback& callback) {
+  if (!is_loaded_) {
+    delayed_tasks_.push_back(
+        base::Bind(&OfflinePageModel::DoDeletePagesByURLPredicate,
+                   weak_ptr_factory_.GetWeakPtr(), predicate, callback));
+
+    return;
+  }
+  DoDeletePagesByURLPredicate(predicate, callback);
+}
+
+void OfflinePageModel::DoDeletePagesByURLPredicate(
+    const base::Callback<bool(const GURL&)>& predicate,
+    const DeletePageCallback& callback) {
+  DCHECK(is_loaded_);
+
+  std::vector<int64_t> offline_ids;
+  for (const auto& id_page_pair : offline_pages_) {
+    if (!id_page_pair.second.IsMarkedForDeletion() &&
+        predicate.Run(id_page_pair.second.url)) {
+      offline_ids.push_back(id_page_pair.first);
+    }
+  }
+  DoDeletePagesByOfflineId(offline_ids, callback);
+}
+
+void OfflinePageModel::HasPages(const std::string& name_space,
+                                const HasPagesCallback& callback) {
+  RunWhenLoaded(base::Bind(&OfflinePageModel::HasPagesAfterLoadDone,
+                           weak_ptr_factory_.GetWeakPtr(), name_space,
+                           callback));
+}
+
+void OfflinePageModel::HasPagesAfterLoadDone(
+    const std::string& name_space,
+    const HasPagesCallback& callback) const {
+  callback.Run(MaybeHasPages(name_space));
+}
+
+bool OfflinePageModel::MaybeHasPages(const std::string& name_space) const {
   if (!is_loaded_)
     return false;
 
-  // Check that at least one page is not marked for deletion. Because we have
-  // pages marked for deletion, we cannot simply invert result of |empty()|.
   for (const auto& id_page_pair : offline_pages_) {
-    if (!id_page_pair.second.IsMarkedForDeletion())
+    if (!id_page_pair.second.IsMarkedForDeletion() &&
+        id_page_pair.second.client_id.name_space == name_space) {
       return true;
+    }
   }
+
   return false;
 }
 
-const std::vector<OfflinePageItem> OfflinePageModel::GetAllPages() const {
+void OfflinePageModel::GetAllPages(const GetAllPagesCallback& callback) {
+  if (!is_loaded_) {
+    delayed_tasks_.push_back(
+        base::Bind(&OfflinePageModel::GetAllPagesAfterLoadDone,
+                   weak_ptr_factory_.GetWeakPtr(), callback));
+    return;
+  }
+
+  GetAllPagesAfterLoadDone(callback);
+}
+
+void OfflinePageModel::GetAllPagesAfterLoadDone(
+    const GetAllPagesCallback& callback) {
   DCHECK(is_loaded_);
+
   std::vector<OfflinePageItem> offline_pages;
   for (const auto& id_page_pair : offline_pages_) {
     if (id_page_pair.second.IsMarkedForDeletion())
       continue;
     offline_pages.push_back(id_page_pair.second);
   }
-  return offline_pages;
+
+  callback.Run(offline_pages);
 }
 
 const std::vector<OfflinePageItem> OfflinePageModel::GetPagesToCleanUp() const {
@@ -333,6 +375,7 @@ const std::vector<OfflinePageItem> OfflinePageModel::GetPagesToCleanUp() const {
 const std::vector<int64_t> OfflinePageModel::GetOfflineIdsForClientId(
     const ClientId& client_id,
     bool include_deleted) const {
+  DCHECK(is_loaded_);
   std::vector<int64_t> results;
 
   // We want only all pages, including those marked for deletion.
@@ -794,4 +837,14 @@ void OfflinePageModel::MarkPagesForDeletion(
     MarkPageForDeletion(id, callback);
   }
 }
+
+void OfflinePageModel::RunWhenLoaded(const base::Closure& task) {
+  if (!is_loaded_) {
+    delayed_tasks_.push_back(task);
+    return;
+  }
+
+  task_runner_->PostTask(FROM_HERE, task);
+}
+
 }  // namespace offline_pages

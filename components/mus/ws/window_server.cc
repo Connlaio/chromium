@@ -21,7 +21,7 @@
 #include "mojo/converters/geometry/geometry_type_converters.h"
 #include "mojo/converters/input_events/input_events_type_converters.h"
 #include "mojo/converters/surfaces/surfaces_type_converters.h"
-#include "mojo/shell/public/cpp/connection.h"
+#include "services/shell/public/cpp/connection.h"
 #include "ui/gfx/geometry/size_conversions.h"
 
 namespace mus {
@@ -169,6 +169,15 @@ void WindowServer::DestroyTree(WindowTree* tree) {
 WindowTree* WindowServer::GetTreeWithId(ConnectionSpecificId connection_id) {
   auto iter = tree_map_.find(connection_id);
   return iter == tree_map_.end() ? nullptr : iter->second.get();
+}
+
+WindowTree* WindowServer::GetTreeWithConnectionName(
+    const std::string& connection_name) {
+  for (const auto& entry : tree_map_) {
+    if (entry.second->connection_name() == connection_name)
+      return entry.second.get();
+  }
+  return nullptr;
 }
 
 ServerWindow* WindowServer::GetWindow(const WindowId& id) {
@@ -399,6 +408,14 @@ void WindowServer::ProcessWillChangeWindowPredefinedCursor(ServerWindow* window,
     display->OnCursorUpdated(window);
 }
 
+void WindowServer::SetPaintCallback(
+    const base::Callback<void(ServerWindow*)>& callback) {
+  DCHECK(delegate_->IsTestConfig()) << "Paint callbacks are expensive, and "
+                                    << "allowed only in tests.";
+  DCHECK(window_paint_callback_.is_null() || callback.is_null());
+  window_paint_callback_ = callback;
+}
+
 void WindowServer::ProcessViewportMetricsChanged(
     Display* display,
     const mojom::ViewportMetrics& old_metrics,
@@ -448,8 +465,12 @@ mus::SurfacesState* WindowServer::GetSurfacesState() {
 }
 
 void WindowServer::OnScheduleWindowPaint(ServerWindow* window) {
-  if (!in_destructor_)
-    SchedulePaint(window, gfx::Rect(window->bounds().size()));
+  if (in_destructor_)
+    return;
+
+  SchedulePaint(window, gfx::Rect(window->bounds().size()));
+  if (!window_paint_callback_.is_null())
+    window_paint_callback_.Run(window);
 }
 
 const ServerWindow* WindowServer::GetRootWindow(

@@ -54,12 +54,6 @@ class StyleRuleFontFace;
 class StyleSheet;
 class StyleSheetContents;
 
-enum ShadowCascadeOrder {
-    ShadowCascadeNone,
-    ShadowCascadeV0,
-    ShadowCascadeV1
-};
-
 class CORE_EXPORT StyleEngine final : public GarbageCollectedFinalized<StyleEngine>, public CSSFontSelectorClient  {
     USING_GARBAGE_COLLECTED_MIXIN(StyleEngine);
 public:
@@ -75,13 +69,9 @@ public:
 
     friend class IgnoringPendingStylesheet;
 
-    static RawPtr<StyleEngine> create(Document& document) { return new StyleEngine(document); }
+    static StyleEngine* create(Document& document) { return new StyleEngine(document); }
 
     ~StyleEngine();
-
-#if !ENABLE(OILPAN)
-    void detachFromDocument();
-#endif
 
     const HeapVector<Member<StyleSheet>>& styleSheetsForStyleSheetList(TreeScope&);
 
@@ -96,7 +86,7 @@ public:
     void modifiedStyleSheetCandidateNode(Node*);
     void watchedSelectorsChanged();
 
-    void injectAuthorSheet(RawPtr<StyleSheetContents> authorSheet);
+    void injectAuthorSheet(StyleSheetContents* authorSheet);
 
     void clearMediaQueryRuleSetStyleSheets();
     void updateStyleSheetsInImport(DocumentStyleSheetCollector& parentCollector);
@@ -151,7 +141,7 @@ public:
     StyleInvalidator& styleInvalidator() { return m_styleInvalidator; }
 
     CSSFontSelector* fontSelector() { return m_fontSelector.get(); }
-    void setFontSelector(RawPtr<CSSFontSelector>);
+    void setFontSelector(CSSFontSelector*);
 
     void removeFontFaceRules(const HeapVector<Member<const StyleRuleFontFace>>&);
     void clearFontCache();
@@ -162,7 +152,7 @@ public:
     bool shouldClearResolver() const;
     void resolverChanged(StyleResolverUpdateMode);
 
-    RawPtr<CSSStyleSheet> createSheet(Element*, const String& text, TextPosition startPosition);
+    CSSStyleSheet* createSheet(Element*, const String& text, TextPosition startPosition);
     void removeSheet(StyleSheetContents*);
 
     void collectScopedStyleFeaturesTo(RuleFeatureSet&) const;
@@ -181,10 +171,6 @@ public:
 
     StyleResolverStats* stats() { return m_styleResolverStats.get(); }
     void setStatsEnabled(bool);
-
-    ShadowCascadeOrder shadowCascadeOrder() const { return m_shadowCascadeOrder; }
-    void setShadowCascadeOrder(ShadowCascadeOrder);
-    bool mayContainV0Shadow() const { return m_mayContainV0Shadow; }
 
     DECLARE_VIRTUAL_TRACE();
 
@@ -213,7 +199,7 @@ private:
 
     void createResolver();
 
-    static RawPtr<CSSStyleSheet> parseSheet(Element*, const String& text, TextPosition startPosition);
+    static CSSStyleSheet* parseSheet(Element*, const String& text, TextPosition startPosition);
 
     const DocumentStyleSheetCollection* documentStyleSheetCollection() const
     {
@@ -260,9 +246,6 @@ private:
 
     bool m_ignorePendingStylesheets = false;
     bool m_didCalculateResolver = false;
-    bool m_mayContainV0Shadow = false;
-
-    ShadowCascadeOrder m_shadowCascadeOrder = ShadowCascadeNone;
 
     Member<StyleResolver> m_resolver;
     StyleInvalidator m_styleInvalidator;

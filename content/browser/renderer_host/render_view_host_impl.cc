@@ -91,8 +91,8 @@
 
 #if defined(OS_WIN)
 #include "base/win/win_util.h"
+#include "ui/display/win/dpi.h"
 #include "ui/gfx/platform_font_win.h"
-#include "ui/gfx/win/dpi.h"
 #endif
 
 using base::TimeDelta;
@@ -154,13 +154,13 @@ void GetWindowsSpecificPrefs(RendererPreferences* prefs) {
       metrics.lfMessageFont);
 
   prefs->vertical_scroll_bar_width_in_dips =
-      gfx::win::GetSystemMetricsInDIP(SM_CXVSCROLL);
+      display::win::GetSystemMetricsInDIP(SM_CXVSCROLL);
   prefs->horizontal_scroll_bar_height_in_dips =
-      gfx::win::GetSystemMetricsInDIP(SM_CYHSCROLL);
+      display::win::GetSystemMetricsInDIP(SM_CYHSCROLL);
   prefs->arrow_bitmap_height_vertical_scroll_bar_in_dips =
-      gfx::win::GetSystemMetricsInDIP(SM_CYVSCROLL);
+      display::win::GetSystemMetricsInDIP(SM_CYVSCROLL);
   prefs->arrow_bitmap_width_horizontal_scroll_bar_in_dips =
-      gfx::win::GetSystemMetricsInDIP(SM_CXHSCROLL);
+      display::win::GetSystemMetricsInDIP(SM_CXHSCROLL);
 }
 #endif
 
@@ -208,17 +208,17 @@ RenderViewHostImpl* RenderViewHostImpl::From(RenderWidgetHost* rwh) {
   return rvh;
 }
 
-RenderViewHostImpl::RenderViewHostImpl(SiteInstance* instance,
-                                       scoped_ptr<RenderWidgetHostImpl> widget,
-                                       RenderViewHostDelegate* delegate,
-                                       int32_t main_frame_routing_id,
-                                       bool swapped_out,
-                                       bool has_initialized_audio_host)
+RenderViewHostImpl::RenderViewHostImpl(
+    SiteInstance* instance,
+    std::unique_ptr<RenderWidgetHostImpl> widget,
+    RenderViewHostDelegate* delegate,
+    int32_t main_frame_routing_id,
+    bool swapped_out,
+    bool has_initialized_audio_host)
     : render_widget_host_(std::move(widget)),
       frames_ref_count_(0),
       delegate_(delegate),
       instance_(static_cast<SiteInstanceImpl*>(instance)),
-      waiting_for_drag_context_response_(false),
       enabled_bindings_(0),
       page_id_(-1),
       is_active_(!swapped_out),
@@ -491,9 +491,10 @@ WebPreferences RenderViewHostImpl::ComputeWebkitPrefs() {
 
   prefs.number_of_cpu_cores = base::SysInfo::NumberOfProcessors();
 
-  prefs.viewport_enabled =
-      command_line.HasSwitch(switches::kEnableViewport) ||
-      prefs.viewport_meta_enabled;
+  prefs.viewport_enabled = command_line.HasSwitch(switches::kEnableViewport);
+
+  if (delegate_ && delegate_->IsOverridingUserAgent())
+    prefs.viewport_meta_enabled = false;
 
   prefs.main_frame_resizes_are_orientation_changes =
       command_line.HasSwitch(switches::kMainFrameResizesAreOrientationChanges);

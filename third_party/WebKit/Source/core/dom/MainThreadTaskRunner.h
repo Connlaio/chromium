@@ -35,7 +35,6 @@
 #include "wtf/OwnPtr.h"
 #include "wtf/PassOwnPtr.h"
 #include "wtf/Vector.h"
-#include "wtf/WeakPtr.h"
 
 namespace blink {
 
@@ -45,7 +44,7 @@ class ExecutionContextTask;
 class CORE_EXPORT MainThreadTaskRunner final : public GarbageCollectedFinalized<MainThreadTaskRunner> {
     WTF_MAKE_NONCOPYABLE(MainThreadTaskRunner);
 public:
-    static RawPtr<MainThreadTaskRunner> create(ExecutionContext*);
+    static MainThreadTaskRunner* create(ExecutionContext*);
 
     ~MainThreadTaskRunner();
 
@@ -66,15 +65,12 @@ private:
     void postTaskInternal(const WebTraceLocation&, PassOwnPtr<ExecutionContextTask>, bool isInspectorTask);
 
     Member<ExecutionContext> m_context;
-#if !ENABLE(OILPAN)
-    WeakPtrFactory<MainThreadTaskRunner> m_weakFactory;
-#endif
     Timer<MainThreadTaskRunner> m_pendingTasksTimer;
     Vector<OwnPtr<ExecutionContextTask>> m_pendingTasks;
     bool m_suspended;
 };
 
-inline RawPtr<MainThreadTaskRunner> MainThreadTaskRunner::create(ExecutionContext* context)
+inline MainThreadTaskRunner* MainThreadTaskRunner::create(ExecutionContext* context)
 {
     return new MainThreadTaskRunner(context);
 }

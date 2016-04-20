@@ -89,7 +89,7 @@
 #include "platform/geometry/TransformState.h"
 #include "platform/graphics/GraphicsContext.h"
 #include "platform/graphics/paint/PaintController.h"
-#include "wtf/Partitions.h"
+#include "wtf/allocator/Partitions.h"
 #include "wtf/text/StringBuilder.h"
 #include "wtf/text/WTFString.h"
 #include <algorithm>
@@ -352,7 +352,7 @@ void LayoutObject::addChild(LayoutObject* newChild, LayoutObject* beforeChild)
     // To avoid the problem altogether, detect early if we're inside a hidden SVG subtree
     // and stop creating layers at all for these cases - they're not used anyways.
     if (newChild->hasLayer() && !layerCreationAllowedForSubtree())
-        toLayoutBoxModelObject(newChild)->layer()->removeOnlyThisLayer();
+        toLayoutBoxModelObject(newChild)->layer()->removeOnlyThisLayerAfterStyleChange();
 }
 
 void LayoutObject::removeChild(LayoutObject* oldChild)
@@ -748,23 +748,13 @@ static inline bool objectIsRelayoutBoundary(const LayoutObject* object)
     return true;
 }
 
-void LayoutObject::markContainerChainForLayout(bool scheduleRelayout)
-{
-    markContainerChainForLayout(scheduleRelayout, nullptr);
-}
-
-void LayoutObject::markContainerChainForLayout(SubtreeLayoutScope* layouter)
-{
-    // When we have a layouter, it means that we're in layout and we're marking
-    // a descendant as needing layout with the intention of visiting it during
-    // this layout. We shouldn't be scheduling it to be laid out later.
-    markContainerChainForLayout(!layouter, layouter);
-}
-
 void LayoutObject::markContainerChainForLayout(bool scheduleRelayout, SubtreeLayoutScope* layouter)
 {
     ASSERT(!isSetNeedsLayoutForbidden());
     ASSERT(!layouter || this != layouter->root());
+    // When we have a layouter, it means that we're in layout and we're marking
+    // a descendant as needing layout with the intention of visiting it during
+    // this layout. We shouldn't be scheduling it to be laid out later.
     ASSERT(!scheduleRelayout || !layouter);
 
     LayoutObject* object = container();
@@ -1219,7 +1209,7 @@ void LayoutObject::invalidatePaintUsingContainer(const LayoutBoxModelObject& pai
         invalidatePaintRectangleOnWindow(paintInvalidationContainer, enclosingIntRect(dirtyRect));
 
     if (paintInvalidationContainer.view()->usesCompositing() && paintInvalidationContainer.isPaintInvalidationContainer())
-        paintInvalidationContainer.setBackingNeedsPaintInvalidationInRect(dirtyRect, invalidationReason);
+        paintInvalidationContainer.setBackingNeedsPaintInvalidationInRect(dirtyRect, invalidationReason, *this);
 }
 
 void LayoutObject::invalidateDisplayItemClient(const DisplayItemClient& displayItemClient) const
@@ -1389,13 +1379,11 @@ inline void LayoutObject::invalidateSelectionIfNeeded(const LayoutBoxModelObject
 
     setPreviousSelectionRectForPaintInvalidation(newSelectionRect);
 
+    // TODO(wangxianzhu): Combine the following two conditions when removing LayoutView::doingFullPaintInvalidation().
+    if (!fullInvalidation)
+        fullyInvalidatePaint(paintInvalidationContainer, PaintInvalidationSelection, oldSelectionRect, newSelectionRect);
     if (shouldInvalidateSelection())
         invalidateDisplayItemClientsWithPaintInvalidationState(paintInvalidationContainer, paintInvalidationState, PaintInvalidationSelection);
-
-    if (fullInvalidation)
-        return;
-
-    fullyInvalidatePaint(paintInvalidationContainer, PaintInvalidationSelection, oldSelectionRect, newSelectionRect);
 }
 
 PaintInvalidationReason LayoutObject::invalidatePaintIfNeeded(const PaintInvalidationState& paintInvalidationState)
@@ -1464,15 +1452,12 @@ PaintInvalidationReason LayoutObject::invalidatePaintIfNeeded(const PaintInvalid
         return invalidationReason;
     }
 
-    invalidateDisplayItemClientsWithPaintInvalidationState(paintInvalidationContainer, paintInvalidationState, invalidationReason);
-
-    if (invalidationReason == PaintInvalidationIncremental) {
+    if (invalidationReason == PaintInvalidationIncremental)
         incrementallyInvalidatePaint(paintInvalidationContainer, oldBounds, newBounds, newLocation);
-        return invalidationReason;
-    }
+    else
+        fullyInvalidatePaint(paintInvalidationContainer, invalidationReason, oldBounds, newBounds);
 
-    fullyInvalidatePaint(paintInvalidationContainer, invalidationReason, oldBounds, newBounds);
-
+    invalidateDisplayItemClientsWithPaintInvalidationState(paintInvalidationContainer, paintInvalidationState, invalidationReason);
     return invalidationReason;
 }
 
@@ -1581,15 +1566,19 @@ void LayoutObject::incrementallyInvalidatePaint(const LayoutBoxModelObject& pain
 
 void LayoutObject::fullyInvalidatePaint(const LayoutBoxModelObject& paintInvalidationContainer, PaintInvalidationReason invalidationReason, const LayoutRect& oldBounds, const LayoutRect& newBounds)
 {
-    // Otherwise do full paint invalidation.
-    LayoutRect invalidationRect = oldBounds;
-    adjustInvalidationRectForCompositedScrolling(invalidationRect, paintInvalidationContainer);
-    invalidatePaintUsingContainer(paintInvalidationContainer, invalidationRect, invalidationReason);
-    if (newBounds != oldBounds) {
-        invalidationRect = newBounds;
+    // The following logic avoids invalidating twice if one set of bounds contains the other.
+    if (!newBounds.contains(oldBounds)) {
+        LayoutRect invalidationRect = oldBounds;
         adjustInvalidationRectForCompositedScrolling(invalidationRect, paintInvalidationContainer);
         invalidatePaintUsingContainer(paintInvalidationContainer, invalidationRect, invalidationReason);
+
+        if (oldBounds.contains(newBounds))
+            return;
     }
+
+    LayoutRect invalidationRect = newBounds;
+    adjustInvalidationRectForCompositedScrolling(invalidationRect, paintInvalidationContainer);
+    invalidatePaintUsingContainer(paintInvalidationContainer, invalidationRect, invalidationReason);
 }
 
 void LayoutObject::invalidatePaintForOverflow()
@@ -1894,10 +1883,16 @@ void LayoutObject::firstLineStyleDidChange(const ComputedStyle& oldStyle, const 
         setNeedsLayoutAndPrefWidthsRecalc(LayoutInvalidationReason::StyleChange);
 }
 
-void LayoutObject::markContainingBlocksForOverflowRecalc()
+void LayoutObject::markAncestorsForOverflowRecalcIfNeeded()
 {
-    for (LayoutBlock* container = containingBlock(); container && !container->childNeedsOverflowRecalcAfterStyleChange(); container = container->containingBlock())
-        container->setChildNeedsOverflowRecalcAfterStyleChange();
+    LayoutObject* object = this;
+    do {
+        // Cell and row need to propagate the flag to their containing section and row as their containing block is the table wrapper.
+        // This enables us to only recompute overflow the modified sections / rows.
+        object = object->isTableCell() || object->isTableRow() ? object->parent() : object->containingBlock();
+        if (object)
+            object->setChildNeedsOverflowRecalcAfterStyleChange();
+    } while (object);
 }
 
 void LayoutObject::setNeedsOverflowRecalcAfterStyleChange()
@@ -1905,7 +1900,7 @@ void LayoutObject::setNeedsOverflowRecalcAfterStyleChange()
     bool neededRecalc = needsOverflowRecalcAfterStyleChange();
     setSelfNeedsOverflowRecalcAfterStyleChange();
     if (!neededRecalc)
-        markContainingBlocksForOverflowRecalc();
+        markAncestorsForOverflowRecalcIfNeeded();
 }
 
 void LayoutObject::setStyle(PassRefPtr<ComputedStyle> style)
@@ -1975,6 +1970,14 @@ void LayoutObject::setStyle(PassRefPtr<ComputedStyle> style)
             container->setNeedsOverflowRecalcAfterStyleChange();
     }
 
+    if (diff.needsRecomputeOverflow() && !needsLayout()) {
+        // TODO(rhogan): Make inlines capable of recomputing overflow too.
+        if (isLayoutBlock())
+            setNeedsOverflowRecalcAfterStyleChange();
+        else
+            setNeedsLayoutAndPrefWidthsRecalc(LayoutInvalidationReason::StyleChange);
+    }
+
     if (diff.needsPaintInvalidationLayer() || updatedDiff.needsPaintInvalidationLayer())
         setShouldDoFullPaintInvalidationIncludingNonCompositingDescendants();
     else if (diff.needsPaintInvalidationObject() || updatedDiff.needsPaintInvalidationObject())
@@ -2037,9 +2040,9 @@ void LayoutObject::styleWillChange(StyleDifference diff, const ComputedStyle& ne
     if (node() && !node()->isTextNode() && (oldTouchAction == TouchActionAuto) != (newStyle.getTouchAction() == TouchActionAuto)) {
         EventHandlerRegistry& registry = document().frameHost()->eventHandlerRegistry();
         if (newStyle.getTouchAction() != TouchActionAuto)
-            registry.didAddEventHandler(*node(), EventHandlerRegistry::TouchEventBlocking);
+            registry.didAddEventHandler(*node(), EventHandlerRegistry::TouchStartOrMoveEventBlocking);
         else
-            registry.didRemoveEventHandler(*node(), EventHandlerRegistry::TouchEventBlocking);
+            registry.didRemoveEventHandler(*node(), EventHandlerRegistry::TouchStartOrMoveEventBlocking);
     }
 }
 
@@ -2085,7 +2088,7 @@ void LayoutObject::styleDidChange(StyleDifference diff, const ComputedStyle* old
 
         // Ditto.
         if (needsOverflowRecalcAfterStyleChange() && oldStyle->position() != m_style->position())
-            markContainingBlocksForOverflowRecalc();
+            markAncestorsForOverflowRecalcIfNeeded();
 
         setNeedsLayoutAndPrefWidthsRecalc(LayoutInvalidationReason::StyleChange);
     } else if (diff.needsPositionedMovementLayout()) {
@@ -2651,8 +2654,8 @@ void LayoutObject::willBeDestroyed()
     // previously may have already been removed by the Document independently.
     if (node() && !node()->isTextNode() && m_style && m_style->getTouchAction() != TouchActionAuto) {
         EventHandlerRegistry& registry = document().frameHost()->eventHandlerRegistry();
-        if (registry.eventHandlerTargets(EventHandlerRegistry::TouchEventBlocking)->contains(node()))
-            registry.didRemoveEventHandler(*node(), EventHandlerRegistry::TouchEventBlocking);
+        if (registry.eventHandlerTargets(EventHandlerRegistry::TouchStartOrMoveEventBlocking)->contains(node()))
+            registry.didRemoveEventHandler(*node(), EventHandlerRegistry::TouchStartOrMoveEventBlocking);
     }
 
     setAncestorLineBoxDirty(false);
@@ -3569,8 +3572,8 @@ void LayoutObject::invalidatePaintOfPreviousPaintInvalidationRect(const LayoutBo
 
     LayoutRect invalidationRect = previousPaintInvalidationRect();
     adjustInvalidationRectForCompositedScrolling(invalidationRect, paintInvalidationContainer);
-    invalidatePaintUsingContainer(paintInvalidationContainer, invalidationRect, PaintInvalidationLayer);
-    invalidateDisplayItemClients(paintInvalidationContainer, PaintInvalidationLayer);
+    invalidatePaintUsingContainer(paintInvalidationContainer, invalidationRect, reason);
+    invalidateDisplayItemClients(paintInvalidationContainer, reason);
 
     // This method may be used to invalidate paint of an object changing paint invalidation container.
     // Clear previous paint invalidation rect on the original paint invalidation container to avoid
@@ -3636,10 +3639,13 @@ ObjectPaintProperties* LayoutObject::objectPaintProperties() const
     return objectPaintPropertiesMap().get(this);
 }
 
-void LayoutObject::setObjectPaintProperties(PassOwnPtr<ObjectPaintProperties> paintProperties)
+ObjectPaintProperties& LayoutObject::ensureObjectPaintProperties()
 {
     ASSERT(RuntimeEnabledFeatures::slimmingPaintV2Enabled());
-    objectPaintPropertiesMap().set(this, paintProperties);
+    if (ObjectPaintProperties* properties = objectPaintPropertiesMap().get(this))
+        return *properties;
+    objectPaintPropertiesMap().set(this, ObjectPaintProperties::create());
+    return *objectPaintPropertiesMap().get(this);
 }
 
 void LayoutObject::clearObjectPaintProperties()

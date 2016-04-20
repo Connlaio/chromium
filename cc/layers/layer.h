@@ -20,7 +20,6 @@
 #include "cc/animation/target_property.h"
 #include "cc/base/cc_export.h"
 #include "cc/base/region.h"
-#include "cc/debug/frame_timing_request.h"
 #include "cc/debug/micro_benchmark.h"
 #include "cc/input/input_handler.h"
 #include "cc/layers/layer_collections.h"
@@ -103,7 +102,7 @@ class CC_EXPORT Layer : public base::RefCounted<Layer> {
   // first), then the callback is called with a nullptr/empty result. If the
   // request's source property is set, any prior uncommitted requests having the
   // same source will be aborted.
-  void RequestCopyOfOutput(scoped_ptr<CopyOutputRequest> request);
+  void RequestCopyOfOutput(std::unique_ptr<CopyOutputRequest> request);
   bool HasCopyRequest() const {
     return !copy_requests_.empty();
   }
@@ -350,7 +349,7 @@ class CC_EXPORT Layer : public base::RefCounted<Layer> {
   virtual void SetIsMask(bool is_mask) {}
   virtual bool IsSuitableForGpuRasterization() const;
 
-  virtual scoped_ptr<base::trace_event::ConvertableToTraceFormat>
+  virtual std::unique_ptr<base::trace_event::ConvertableToTraceFormat>
   TakeDebugInfo();
 
   void SetLayerClient(LayerClient* client) { client_ = client; }
@@ -409,7 +408,7 @@ class CC_EXPORT Layer : public base::RefCounted<Layer> {
   virtual sk_sp<SkPicture> GetPicture() const;
 
   // Constructs a LayerImpl of the correct runtime type for this Layer type.
-  virtual scoped_ptr<LayerImpl> CreateLayerImpl(LayerTreeImpl* tree_impl);
+  virtual std::unique_ptr<LayerImpl> CreateLayerImpl(LayerTreeImpl* tree_impl);
 
   bool NeedsDisplayForTesting() const { return !update_rect_.IsEmpty(); }
   void ResetNeedsDisplayForTesting() { update_rect_ = gfx::Rect(); }
@@ -487,14 +486,6 @@ class CC_EXPORT Layer : public base::RefCounted<Layer> {
 
   void SetSubtreePropertyChanged();
   bool subtree_property_changed() const { return subtree_property_changed_; }
-
-  // Sets new frame timing requests for this layer.
-  void SetFrameTimingRequests(const std::vector<FrameTimingRequest>& requests);
-
-  // Accessor for unit tests
-  const std::vector<FrameTimingRequest>& FrameTimingRequests() const {
-    return frame_timing_requests_;
-  }
 
   void DidBeginTracing();
 
@@ -666,10 +657,10 @@ class CC_EXPORT Layer : public base::RefCounted<Layer> {
   FilterOperations background_filters_;
   LayerPositionConstraint position_constraint_;
   Layer* scroll_parent_;
-  scoped_ptr<std::set<Layer*>> scroll_children_;
+  std::unique_ptr<std::set<Layer*>> scroll_children_;
 
   Layer* clip_parent_;
-  scoped_ptr<std::set<Layer*>> clip_children_;
+  std::unique_ptr<std::set<Layer*>> clip_children_;
 
   gfx::Transform transform_;
   gfx::Point3F transform_origin_;
@@ -679,7 +670,7 @@ class CC_EXPORT Layer : public base::RefCounted<Layer> {
 
   LayerClient* client_;
 
-  std::vector<scoped_ptr<CopyOutputRequest>> copy_requests_;
+  std::vector<std::unique_ptr<CopyOutputRequest>> copy_requests_;
 
   base::Closure did_scroll_callback_;
 
@@ -688,9 +679,6 @@ class CC_EXPORT Layer : public base::RefCounted<Layer> {
   // These all act like draw properties, so don't need push properties.
   gfx::Rect visible_layer_rect_;
   size_t num_unclipped_descendants_;
-
-  std::vector<FrameTimingRequest> frame_timing_requests_;
-  bool frame_timing_requests_dirty_;
 
   DISALLOW_COPY_AND_ASSIGN(Layer);
 };

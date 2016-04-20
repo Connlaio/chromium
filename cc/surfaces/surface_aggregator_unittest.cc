@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "base/macros.h"
+#include "base/memory/ptr_util.h"
 #include "cc/output/compositor_frame.h"
 #include "cc/output/delegated_frame_data.h"
 #include "cc/quads/render_pass.h"
@@ -81,7 +82,7 @@ TEST_F(SurfaceAggregatorTest, ValidSurfaceNoFrame) {
   SurfaceId one_id(7);
   factory_.Create(one_id);
 
-  scoped_ptr<CompositorFrame> frame = aggregator_.Aggregate(one_id);
+  std::unique_ptr<CompositorFrame> frame = aggregator_.Aggregate(one_id);
   EXPECT_FALSE(frame);
 
   factory_.Destroy(one_id);
@@ -112,7 +113,7 @@ class SurfaceAggregatorValidSurfaceTest : public SurfaceAggregatorTest {
                           size_t expected_pass_count,
                           SurfaceId* surface_ids,
                           size_t expected_surface_count) {
-    scoped_ptr<CompositorFrame> aggregated_frame =
+    std::unique_ptr<CompositorFrame> aggregated_frame =
         aggregator_.Aggregate(root_surface_id_);
 
     ASSERT_TRUE(aggregated_frame);
@@ -140,10 +141,10 @@ class SurfaceAggregatorValidSurfaceTest : public SurfaceAggregatorTest {
   }
 
   void SubmitPassListAsFrame(SurfaceId surface_id, RenderPassList* pass_list) {
-    scoped_ptr<DelegatedFrameData> frame_data(new DelegatedFrameData);
+    std::unique_ptr<DelegatedFrameData> frame_data(new DelegatedFrameData);
     pass_list->swap(frame_data->render_pass_list);
 
-    scoped_ptr<CompositorFrame> frame(new CompositorFrame);
+    std::unique_ptr<CompositorFrame> frame(new CompositorFrame);
     frame->delegated_frame_data = std::move(frame_data);
 
     factory_.SubmitCompositorFrame(surface_id, std::move(frame),
@@ -158,11 +159,13 @@ class SurfaceAggregatorValidSurfaceTest : public SurfaceAggregatorTest {
     SubmitPassListAsFrame(surface_id, &pass_list);
   }
 
-  void QueuePassAsFrame(scoped_ptr<RenderPass> pass, SurfaceId surface_id) {
-    scoped_ptr<DelegatedFrameData> delegated_frame_data(new DelegatedFrameData);
+  void QueuePassAsFrame(std::unique_ptr<RenderPass> pass,
+                        SurfaceId surface_id) {
+    std::unique_ptr<DelegatedFrameData> delegated_frame_data(
+        new DelegatedFrameData);
     delegated_frame_data->render_pass_list.push_back(std::move(pass));
 
-    scoped_ptr<CompositorFrame> child_frame(new CompositorFrame);
+    std::unique_ptr<CompositorFrame> child_frame(new CompositorFrame);
     child_frame->delegated_frame_data = std::move(delegated_frame_data);
 
     factory_.SubmitCompositorFrame(surface_id, std::move(child_frame),
@@ -211,7 +214,7 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, OpacityCopied) {
 
   SubmitCompositorFrame(passes, arraysize(passes), root_surface_id_);
 
-  scoped_ptr<CompositorFrame> aggregated_frame =
+  std::unique_ptr<CompositorFrame> aggregated_frame =
       aggregator_.Aggregate(root_surface_id_);
 
   ASSERT_TRUE(aggregated_frame);
@@ -295,7 +298,7 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, CopyRequest) {
 
   SubmitCompositorFrame(embedded_passes, arraysize(embedded_passes),
                         embedded_surface_id);
-  scoped_ptr<CopyOutputRequest> copy_request(
+  std::unique_ptr<CopyOutputRequest> copy_request(
       CopyOutputRequest::CreateEmptyRequest());
   CopyOutputRequest* copy_request_ptr = copy_request.get();
   factory_.RequestCopyOfSurface(embedded_surface_id, std::move(copy_request));
@@ -307,7 +310,7 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, CopyRequest) {
 
   SubmitCompositorFrame(root_passes, arraysize(root_passes), root_surface_id_);
 
-  scoped_ptr<CompositorFrame> aggregated_frame =
+  std::unique_ptr<CompositorFrame> aggregated_frame =
       aggregator_.Aggregate(root_surface_id_);
 
   ASSERT_TRUE(aggregated_frame);
@@ -353,10 +356,10 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, RootCopyRequest) {
 
   SubmitCompositorFrame(embedded_passes, arraysize(embedded_passes),
                         embedded_surface_id);
-  scoped_ptr<CopyOutputRequest> copy_request(
+  std::unique_ptr<CopyOutputRequest> copy_request(
       CopyOutputRequest::CreateEmptyRequest());
   CopyOutputRequest* copy_request_ptr = copy_request.get();
-  scoped_ptr<CopyOutputRequest> copy_request2(
+  std::unique_ptr<CopyOutputRequest> copy_request2(
       CopyOutputRequest::CreateEmptyRequest());
   CopyOutputRequest* copy_request2_ptr = copy_request2.get();
 
@@ -376,17 +379,17 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, RootCopyRequest) {
     pass_list[0]->copy_requests.push_back(std::move(copy_request));
     pass_list[1]->copy_requests.push_back(std::move(copy_request2));
 
-    scoped_ptr<DelegatedFrameData> frame_data(new DelegatedFrameData);
+    std::unique_ptr<DelegatedFrameData> frame_data(new DelegatedFrameData);
     pass_list.swap(frame_data->render_pass_list);
 
-    scoped_ptr<CompositorFrame> frame(new CompositorFrame);
+    std::unique_ptr<CompositorFrame> frame(new CompositorFrame);
     frame->delegated_frame_data = std::move(frame_data);
 
     factory_.SubmitCompositorFrame(root_surface_id_, std::move(frame),
                                    SurfaceFactory::DrawCallback());
   }
 
-  scoped_ptr<CompositorFrame> aggregated_frame =
+  std::unique_ptr<CompositorFrame> aggregated_frame =
       aggregator_.Aggregate(root_surface_id_);
 
   ASSERT_TRUE(aggregated_frame);
@@ -443,7 +446,7 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, UnreferencedSurface) {
 
   SubmitCompositorFrame(embedded_passes, arraysize(embedded_passes),
                         embedded_surface_id);
-  scoped_ptr<CopyOutputRequest> copy_request(
+  std::unique_ptr<CopyOutputRequest> copy_request(
       CopyOutputRequest::CreateEmptyRequest());
   CopyOutputRequest* copy_request_ptr = copy_request.get();
   factory_.RequestCopyOfSurface(embedded_surface_id, std::move(copy_request));
@@ -459,11 +462,11 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, UnreferencedSurface) {
       test::Pass(parent_quads, arraysize(parent_quads))};
 
   {
-    scoped_ptr<DelegatedFrameData> frame_data(new DelegatedFrameData);
+    std::unique_ptr<DelegatedFrameData> frame_data(new DelegatedFrameData);
     AddPasses(&frame_data->render_pass_list, gfx::Rect(SurfaceSize()),
               parent_passes, arraysize(parent_passes));
 
-    scoped_ptr<CompositorFrame> frame(new CompositorFrame);
+    std::unique_ptr<CompositorFrame> frame(new CompositorFrame);
     frame->delegated_frame_data = std::move(frame_data);
     frame->metadata.referenced_surfaces.push_back(embedded_surface_id);
 
@@ -476,11 +479,11 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, UnreferencedSurface) {
   test::Pass root_passes[] = {test::Pass(root_quads, arraysize(root_quads))};
 
   {
-    scoped_ptr<DelegatedFrameData> frame_data(new DelegatedFrameData);
+    std::unique_ptr<DelegatedFrameData> frame_data(new DelegatedFrameData);
     AddPasses(&frame_data->render_pass_list, gfx::Rect(SurfaceSize()),
               root_passes, arraysize(root_passes));
 
-    scoped_ptr<CompositorFrame> frame(new CompositorFrame);
+    std::unique_ptr<CompositorFrame> frame(new CompositorFrame);
     frame->delegated_frame_data = std::move(frame_data);
     frame->metadata.referenced_surfaces.push_back(parent_surface_id);
     // Reference to Surface ID of a Surface that doesn't exist should be
@@ -491,7 +494,7 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, UnreferencedSurface) {
                                    SurfaceFactory::DrawCallback());
   }
 
-  scoped_ptr<CompositorFrame> aggregated_frame =
+  std::unique_ptr<CompositorFrame> aggregated_frame =
       aggregator_.Aggregate(root_surface_id_);
 
   ASSERT_TRUE(aggregated_frame);
@@ -559,7 +562,7 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, MultiPassSurfaceReference) {
 
   SubmitCompositorFrame(root_passes, arraysize(root_passes), root_surface_id_);
 
-  scoped_ptr<CompositorFrame> aggregated_frame =
+  std::unique_ptr<CompositorFrame> aggregated_frame =
       aggregator_.Aggregate(root_surface_id_);
 
   ASSERT_TRUE(aggregated_frame);
@@ -795,7 +798,7 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, RenderPassIdMapping) {
   SubmitCompositorFrame(parent_passes, arraysize(parent_passes),
                         root_surface_id_);
 
-  scoped_ptr<CompositorFrame> aggregated_frame =
+  std::unique_ptr<CompositorFrame> aggregated_frame =
       aggregator_.Aggregate(root_surface_id_);
 
   ASSERT_TRUE(aggregated_frame);
@@ -895,7 +898,7 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, AggregateSharedQuadStateProperties) {
   RenderPassId pass_id(1, 1);
   SurfaceId grandchild_surface_id = allocator_.GenerateId();
   factory_.Create(grandchild_surface_id);
-  scoped_ptr<RenderPass> grandchild_pass = RenderPass::Create();
+  std::unique_ptr<RenderPass> grandchild_pass = RenderPass::Create();
   gfx::Rect output_rect(SurfaceSize());
   gfx::Rect damage_rect(SurfaceSize());
   gfx::Transform transform_to_root_target;
@@ -908,7 +911,7 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, AggregateSharedQuadStateProperties) {
   SurfaceId child_one_surface_id = allocator_.GenerateId();
   factory_.Create(child_one_surface_id);
 
-  scoped_ptr<RenderPass> child_one_pass = RenderPass::Create();
+  std::unique_ptr<RenderPass> child_one_pass = RenderPass::Create();
   child_one_pass->SetNew(
       pass_id, output_rect, damage_rect, transform_to_root_target);
   AddSolidColorQuadWithBlendMode(
@@ -926,14 +929,14 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, AggregateSharedQuadStateProperties) {
   SurfaceId child_two_surface_id = allocator_.GenerateId();
   factory_.Create(child_two_surface_id);
 
-  scoped_ptr<RenderPass> child_two_pass = RenderPass::Create();
+  std::unique_ptr<RenderPass> child_two_pass = RenderPass::Create();
   child_two_pass->SetNew(
       pass_id, output_rect, damage_rect, transform_to_root_target);
   AddSolidColorQuadWithBlendMode(
       SurfaceSize(), child_two_pass.get(), blend_modes[5]);
   QueuePassAsFrame(std::move(child_two_pass), child_two_surface_id);
 
-  scoped_ptr<RenderPass> root_pass = RenderPass::Create();
+  std::unique_ptr<RenderPass> root_pass = RenderPass::Create();
   root_pass->SetNew(
       pass_id, output_rect, damage_rect, transform_to_root_target);
 
@@ -958,7 +961,7 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, AggregateSharedQuadStateProperties) {
 
   QueuePassAsFrame(std::move(root_pass), root_surface_id_);
 
-  scoped_ptr<CompositorFrame> aggregated_frame =
+  std::unique_ptr<CompositorFrame> aggregated_frame =
       aggregator_.Aggregate(root_surface_id_);
 
   ASSERT_TRUE(aggregated_frame);
@@ -1035,10 +1038,11 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, AggregateMultiplePassWithTransform) {
     child_root_pass_sqs->is_clipped = true;
     child_root_pass_sqs->clip_rect = gfx::Rect(0, 0, 5, 5);
 
-    scoped_ptr<DelegatedFrameData> child_frame_data(new DelegatedFrameData);
+    std::unique_ptr<DelegatedFrameData> child_frame_data(
+        new DelegatedFrameData);
     child_pass_list.swap(child_frame_data->render_pass_list);
 
-    scoped_ptr<CompositorFrame> child_frame(new CompositorFrame);
+    std::unique_ptr<CompositorFrame> child_frame(new CompositorFrame);
     child_frame->delegated_frame_data = std::move(child_frame_data);
 
     factory_.SubmitCompositorFrame(child_surface_id, std::move(child_frame),
@@ -1066,10 +1070,11 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, AggregateMultiplePassWithTransform) {
         middle_root_pass->shared_quad_state_list.front();
     middle_root_pass_sqs->quad_to_target_transform.Scale(2, 3);
 
-    scoped_ptr<DelegatedFrameData> middle_frame_data(new DelegatedFrameData);
+    std::unique_ptr<DelegatedFrameData> middle_frame_data(
+        new DelegatedFrameData);
     middle_pass_list.swap(middle_frame_data->render_pass_list);
 
-    scoped_ptr<CompositorFrame> middle_frame(new CompositorFrame);
+    std::unique_ptr<CompositorFrame> middle_frame(new CompositorFrame);
     middle_frame->delegated_frame_data = std::move(middle_frame_data);
 
     factory_.SubmitCompositorFrame(middle_surface_id, std::move(middle_frame),
@@ -1102,16 +1107,16 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, AggregateMultiplePassWithTransform) {
 
   root_pass_list[0]->transform_to_root_target.Translate(10, 5);
 
-  scoped_ptr<DelegatedFrameData> root_frame_data(new DelegatedFrameData);
+  std::unique_ptr<DelegatedFrameData> root_frame_data(new DelegatedFrameData);
   root_pass_list.swap(root_frame_data->render_pass_list);
 
-  scoped_ptr<CompositorFrame> root_frame(new CompositorFrame);
+  std::unique_ptr<CompositorFrame> root_frame(new CompositorFrame);
   root_frame->delegated_frame_data = std::move(root_frame_data);
 
   factory_.SubmitCompositorFrame(root_surface_id_, std::move(root_frame),
                                  SurfaceFactory::DrawCallback());
 
-  scoped_ptr<CompositorFrame> aggregated_frame =
+  std::unique_ptr<CompositorFrame> aggregated_frame =
       aggregator_.Aggregate(root_surface_id_);
 
   ASSERT_TRUE(aggregated_frame);
@@ -1209,10 +1214,10 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, AggregateDamageRect) {
       child_root_pass->shared_quad_state_list.front();
   child_root_pass_sqs->quad_to_target_transform.Translate(8, 0);
 
-  scoped_ptr<DelegatedFrameData> child_frame_data(new DelegatedFrameData);
+  std::unique_ptr<DelegatedFrameData> child_frame_data(new DelegatedFrameData);
   child_pass_list.swap(child_frame_data->render_pass_list);
 
-  scoped_ptr<CompositorFrame> child_frame(new CompositorFrame);
+  std::unique_ptr<CompositorFrame> child_frame(new CompositorFrame);
   child_frame->delegated_frame_data = std::move(child_frame_data);
 
   SurfaceId child_surface_id = allocator_.GenerateId();
@@ -1234,11 +1239,11 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, AggregateDamageRect) {
 
   // Parent surface is only used to test if the transform is applied correctly
   // to the child surface's damage.
-  scoped_ptr<DelegatedFrameData> parent_surface_frame_data(
+  std::unique_ptr<DelegatedFrameData> parent_surface_frame_data(
       new DelegatedFrameData);
   parent_surface_pass_list.swap(parent_surface_frame_data->render_pass_list);
 
-  scoped_ptr<CompositorFrame> parent_surface_frame(new CompositorFrame);
+  std::unique_ptr<CompositorFrame> parent_surface_frame(new CompositorFrame);
   parent_surface_frame->delegated_frame_data =
       std::move(parent_surface_frame_data);
 
@@ -1271,16 +1276,16 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, AggregateDamageRect) {
   root_pass_list[0]->damage_rect = gfx::Rect(5, 5, 10, 10);
   root_pass_list[1]->damage_rect = gfx::Rect(5, 5, 100, 100);
 
-  scoped_ptr<DelegatedFrameData> root_frame_data(new DelegatedFrameData);
+  std::unique_ptr<DelegatedFrameData> root_frame_data(new DelegatedFrameData);
   root_pass_list.swap(root_frame_data->render_pass_list);
 
-  scoped_ptr<CompositorFrame> root_frame(new CompositorFrame);
+  std::unique_ptr<CompositorFrame> root_frame(new CompositorFrame);
   root_frame->delegated_frame_data = std::move(root_frame_data);
 
   factory_.SubmitCompositorFrame(root_surface_id_, std::move(root_frame),
                                  SurfaceFactory::DrawCallback());
 
-  scoped_ptr<CompositorFrame> aggregated_frame =
+  std::unique_ptr<CompositorFrame> aggregated_frame =
       aggregator_.Aggregate(root_surface_id_);
 
   ASSERT_TRUE(aggregated_frame);
@@ -1308,16 +1313,17 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, AggregateDamageRect) {
     child_root_pass_sqs->quad_to_target_transform.Translate(8, 0);
     child_root_pass->damage_rect = gfx::Rect(10, 10, 10, 10);
 
-    scoped_ptr<DelegatedFrameData> child_frame_data(new DelegatedFrameData);
+    std::unique_ptr<DelegatedFrameData> child_frame_data(
+        new DelegatedFrameData);
     child_pass_list.swap(child_frame_data->render_pass_list);
 
-    scoped_ptr<CompositorFrame> child_frame(new CompositorFrame);
+    std::unique_ptr<CompositorFrame> child_frame(new CompositorFrame);
     child_frame->delegated_frame_data = std::move(child_frame_data);
 
     factory_.SubmitCompositorFrame(child_surface_id, std::move(child_frame),
                                    SurfaceFactory::DrawCallback());
 
-    scoped_ptr<CompositorFrame> aggregated_frame =
+    std::unique_ptr<CompositorFrame> aggregated_frame =
         aggregator_.Aggregate(root_surface_id_);
 
     ASSERT_TRUE(aggregated_frame);
@@ -1348,10 +1354,10 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, AggregateDamageRect) {
         ->quad_to_target_transform.Translate(0, 10);
     root_pass_list[0]->damage_rect = gfx::Rect(0, 0, 1, 1);
 
-    scoped_ptr<DelegatedFrameData> root_frame_data(new DelegatedFrameData);
+    std::unique_ptr<DelegatedFrameData> root_frame_data(new DelegatedFrameData);
     root_pass_list.swap(root_frame_data->render_pass_list);
 
-    scoped_ptr<CompositorFrame> root_frame(new CompositorFrame);
+    std::unique_ptr<CompositorFrame> root_frame(new CompositorFrame);
     root_frame->delegated_frame_data = std::move(root_frame_data);
 
     factory_.SubmitCompositorFrame(root_surface_id_, std::move(root_frame),
@@ -1370,16 +1376,16 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, AggregateDamageRect) {
         ->quad_to_target_transform.Translate(0, 10);
     root_pass_list[0]->damage_rect = gfx::Rect(1, 1, 1, 1);
 
-    scoped_ptr<DelegatedFrameData> root_frame_data(new DelegatedFrameData);
+    std::unique_ptr<DelegatedFrameData> root_frame_data(new DelegatedFrameData);
     root_pass_list.swap(root_frame_data->render_pass_list);
 
-    scoped_ptr<CompositorFrame> root_frame(new CompositorFrame);
+    std::unique_ptr<CompositorFrame> root_frame(new CompositorFrame);
     root_frame->delegated_frame_data = std::move(root_frame_data);
 
     factory_.SubmitCompositorFrame(root_surface_id_, std::move(root_frame),
                                    SurfaceFactory::DrawCallback());
 
-    scoped_ptr<CompositorFrame> aggregated_frame =
+    std::unique_ptr<CompositorFrame> aggregated_frame =
         aggregator_.Aggregate(root_surface_id_);
 
     ASSERT_TRUE(aggregated_frame);
@@ -1400,7 +1406,7 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, AggregateDamageRect) {
 
   // No Surface changed, so no damage should be given.
   {
-    scoped_ptr<CompositorFrame> aggregated_frame =
+    std::unique_ptr<CompositorFrame> aggregated_frame =
         aggregator_.Aggregate(root_surface_id_);
 
     ASSERT_TRUE(aggregated_frame);
@@ -1420,7 +1426,7 @@ TEST_F(SurfaceAggregatorValidSurfaceTest, AggregateDamageRect) {
   // marked as damaged.
   {
     aggregator_.SetFullDamageForSurface(root_surface_id_);
-    scoped_ptr<CompositorFrame> aggregated_frame =
+    std::unique_ptr<CompositorFrame> aggregated_frame =
         aggregator_.Aggregate(root_surface_id_);
 
     ASSERT_TRUE(aggregated_frame);
@@ -1451,16 +1457,18 @@ class SurfaceAggregatorPartialSwapTest
 TEST_F(SurfaceAggregatorPartialSwapTest, IgnoreOutside) {
   SurfaceId child_surface_id = allocator_.GenerateId();
   factory_.Create(child_surface_id);
-  // The child surface has two quads, one with a visible rect of 13,13 4x4 and
+  // The child surface has three quads, one with a visible rect of 13,13 4x4 and
   // the other other with a visible rect of 10,10 2x2 (relative to root target
-  // space).
+  // space), and one with a non-invertible transform.
   {
     RenderPassId child_pass_id = RenderPassId(1, 1);
     test::Quad child_quads1[] = {test::Quad::RenderPassQuad(child_pass_id)};
     test::Quad child_quads2[] = {test::Quad::RenderPassQuad(child_pass_id)};
+    test::Quad child_quads3[] = {test::Quad::RenderPassQuad(child_pass_id)};
     test::Pass child_passes[] = {
         test::Pass(child_quads1, arraysize(child_quads1), child_pass_id),
-        test::Pass(child_quads2, arraysize(child_quads2), child_pass_id)};
+        test::Pass(child_quads2, arraysize(child_quads2), child_pass_id),
+        test::Pass(child_quads3, arraysize(child_quads2), child_pass_id)};
 
     RenderPassList child_pass_list;
     AddPasses(&child_pass_list, gfx::Rect(SurfaceSize()), child_passes,
@@ -1474,6 +1482,15 @@ TEST_F(SurfaceAggregatorPartialSwapTest, IgnoreOutside) {
     child_sqs->quad_to_target_transform.Scale(2, 2);
 
     child_pass_list[1]->quad_list.ElementAt(0)->visible_rect =
+        gfx::Rect(0, 0, 2, 2);
+
+    SharedQuadState* child_noninvertible_sqs =
+        child_pass_list[2]->shared_quad_state_list.ElementAt(0u);
+    child_noninvertible_sqs->quad_to_target_transform.matrix().setDouble(0, 0,
+                                                                         0.0);
+    EXPECT_FALSE(
+        child_noninvertible_sqs->quad_to_target_transform.IsInvertible());
+    child_pass_list[2]->quad_list.ElementAt(0)->visible_rect =
         gfx::Rect(0, 0, 2, 2);
 
     SubmitPassListAsFrame(child_surface_id, &child_pass_list);
@@ -1496,7 +1513,7 @@ TEST_F(SurfaceAggregatorPartialSwapTest, IgnoreOutside) {
     SubmitPassListAsFrame(root_surface_id_, &root_pass_list);
   }
 
-  scoped_ptr<CompositorFrame> aggregated_frame =
+  std::unique_ptr<CompositorFrame> aggregated_frame =
       aggregator_.Aggregate(root_surface_id_);
 
   ASSERT_TRUE(aggregated_frame);
@@ -1506,12 +1523,13 @@ TEST_F(SurfaceAggregatorPartialSwapTest, IgnoreOutside) {
 
   const RenderPassList& aggregated_pass_list = frame_data->render_pass_list;
 
-  ASSERT_EQ(2u, aggregated_pass_list.size());
+  ASSERT_EQ(3u, aggregated_pass_list.size());
 
   // Damage rect for first aggregation should contain entire root surface.
-  EXPECT_EQ(gfx::Rect(0, 0, 15, 15), aggregated_pass_list[1]->damage_rect);
+  EXPECT_EQ(gfx::Rect(0, 0, 15, 15), aggregated_pass_list[2]->damage_rect);
   EXPECT_EQ(1u, aggregated_pass_list[0]->quad_list.size());
   EXPECT_EQ(1u, aggregated_pass_list[1]->quad_list.size());
+  EXPECT_EQ(1u, aggregated_pass_list[2]->quad_list.size());
 
   // Create a root surface with a smaller damage rect.
   {
@@ -1531,7 +1549,7 @@ TEST_F(SurfaceAggregatorPartialSwapTest, IgnoreOutside) {
   }
 
   {
-    scoped_ptr<CompositorFrame> aggregated_frame =
+    std::unique_ptr<CompositorFrame> aggregated_frame =
         aggregator_.Aggregate(root_surface_id_);
 
     ASSERT_TRUE(aggregated_frame);
@@ -1542,15 +1560,16 @@ TEST_F(SurfaceAggregatorPartialSwapTest, IgnoreOutside) {
 
     const RenderPassList& aggregated_pass_list = frame_data->render_pass_list;
 
-    ASSERT_EQ(2u, aggregated_pass_list.size());
+    ASSERT_EQ(3u, aggregated_pass_list.size());
 
     // Only first quad from surface is inside damage rect and should be
     // included.
-    EXPECT_EQ(gfx::Rect(10, 10, 2, 2), aggregated_pass_list[1]->damage_rect);
+    EXPECT_EQ(gfx::Rect(10, 10, 2, 2), aggregated_pass_list[2]->damage_rect);
     EXPECT_EQ(0u, aggregated_pass_list[0]->quad_list.size());
     EXPECT_EQ(1u, aggregated_pass_list[1]->quad_list.size());
     EXPECT_EQ(gfx::Rect(0, 0, 2, 2),
               aggregated_pass_list[1]->quad_list.back()->visible_rect);
+    EXPECT_EQ(1u, aggregated_pass_list[2]->quad_list.size());
   }
 
   // New child frame has same content and no damage, but has a
@@ -1586,7 +1605,7 @@ TEST_F(SurfaceAggregatorPartialSwapTest, IgnoreOutside) {
   }
 
   {
-    scoped_ptr<CompositorFrame> aggregated_frame =
+    std::unique_ptr<CompositorFrame> aggregated_frame =
         aggregator_.Aggregate(root_surface_id_);
 
     ASSERT_TRUE(aggregated_frame);
@@ -1607,10 +1626,11 @@ TEST_F(SurfaceAggregatorPartialSwapTest, IgnoreOutside) {
               aggregated_pass_list[0]->quad_list.ElementAt(0)->visible_rect);
     EXPECT_EQ(gfx::Rect(0, 0, 2, 2),
               aggregated_pass_list[1]->quad_list.ElementAt(0)->visible_rect);
+    ASSERT_EQ(1u, aggregated_pass_list[2]->quad_list.size());
   }
 
   {
-    scoped_ptr<CompositorFrame> aggregated_frame =
+    std::unique_ptr<CompositorFrame> aggregated_frame =
         aggregator_.Aggregate(root_surface_id_);
 
     ASSERT_TRUE(aggregated_frame);
@@ -1634,7 +1654,7 @@ class SurfaceAggregatorWithResourcesTest : public testing::Test {
  public:
   void SetUp() override {
     output_surface_ = FakeOutputSurface::CreateSoftware(
-        make_scoped_ptr(new SoftwareOutputDevice));
+        base::WrapUnique(new SoftwareOutputDevice));
     output_surface_->BindToClient(&output_surface_client_);
     shared_bitmap_manager_.reset(new TestSharedBitmapManager);
 
@@ -1648,10 +1668,10 @@ class SurfaceAggregatorWithResourcesTest : public testing::Test {
  protected:
   SurfaceManager manager_;
   FakeOutputSurfaceClient output_surface_client_;
-  scoped_ptr<OutputSurface> output_surface_;
-  scoped_ptr<SharedBitmapManager> shared_bitmap_manager_;
-  scoped_ptr<ResourceProvider> resource_provider_;
-  scoped_ptr<SurfaceAggregator> aggregator_;
+  std::unique_ptr<OutputSurface> output_surface_;
+  std::unique_ptr<SharedBitmapManager> shared_bitmap_manager_;
+  std::unique_ptr<ResourceProvider> resource_provider_;
+  std::unique_ptr<SurfaceAggregator> aggregator_;
 };
 
 class ResourceTrackingSurfaceFactoryClient : public SurfaceFactoryClient {
@@ -1681,8 +1701,8 @@ void SubmitCompositorFrameWithResources(ResourceId* resource_ids,
                                         SurfaceId child_id,
                                         SurfaceFactory* factory,
                                         SurfaceId surface_id) {
-  scoped_ptr<DelegatedFrameData> frame_data(new DelegatedFrameData);
-  scoped_ptr<RenderPass> pass = RenderPass::Create();
+  std::unique_ptr<DelegatedFrameData> frame_data(new DelegatedFrameData);
+  std::unique_ptr<RenderPass> pass = RenderPass::Create();
   pass->id = RenderPassId(1, 1);
   SharedQuadState* sqs = pass->CreateAndAppendSharedQuadState();
   sqs->opacity = 1.f;
@@ -1717,7 +1737,7 @@ void SubmitCompositorFrameWithResources(ResourceId* resource_ids,
                  nearest_neighbor);
   }
   frame_data->render_pass_list.push_back(std::move(pass));
-  scoped_ptr<CompositorFrame> frame(new CompositorFrame);
+  std::unique_ptr<CompositorFrame> frame(new CompositorFrame);
   frame->delegated_frame_data = std::move(frame_data);
   factory->SubmitCompositorFrame(surface_id, std::move(frame),
                                  SurfaceFactory::DrawCallback());
@@ -1733,7 +1753,7 @@ TEST_F(SurfaceAggregatorWithResourcesTest, TakeResourcesOneSurface) {
   SubmitCompositorFrameWithResources(ids, arraysize(ids), true, SurfaceId(),
                                      &factory, surface_id);
 
-  scoped_ptr<CompositorFrame> frame = aggregator_->Aggregate(surface_id);
+  std::unique_ptr<CompositorFrame> frame = aggregator_->Aggregate(surface_id);
 
   // Nothing should be available to be returned yet.
   EXPECT_TRUE(client.returned_resources().empty());
@@ -1759,8 +1779,8 @@ TEST_F(SurfaceAggregatorWithResourcesTest, TakeInvalidResources) {
   SurfaceId surface_id(7u);
   factory.Create(surface_id);
 
-  scoped_ptr<DelegatedFrameData> frame_data(new DelegatedFrameData);
-  scoped_ptr<RenderPass> pass = RenderPass::Create();
+  std::unique_ptr<DelegatedFrameData> frame_data(new DelegatedFrameData);
+  std::unique_ptr<RenderPass> pass = RenderPass::Create();
   pass->id = RenderPassId(1, 1);
   TransferableResource resource;
   resource.id = 11;
@@ -1769,12 +1789,12 @@ TEST_F(SurfaceAggregatorWithResourcesTest, TakeInvalidResources) {
   resource.is_software = false;
   frame_data->resource_list.push_back(resource);
   frame_data->render_pass_list.push_back(std::move(pass));
-  scoped_ptr<CompositorFrame> frame(new CompositorFrame);
+  std::unique_ptr<CompositorFrame> frame(new CompositorFrame);
   frame->delegated_frame_data = std::move(frame_data);
   factory.SubmitCompositorFrame(surface_id, std::move(frame),
                                 SurfaceFactory::DrawCallback());
 
-  scoped_ptr<CompositorFrame> returned_frame =
+  std::unique_ptr<CompositorFrame> returned_frame =
       aggregator_->Aggregate(surface_id);
 
   // Nothing should be available to be returned yet.
@@ -1804,7 +1824,7 @@ TEST_F(SurfaceAggregatorWithResourcesTest, TwoSurfaces) {
   SubmitCompositorFrameWithResources(ids2, arraysize(ids2), true, SurfaceId(),
                                      &factory, surface2_id);
 
-  scoped_ptr<CompositorFrame> frame = aggregator_->Aggregate(surface1_id);
+  std::unique_ptr<CompositorFrame> frame = aggregator_->Aggregate(surface1_id);
 
   SubmitCompositorFrameWithResources(NULL, 0, true, SurfaceId(), &factory,
                                      surface1_id);
@@ -1853,7 +1873,7 @@ TEST_F(SurfaceAggregatorWithResourcesTest, InvalidChildSurface) {
                                      middle_surface_id, &factory,
                                      root_surface_id);
 
-  scoped_ptr<CompositorFrame> frame;
+  std::unique_ptr<CompositorFrame> frame;
   frame = aggregator_->Aggregate(root_surface_id);
 
   RenderPassList* pass_list = &frame->delegated_frame_data->render_pass_list;

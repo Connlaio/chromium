@@ -66,7 +66,6 @@
 <translation id="3130323860337406239">Chromium đang sử dụng micrô của bạn.</translation>
 <translation id="313551035350905294">Bạn đang đăng nhập bằng tài khoản được quản lý và cấp cho quản trị viên của tài khoản quyền kiểm soát hồ sơ Chromium của mình. Dữ liệu Chromium của bạn, chẳng hạn như ứng dụng, dấu trang, lịch sử, mật khẩu và các cài đặt khác sẽ vĩnh viễn gắn với <ph name="USER_NAME" />. Bạn có thể xóa dữ liệu này qua Trang tổng quan của tài khoản Google nhưng không thể liên kết dữ liệu này với tài khoản khác.</translation>
 <translation id="3190315855212034486">Rất tiếc! Chromium đã gặp sự cố. Chạy lại ngay bây giờ?</translation>
-<translation id="3197823471738295152">Thiết bị của bạn đã được cập nhật.</translation>
 <translation id="3244477511402911926">Trung tâm thông báo của Chromium</translation>
 <translation id="3256316712990552818">Đã sao chép vào Chromium</translation>
 <translation id="3258596308407688501">Chromium không thể đọc và ghi vào thư mục dữ liệu:
@@ -112,6 +111,7 @@
 <translation id="4987820182225656817">Khách có thể sử dụng Chromium mà không phải thoát khỏi bất cứ nội dung nào.</translation>
 <translation id="4994636714258228724">Thêm chính bạn vào Chromium</translation>
 <translation id="5032989939245619637">Lưu chi tiết trong Chromium</translation>
+<translation id="5116586539350239523">Chromium sẽ lưu trữ an toàn chi tiết cá nhân của bạn nên bạn không cần nhập lại thông tin này.</translation>
 <translation id="5358375970380395591">Bạn đang đăng nhập bằng tài khoản được quản lý và cấp cho quản trị viên của tài khoản quyền kiểm soát cấu hình Chromium của bạn. Dữ liệu Chromium của bạn, chẳng hạn như ứng dụng, dấu trang, lịch sử, mật khẩu và các cài đặt khác sẽ vĩnh viễn được liên kết với <ph name="USER_NAME" />. Bạn có thể xóa dữ liệu này thông qua Trang tổng quan của tài khoản Google nhưng không thể liên kết dữ liệu này với tài khoản khác. <ph name="LEARN_MORE" /></translation>
 <translation id="5398878173008909840">Hiện đã có phiên bản Chromium mới.</translation>
 <translation id="5427571867875391349">Đặt Chromium là trình duyệt mặc định của bạn</translation>
@@ -119,6 +119,7 @@
 <translation id="549669000822060376">Vui lòng đợi khi Chromium cài đặt các bản cập nhật hệ thống mới nhất.</translation>
 <translation id="5563479599352954471">Tìm kiếm bằng một lần chạm</translation>
 <translation id="5620765574781326016">Tìm hiểu về các chủ đề trên trang web mà không phải rời khỏi trang.</translation>
+<translation id="5634636535844844681">Chromium yêu cầu Windows 7 trở lên.</translation>
 <translation id="5680901439334282664">đăng nhập vào Chromium</translation>
 <translation id="5772805321386874569">(yêu cầu Chromium <ph name="BEGIN_BUTTON" />khởi động lại<ph name="END_BUTTON" />)</translation>
 <translation id="5796460469508169315">Chromium gần như đã sẵn sàng.</translation>
@@ -222,7 +223,6 @@ Chromium không thể khôi phục cài đặt của bạn.</translation>
 
 Đăng nhập bằng mọi cách sẽ kết hợp thông tin Chromium như dấu trang, lịch sử và các cài đặt khác vào <ph name="ACCOUNT_EMAIL_NEW" />.</translation>
 <translation id="9013087743919948559">Thêm vào Chromium</translation>
-<translation id="9013262824292842194">Chromium yêu cầu Windows Vista hoặc Windows XP có SP2 trở lên.</translation>
 <translation id="9019929317751753759">Để làm cho Chromium an toàn hơn, chúng tôi đã vô hiệu hóa tiện ích không được liệt kê trong <ph name="IDS_EXTENSION_WEB_STORE_TITLE" /> và có thể đã được thêm mà bạn không biết.</translation>
 <translation id="9022552996538154597">Đăng nhập vào Chromium</translation>
 <translation id="9036189287518468038">Trình chạy ứng dụng Chromium</translation>

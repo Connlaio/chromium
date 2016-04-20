@@ -13,7 +13,7 @@
 #include "components/mus/public/cpp/window_tree_connection.h"
 #include "components/mus/public/cpp/window_tree_delegate.h"
 #include "components/mus/public/interfaces/window_tree.mojom.h"
-#include "mojo/shell/public/cpp/shell_test.h"
+#include "services/shell/public/cpp/shell_test.h"
 
 namespace mash {
 namespace wm {
@@ -31,9 +31,9 @@ class WindowTreeDelegateImpl : public mus::WindowTreeDelegate {
   DISALLOW_COPY_AND_ASSIGN(WindowTreeDelegateImpl);
 };
 
-class WindowManagerTest : public mojo::test::ShellTest {
+class WindowManagerTest : public shell::test::ShellTest {
  public:
-  WindowManagerTest() : mojo::test::ShellTest("exe:mash_unittests") {}
+  WindowManagerTest() : shell::test::ShellTest("exe:mash_unittests") {}
   ~WindowManagerTest() override {}
 
  private:

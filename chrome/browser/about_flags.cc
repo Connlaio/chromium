@@ -827,9 +827,9 @@ const FeatureEntry kFeatureEntries[] = {
             ui::switches::kDisableDisplayColorCalibration),
     },
     {
-        "enable-quirks-client", IDS_FLAGS_ENABLE_QUIRKS_CLIENT_NAME,
-        IDS_FLAGS_ENABLE_QUIRKS_CLIENT_DESCRIPTION, kOsCrOS,
-        SINGLE_VALUE_TYPE(quirks::switches::kEnableQuirksClient),
+        "disable-quirks-client", IDS_FLAGS_DISABLE_QUIRKS_CLIENT_NAME,
+        IDS_FLAGS_DISABLE_QUIRKS_CLIENT_DESCRIPTION, kOsCrOS,
+        SINGLE_VALUE_TYPE(quirks::switches::kDisableQuirksClient),
     },
     {
         "ash-disable-screen-orientation-lock",
@@ -1190,12 +1190,6 @@ const FeatureEntry kFeatureEntries[] = {
     {"enable-native-notifications", IDS_NOTIFICATIONS_NATIVE_FLAG,
      IDS_NOTIFICATIONS_NATIVE_FLAG_DESCRIPTION, kOsMac,
      SINGLE_VALUE_TYPE(switches::kEnableNativeNotifications)},
-#endif
-#if defined(ENABLE_NOTIFICATIONS)
-    {"enable-notification-action-icons",
-     IDS_FLAGS_ENABLE_NOTIFICATION_ACTION_ICONS_NAME,
-     IDS_FLAGS_ENABLE_NOTIFICATION_ACTION_ICONS_DESCRIPTION, kOsAll,
-     SINGLE_VALUE_TYPE(switches::kEnableNotificationActionIcons)},
 #endif
 #if defined(TOOLKIT_VIEWS)
     {"disable-views-rect-based-targeting",  // FLAGS:RECORD_UMA
@@ -1587,13 +1581,15 @@ const FeatureEntry kFeatureEntries[] = {
      IDS_FLAGS_OFFLINE_PAGES_BACKGROUND_LOADING_DESCRIPTION, kOsAndroid,
      FEATURE_VALUE_TYPE(offline_pages::kOfflinePagesBackgroundLoadingFeature)},
 #endif  // defined(OS_ANDROID)
-    {"low-priority-iframes", IDS_FLAGS_LOW_PRIORITY_IFRAMES_UI_NAME,
-     IDS_FLAGS_LOW_PRIORITY_IFRAMES_UI_DESCRIPTION, kOsAll,
+    {"disallow-doc-written-script-loads",
+     IDS_FLAGS_DISALLOW_DOC_WRITTEN_SCRIPTS_UI_NAME,
+     IDS_FLAGS_DISALLOW_DOC_WRITTEN_SCRIPTS_UI_DESCRIPTION, kOsAll,
      // NOTE: if we want to add additional experiment entries for other
      // features controlled by kBlinkSettings, we'll need to add logic to
      // merge the flag values.
-     SINGLE_VALUE_TYPE_AND_VALUE(switches::kBlinkSettings,
-                                 "lowPriorityIframes=true")},
+     SINGLE_VALUE_TYPE_AND_VALUE(
+         switches::kBlinkSettings,
+         "disallowFetchForDocWrittenScriptsInMainFrame=true")},
 #if defined(OS_ANDROID)
     {"enable-ntp-popular-sites", IDS_FLAGS_NTP_POPULAR_SITES_NAME,
      IDS_FLAGS_NTP_POPULAR_SITES_DESCRIPTION, kOsAndroid,
@@ -1644,13 +1640,6 @@ const FeatureEntry kFeatureEntries[] = {
      ENABLE_DISABLE_VALUE_TYPE(switches::kEnableAppContainer,
                                switches::kDisableAppContainer)},
 #endif  // defined(OS_WIN)
-#if defined(OS_ANDROID)
-    {"disable-auto-hiding-toolbar-threshold",
-     IDS_FLAGS_DISABLE_AUTO_HIDING_TOOLBAR_NAME,
-     IDS_FLAGS_DISABLE_AUTO_HIDING_TOOLBAR_DESCRIPTION, kOsAndroid,
-     SINGLE_VALUE_TYPE_AND_VALUE(switches::kDisableAutoHidingToolbarThreshold,
-                                 "800")},
-#endif
 #if defined(TOOLKIT_VIEWS) || defined(OS_ANDROID)
     {"enable-autofill-credit-card-upload",
      IDS_FLAGS_AUTOFILL_CREDIT_CARD_UPLOAD_NAME,
@@ -1793,6 +1782,10 @@ const FeatureEntry kFeatureEntries[] = {
      IDS_FLAGS_PROTECT_SYNC_CREDENTIAL_ON_REAUTH_DESCRIPTION, kOsAll,
      FEATURE_VALUE_TYPE(
          password_manager::features::kProtectSyncCredentialOnReauth)},
+    {"password-import-export", IDS_FLAGS_PASSWORD_IMPORT_EXPORT_NAME,
+     IDS_FLAGS_PASSWORD_IMPORT_EXPORT_DESCRIPTION,
+     kOsWin | kOsMac | kOsCrOS | kOsLinux,
+     FEATURE_VALUE_TYPE(password_manager::features::kPasswordImportExport)},
 #if defined(OS_CHROMEOS)
     {"enable-experimental-accessibility-features",
      IDS_FLAGS_EXPERIMENTAL_ACCESSIBILITY_FEATURES_NAME,
@@ -1814,6 +1807,23 @@ const FeatureEntry kFeatureEntries[] = {
      IDS_FLAGS_GOOGLE_BRANDED_CONTEXT_MENU_DESCRIPTION, kOsDesktop,
      SINGLE_VALUE_TYPE(switches::kEnableGoogleBrandedContextMenu)},
 #endif
+#if defined(OS_MACOSX)
+    {"enable-fullscreen-in-tab-detaching",
+     IDS_FLAGS_TAB_DETACHING_IN_FULLSCREEN_NAME,
+     IDS_FLAGS_TAB_DETACHING_IN_FULLSCREEN_DESCRIPTION, kOsMac,
+     SINGLE_VALUE_TYPE(switches::kEnableFullscreenTabDetaching)},
+#endif
+#if defined(OS_ANDROID)
+    {"media-style-notification",
+     IDS_FLAGS_MEDIA_STYLE_NOTIFICATION_NAME,
+     IDS_FLAGS_MEDIA_STYLE_NOTIFICATION_DESCRIPTION, kOsAndroid,
+     FEATURE_VALUE_TYPE(chrome::android::kMediaStyleNotification)},
+#endif
+    {"enable-pointer-events",  // FLAGS:RECORD_UMA
+      IDS_FLAGS_EXPERIMENTAL_POINTER_EVENT_NAME,
+      IDS_FLAGS_EXPERIMENTAL_POINTER_EVENT_DESCRIPTION,
+      kOsAll,
+      FEATURE_VALUE_TYPE(features::kPointerEvents)},
     // NOTE: Adding new command-line switches requires adding corresponding
     // entries to enum "LoginCustomFlags" in histograms.xml. See note in
     // histograms.xml and don't forget to run AboutFlagsHistogramTest unit test.

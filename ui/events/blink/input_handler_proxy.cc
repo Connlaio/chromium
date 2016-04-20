@@ -128,8 +128,8 @@ cc::ScrollState CreateScrollStateForGesture(const WebGestureEvent& event) {
   cc::ScrollStateData scroll_state_data;
   switch (event.type) {
     case WebInputEvent::GestureScrollBegin:
-      scroll_state_data.start_position_x = event.x;
-      scroll_state_data.start_position_y = event.y;
+      scroll_state_data.position_x = event.x;
+      scroll_state_data.position_y = event.y;
       scroll_state_data.is_beginning = true;
       break;
     case WebInputEvent::GestureFlingStart:
@@ -272,7 +272,7 @@ InputHandlerProxy::HandleInputEventWithLatencyInfo(
                          TRACE_EVENT_FLAG_FLOW_IN | TRACE_EVENT_FLAG_FLOW_OUT,
                          "step", "HandleInputEventImpl");
 
-  scoped_ptr<cc::SwapPromiseMonitor> latency_info_swap_promise_monitor =
+  std::unique_ptr<cc::SwapPromiseMonitor> latency_info_swap_promise_monitor =
       input_handler_->CreateLatencyInfoSwapPromiseMonitor(latency_info);
   InputHandlerProxy::EventDisposition disposition = HandleInputEvent(event);
   return disposition;
@@ -515,8 +515,8 @@ InputHandlerProxy::EventDisposition InputHandlerProxy::ScrollByMouseWheel(
     }
   } else {
     cc::ScrollStateData scroll_state_begin_data;
-    scroll_state_begin_data.start_position_x = wheel_event.x;
-    scroll_state_begin_data.start_position_y = wheel_event.y;
+    scroll_state_begin_data.position_x = wheel_event.x;
+    scroll_state_begin_data.position_y = wheel_event.y;
     scroll_state_begin_data.is_beginning = true;
     cc::ScrollState scroll_state_begin(scroll_state_begin_data);
     cc::InputHandler::ScrollStatus scroll_status = input_handler_->ScrollBegin(
@@ -535,8 +535,8 @@ InputHandlerProxy::EventDisposition InputHandlerProxy::ScrollByMouseWheel(
         cc::ScrollStateData scroll_state_update_data;
         scroll_state_update_data.delta_x = scroll_delta.x();
         scroll_state_update_data.delta_y = scroll_delta.y();
-        scroll_state_update_data.start_position_x = wheel_event.x;
-        scroll_state_update_data.start_position_y = wheel_event.y;
+        scroll_state_update_data.position_x = wheel_event.x;
+        scroll_state_update_data.position_y = wheel_event.y;
         cc::ScrollState scroll_state_update(scroll_state_update_data);
 
         scroll_result = input_handler_->ScrollBy(&scroll_state_update);
@@ -812,7 +812,7 @@ InputHandlerProxy::EventDisposition InputHandlerProxy::HandleTouchStart(
   // If |result| is DROP_EVENT it wasn't processed above.
   if (result == DROP_EVENT) {
     switch (input_handler_->GetEventListenerProperties(
-        cc::EventListenerClass::kTouch)) {
+        cc::EventListenerClass::kTouchStartOrMove)) {
       case cc::EventListenerProperties::kPassive:
         result = DID_HANDLE_NON_BLOCKING;
         break;
@@ -842,6 +842,17 @@ InputHandlerProxy::EventDisposition InputHandlerProxy::HandleTouchStart(
   if (touch_start_result_ == kEventDispositionUndefined ||
       touch_start_result_ == DROP_EVENT || result == DID_NOT_HANDLE)
     touch_start_result_ = result;
+
+  // If |result| is still DROP_EVENT look at the touch end handler as
+  // we may not want to discard the entire touch sequence. Note this
+  // code is explicitly after the assignment of the |touch_start_result_|
+  // so the touch moves are not sent to the main thread un-necessarily.
+  if (result == DROP_EVENT &&
+      input_handler_->GetEventListenerProperties(
+          cc::EventListenerClass::kTouchEndOrCancel) !=
+          cc::EventListenerProperties::kNone) {
+    result = DID_HANDLE_NON_BLOCKING;
+  }
 
   return result;
 }

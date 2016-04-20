@@ -2040,6 +2040,7 @@ interface HTMLElement : Element
     getter outerText
     getter spellcheck
     getter style
+    getter styleMap
     getter tabIndex
     getter title
     getter translate
@@ -2626,6 +2627,7 @@ interface HTMLMediaElement : HTMLElement
     getter seeking
     getter sinkId
     getter src
+    getter srcObject
     getter textTracks
     getter videoTracks
     getter volume
@@ -2653,6 +2655,7 @@ interface HTMLMediaElement : HTMLElement
     setter playbackRate
     setter preload
     setter src
+    setter srcObject
     setter volume
 interface HTMLMenuElement : HTMLElement
     attribute @@toStringTag
@@ -3388,6 +3391,8 @@ interface InputDeviceCapabilities
     method constructor
 interface InputEvent : UIEvent
     attribute @@toStringTag
+    getter data
+    getter inputType
     method constructor
 interface IntersectionObserver
     attribute @@toStringTag
@@ -3401,6 +3406,7 @@ interface IntersectionObserver
 interface IntersectionObserverEntry
     attribute @@toStringTag
     getter boundingClientRect
+    getter intersectionRatio
     getter intersectionRect
     getter rootBounds
     getter target
@@ -3537,6 +3543,7 @@ interface MediaDevices
     attribute @@toStringTag
     method constructor
     method enumerateDevices
+    method getSupportedConstraints
     method getUserMedia
 interface MediaElementAudioSourceNode : AudioSourceNode
     attribute @@toStringTag
@@ -4300,7 +4307,6 @@ interface PresentationConnection : EventTarget
     getter onclose
     getter onconnect
     getter onmessage
-    getter onstatechange
     getter onterminate
     getter state
     method close
@@ -4311,7 +4317,6 @@ interface PresentationConnection : EventTarget
     setter onclose
     setter onconnect
     setter onmessage
-    setter onstatechange
     setter onterminate
 interface PresentationConnectionAvailableEvent : Event
     attribute @@toStringTag
@@ -5858,6 +5863,7 @@ interface StorageEvent : Event
 interface StorageManager
     attribute @@toStringTag
     method constructor
+    method estimate
     method persistentPermission
     method requestPersistent
 interface Stream

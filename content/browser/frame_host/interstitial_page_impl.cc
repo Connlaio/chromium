@@ -11,6 +11,7 @@
 #include "base/compiler_specific.h"
 #include "base/location.h"
 #include "base/macros.h"
+#include "base/memory/ptr_util.h"
 #include "base/single_thread_task_runner.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
@@ -33,7 +34,6 @@
 #include "content/browser/web_contents/web_contents_view.h"
 #include "content/common/frame_messages.h"
 #include "content/common/input_messages.h"
-#include "content/common/text_input_state.h"
 #include "content/common/view_messages.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/browser_thread.h"
@@ -172,7 +172,6 @@ InterstitialPageImpl::InterstitialPageImpl(
       create_view_(true),
       pause_throbber_(false),
       delegate_(delegate),
-      text_input_state_(new TextInputState()),
       weak_ptr_factory_(this) {
   InitInterstitialPageMap();
 }
@@ -223,8 +222,8 @@ void InterstitialPageImpl::Show() {
   (*g_web_contents_to_interstitial_page)[web_contents_] = this;
 
   if (new_navigation_) {
-    scoped_ptr<NavigationEntryImpl> entry =
-        make_scoped_ptr(new NavigationEntryImpl);
+    std::unique_ptr<NavigationEntryImpl> entry =
+        base::WrapUnique(new NavigationEntryImpl);
     entry->SetURL(url_);
     entry->SetVirtualURL(url_);
     entry->set_page_type(PAGE_TYPE_INTERSTITIAL);
@@ -537,19 +536,6 @@ void InterstitialPageImpl::RenderWidgetDeleted(
     RenderWidgetHostImpl* render_widget_host) {
   // TODO(creis): Remove this method once we verify the shutdown path is sane.
   CHECK(!web_contents_);
-}
-
-const TextInputState* InterstitialPageImpl::GetTextInputState() {
-  return text_input_state_.get();
-}
-
-void InterstitialPageImpl::UpdateTextInputState(RenderWidgetHostViewBase* rwhv,
-                                                bool text_input_state_changed) {
-  if (web_contents_) {
-    WebContentsImpl* contents = static_cast<WebContentsImpl*>(web_contents_);
-    contents->UpdateTextInputState(rwhv, text_input_state_changed);
-    *text_input_state_ = *contents->GetTextInputState();
-  }
 }
 
 bool InterstitialPageImpl::PreHandleKeyboardEvent(

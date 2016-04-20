@@ -78,6 +78,16 @@ group("All") {
   ]
 }
 
+# TODO(GYP): This target exists for compatibility with GYP for the builders.
+# For now, this builds everything. We should decide if we want to build less.
+group("chromium_builder_tests") {
+  testonly = true
+
+  deps = [
+    ":All",
+  ]
+}
+
 # The "both_gn_and_gyp" target should reflect every target that is built
 # in both the GN and GYP builds, and ideally it should match the
 # "both_gn_and_gyp" target in build/gn_migration.gypi line-for-line.
@@ -186,8 +196,8 @@ group("both_gn_and_gyp") {
       "//mojo/edk/system:mojo_system_unittests",
       "//mojo/edk/test:mojo_public_bindings_unittests",
       "//mojo/edk/test:mojo_public_system_unittests",
-      "//mojo/shell/public/cpp",
       "//net:net_perftests",
+      "//services/shell/public/cpp",
       "//third_party/WebKit/Source/platform:blink_heap_unittests",
       "//third_party/WebKit/Source/platform:blink_platform_unittests",
       "//third_party/WebKit/Source/web:webkit_unit_tests",
@@ -211,8 +221,7 @@ group("both_gn_and_gyp") {
       "//ios/public/provider/chrome/browser",
       "//ios/public/provider/web",
       "//ios/testing:ocmock_support_unittest",
-      "//ios/third_party/fishhook",
-      "//ios/third_party/ochamcrest",
+      "//ios/third_party/earl_grey",
       "//ios/web:ios_web_inttests",
       "//ios/web:ios_web_unittests",
       "//ios/web/shell:ios_web_shell",
@@ -241,7 +250,7 @@ group("both_gn_and_gyp") {
     deps += [
       "//ash:ash_shell_with_content",
       "//ash:ash_unittests",
-      "//ui/app_list/shower:app_list_shower_unittests",
+      "//ui/app_list/presenter:app_list_presenter_unittests",
       "//ui/aura:aura_unittests",
       "//ui/aura:demo",
       "//ui/wm:wm_unittests",
@@ -293,7 +302,6 @@ group("both_gn_and_gyp") {
       "//tools/android/heap_profiler:heap_profiler_unittests",
       "//tools/android/kerberos/SpnegoAuthenticator:spnego_authenticator_apk",
       "//tools/cygprofile:cygprofile_unittests",
-      "//tools/imagediff($host_toolchain)",
       "//ui/android:ui_junit_tests",
     ]
     deps -= [
@@ -493,7 +501,7 @@ group("both_gn_and_gyp") {
       "//gpu/command_buffer/client:gles2_implementation_no_check",
       "//gpu/khronos_glcts_support:khronos_glcts_test",  # TODO(GYP) crbug.com/471903 to make this complete.
       "//mojo/edk/test:mojo_public_system_perftests",
-      "//mojo/shell/public/cpp",
+      "//services/shell/public/cpp",
       "//testing/gmock:gmock_main",
       "//third_party/codesighs:nm2tsv",
     ]
@@ -626,14 +634,6 @@ group("gn_only") {
     ]
   }
 
-  if (is_win && use_drfuzz) {
-    # build libfuzzer fuzzers on Windows to run with Dr. Fuzz
-    deps += [
-      "//testing/libfuzzer/fuzzers",
-      "//testing/libfuzzer/tests:libfuzzer_tests",
-    ]
-  }
-
   if (is_linux && !is_chromeos && !is_chromecast) {
     # TODO(GYP): Figure out if any of these should be in gn_all
     # and figure out how cross-platform they are
@@ -653,8 +653,6 @@ group("gn_only") {
       "//media/cast:udp_proxy",
       "//native_client/src/trusted/debug_stub:gdb_rsp_unittest",
       "//storage/browser:dump_file_system",
-      "//testing/libfuzzer/fuzzers",
-      "//testing/libfuzzer/tests:libfuzzer_tests",
       "//third_party/angle:libANGLE",
       "//third_party/angle:libEGL",
       "//third_party/angle:libGLESv2",
@@ -722,6 +720,14 @@ group("gn_only") {
     deps += [ "//ui/ozone/demo" ]
   }
 
+  if ((is_linux && !is_chromeos && !is_chromecast) || (is_win && use_drfuzz) ||
+      (use_libfuzzer && is_mac)) {
+    deps += [
+      "//testing/libfuzzer/fuzzers",
+      "//testing/libfuzzer/tests:libfuzzer_tests",
+    ]
+  }
+
   if (enable_nacl) {
     deps += [ "//native_client_sdk/src:nacl_core_sdk" ]
   }
@@ -787,7 +793,9 @@ if (!is_ios) {
     testonly = true
 
     deps = [
+      "//content/shell:content_shell",
       "//third_party/WebKit/public:all_blink",
+      "//tools/imagediff",
     ]
 
     # NOTE: The following deps are needed to run the layout tests
@@ -796,18 +804,12 @@ if (!is_ios) {
     if (is_android) {
       deps += [
         "//breakpad:breakpad_unittests",
-        "//breakpad:dump_syms($host_toolchain)",
-        "//breakpad:microdump_stackwalk($host_toolchain)",
-        "//breakpad:minidump_dump($host_toolchain)",
-        "//breakpad:minidump_stackwalk($host_toolchain)",
-        "//breakpad:symupload($host_toolchain)",
-        "//content/shell/android:content_shell_apk",
-        "//tools/imagediff($host_toolchain)",
-      ]
-    } else {
-      deps += [
-        "//content/shell:content_shell",
-        "//tools/imagediff",
+        "//breakpad:dump_syms",
+        "//breakpad:microdump_stackwalk",
+        "//breakpad:minidump_dump",
+        "//breakpad:minidump_stackwalk",
+        "//breakpad:symupload",
+        "//tools/android/forwarder",
       ]
     }
 
@@ -879,6 +881,15 @@ group("chromium_builder_perf") {
       deps += [ "//breakpad:minidump_stackwalk($host_toolchain)" ]
     }
   }
+}
+
+# For compatibility with GYP. The linux_chromium_chromeos_rel_ng and
+# linux_chromium_chromeos_compile_rel_ng bots reference this target as
+# something to build, but all targets for those bots to compile are set
+# up differently.
+# TODO bug 601920: Remove reference to aura_builder on bot config and delete
+# this group.
+group("aura_builder") {
 }
 
 # Because of the source assignment filter, many targets end up over-filtering

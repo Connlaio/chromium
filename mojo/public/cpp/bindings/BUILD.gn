@@ -5,6 +5,7 @@
 source_set("bindings") {
   sources = [
     "array.h",
+    "array_traits.h",
     "associated_binding.h",
     "associated_group.h",
     "associated_interface_ptr.h",
@@ -20,6 +21,7 @@ source_set("bindings") {
     "lib/array_internal.h",
     "lib/array_serialization.h",
     "lib/array_serialization_traits.h",
+    "lib/array_traits_standard.h",
     "lib/associated_group.cc",
     "lib/associated_interface_ptr_state.h",
     "lib/binding_state.h",
@@ -44,7 +46,6 @@ source_set("bindings") {
     "lib/interface_endpoint_controller.h",
     "lib/interface_id.h",
     "lib/interface_ptr_state.h",
-    "lib/macros.h",
     "lib/map_data_internal.h",
     "lib/map_internal.h",
     "lib/map_serialization.h",
@@ -57,6 +58,11 @@ source_set("bindings") {
     "lib/message_internal.h",
     "lib/multiplex_router.cc",
     "lib/multiplex_router.h",
+    "lib/native_struct.cc",
+    "lib/native_struct_data.cc",
+    "lib/native_struct_data.h",
+    "lib/native_struct_serialization.cc",
+    "lib/native_struct_serialization.h",
     "lib/no_interface.cc",
     "lib/pickle_buffer.cc",
     "lib/pickle_buffer.h",
@@ -91,17 +97,18 @@ source_set("bindings") {
     "map.h",
     "message.h",
     "message_filter.h",
+    "native_struct.h",
     "no_interface.h",
     "stl_converters.h",
     "string.h",
     "strong_binding.h",
     "struct_ptr.h",
-    "struct_traits.h",
     "type_converter.h",
   ]
 
   public_deps = [
     ":callback",
+    ":struct_traits",
     "//base",
     "//ipc:param_traits",
     "//mojo/public/cpp/system",
@@ -128,8 +135,15 @@ source_set("callback") {
   ]
 }
 
+source_set("struct_traits") {
+  sources = [
+    "struct_traits.h",
+  ]
+}
+
 source_set("wtf_support") {
   sources = [
+    "lib/array_traits_wtf.h",
     "lib/wtf_array_serialization.h",
     "lib/wtf_serialization.h",
     "lib/wtf_string_serialization.cc",

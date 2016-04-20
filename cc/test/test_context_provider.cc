@@ -40,14 +40,14 @@ scoped_refptr<TestContextProvider> TestContextProvider::CreateWorker() {
 
 // static
 scoped_refptr<TestContextProvider> TestContextProvider::Create(
-    scoped_ptr<TestWebGraphicsContext3D> context) {
+    std::unique_ptr<TestWebGraphicsContext3D> context) {
   if (!context)
     return NULL;
   return new TestContextProvider(std::move(context));
 }
 
 TestContextProvider::TestContextProvider(
-    scoped_ptr<TestWebGraphicsContext3D> context)
+    std::unique_ptr<TestWebGraphicsContext3D> context)
     : context3d_(std::move(context)),
       context_gl_(new TestGLES2Interface(context3d_.get())),
       bound_(false),
@@ -86,10 +86,9 @@ void TestContextProvider::DetachFromThread() {
   context_thread_checker_.DetachFromThread();
 }
 
-ContextProvider::Capabilities TestContextProvider::ContextCapabilities() {
+gpu::Capabilities TestContextProvider::ContextCapabilities() {
   DCHECK(bound_);
   DCHECK(context_thread_checker_.CalledOnValidThread());
-
   return context3d_->test_capabilities();
 }
 
@@ -146,7 +145,7 @@ void TestContextProvider::DeleteCachedResources() {
 void TestContextProvider::OnLostContext() {
   DCHECK(context_thread_checker_.CalledOnValidThread());
   if (!lost_context_callback_.is_null())
-    base::ResetAndReturn(&lost_context_callback_).Run();
+    lost_context_callback_.Run();
   if (gr_context_)
     gr_context_->abandonContext();
 }
@@ -167,11 +166,6 @@ void TestContextProvider::SetLostContextCallback(
   DCHECK(context_thread_checker_.CalledOnValidThread());
   DCHECK(lost_context_callback_.is_null() || cb.is_null());
   lost_context_callback_ = cb;
-}
-
-void TestContextProvider::SetMaxTransferBufferUsageBytes(
-    size_t max_transfer_buffer_usage_bytes) {
-  context3d_->SetMaxTransferBufferUsageBytes(max_transfer_buffer_usage_bytes);
 }
 
 }  // namespace cc

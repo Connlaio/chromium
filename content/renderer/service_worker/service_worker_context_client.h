@@ -9,20 +9,20 @@
 #include <stdint.h>
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "base/id_map.h"
 #include "base/macros.h"
 #include "base/memory/ref_counted.h"
-#include "base/memory/scoped_ptr.h"
 #include "base/strings/string16.h"
 #include "base/time/time.h"
 #include "content/child/webmessageportchannel_impl.h"
 #include "content/common/service_worker/service_worker_types.h"
 #include "content/public/common/service_worker_event_status.mojom.h"
 #include "ipc/ipc_listener.h"
-#include "mojo/shell/public/interfaces/interface_provider.mojom.h"
+#include "services/shell/public/interfaces/interface_provider.mojom.h"
 #include "third_party/WebKit/public/platform/WebGeofencingEventType.h"
 #include "third_party/WebKit/public/platform/WebMessagePortChannel.h"
 #include "third_party/WebKit/public/platform/modules/serviceworker/WebServiceWorkerError.h"
@@ -86,9 +86,8 @@ class ServiceWorkerContextClient
   // Called some time after the worker has started. Attempts to use the
   // ServiceRegistry to connect to services before this method is called are
   // queued up and will resolve after this method is called.
-  void BindServiceRegistry(
-      mojo::shell::mojom::InterfaceProviderRequest services,
-      mojo::shell::mojom::InterfaceProviderPtr exposed_services);
+  void BindServiceRegistry(shell::mojom::InterfaceProviderRequest services,
+                           shell::mojom::InterfaceProviderPtr exposed_services);
 
   // WebServiceWorkerContextClient overrides.
   blink::WebURL scope() const override;
@@ -214,13 +213,6 @@ class ServiceWorkerContextClient
                          const std::string& region_id,
                          const blink::WebCircularGeofencingRegion& region);
 
-  // TODO(nhiroki): Remove this after ExtendableMessageEvent is enabled by
-  // default (crbug.com/543198).
-  void OnPostMessage(
-      const base::string16& message,
-      const std::vector<TransferredMessagePort>& sent_message_ports,
-      const std::vector<int>& new_routing_ids);
-
   void OnDidGetClient(int request_id, const ServiceWorkerClientInfo& client);
   void OnDidGetClients(
       int request_id, const std::vector<ServiceWorkerClientInfo>& clients);
@@ -257,7 +249,7 @@ class ServiceWorkerContextClient
 
   // Initialized on the worker thread in workerContextStarted and
   // destructed on the worker thread in willDestroyWorkerContext.
-  scoped_ptr<WorkerContextData> context_;
+  std::unique_ptr<WorkerContextData> context_;
 
   DISALLOW_COPY_AND_ASSIGN(ServiceWorkerContextClient);
 };

@@ -7,8 +7,9 @@
 
 #include <stdint.h>
 
+#include <memory>
+
 #include "base/compiler_specific.h"
-#include "base/memory/scoped_ptr.h"
 #include "base/synchronization/lock.h"
 #include "base/threading/thread_checker.h"
 #include "cc/blink/context_provider_web_context.h"
@@ -16,18 +17,22 @@
 #include "content/common/content_export.h"
 #include "content/common/gpu/client/command_buffer_metrics.h"
 #include "content/common/gpu/client/webgraphicscontext3d_command_buffer_impl.h"
+#include "gpu/command_buffer/client/shared_memory_limits.h"
+
+namespace skia_bindings {
+class GrContextForGLES2Interface;
+}  // namespace skia_bindings
 
 namespace content {
-
-class GrContextForGLES2Interface;
 
 // Implementation of cc::ContextProvider that provides a
 // WebGraphicsContext3DCommandBufferImpl context and a GrContext.
 class CONTENT_EXPORT ContextProviderCommandBuffer
     : NON_EXPORTED_BASE(public cc_blink::ContextProviderWebContext) {
  public:
-  static scoped_refptr<ContextProviderCommandBuffer> Create(
-      scoped_ptr<WebGraphicsContext3DCommandBufferImpl> context3d,
+  ContextProviderCommandBuffer(
+      std::unique_ptr<WebGraphicsContext3DCommandBufferImpl> context3d,
+      const gpu::SharedMemoryLimits& memory_limits,
       CommandBufferContextType type);
 
   gpu::CommandBufferProxyImpl* GetCommandBufferProxy();
@@ -44,29 +49,24 @@ class CONTENT_EXPORT ContextProviderCommandBuffer
   void InvalidateGrContext(uint32_t state) override;
   void SetupLock() override;
   base::Lock* GetLock() override;
-  Capabilities ContextCapabilities() override;
+  gpu::Capabilities ContextCapabilities() override;
   void DeleteCachedResources() override;
   void SetLostContextCallback(
       const LostContextCallback& lost_context_callback) override;
 
  protected:
-  ContextProviderCommandBuffer(
-      scoped_ptr<WebGraphicsContext3DCommandBufferImpl> context3d,
-      CommandBufferContextType type);
   ~ContextProviderCommandBuffer() override;
 
   void OnLostContext();
 
  private:
-  void InitializeCapabilities();
-
   base::ThreadChecker main_thread_checker_;
   base::ThreadChecker context_thread_checker_;
 
-  scoped_ptr<WebGraphicsContext3DCommandBufferImpl> context3d_;
-  scoped_ptr<GrContextForGLES2Interface> gr_context_;
+  std::unique_ptr<WebGraphicsContext3DCommandBufferImpl> context3d_;
+  std::unique_ptr<skia_bindings::GrContextForGLES2Interface> gr_context_;
 
-  cc::ContextProvider::Capabilities capabilities_;
+  gpu::SharedMemoryLimits memory_limits_;
   CommandBufferContextType context_type_;
   std::string debug_name_;
 
@@ -75,7 +75,7 @@ class CONTENT_EXPORT ContextProviderCommandBuffer
   base::Lock context_lock_;
 
   class LostContextCallbackProxy;
-  scoped_ptr<LostContextCallbackProxy> lost_context_callback_proxy_;
+  std::unique_ptr<LostContextCallbackProxy> lost_context_callback_proxy_;
 };
 
 }  // namespace content

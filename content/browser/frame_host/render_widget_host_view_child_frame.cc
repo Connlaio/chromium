@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/memory/ptr_util.h"
 #include "build/build_config.h"
 #include "cc/output/copy_output_request.h"
 #include "cc/output/copy_output_result.h"
@@ -218,6 +219,11 @@ void RenderWidgetHostViewChildFrame::SetIsLoading(bool is_loading) {
   NOTREACHED();
 }
 
+void RenderWidgetHostViewChildFrame::TextInputStateChanged(
+    const ViewHostMsg_TextInputState_Params& params) {
+  // TODO(kenrb): Implement.
+}
+
 void RenderWidgetHostViewChildFrame::RenderProcessGone(
     base::TerminationStatus status,
     int error_code) {
@@ -239,10 +245,6 @@ void RenderWidgetHostViewChildFrame::Destroy() {
   // host_ and do not want any event calls coming from
   // RenderWidgetHostInputEventRouter afterwards.
   NotifyObserversAboutShutdown();
-
-  // If this view has an active text input, the RenderWidgetHostDelegate should
-  // be notified.
-  NotifyHostDelegateAboutShutdown();
 
   host_->SetView(NULL);
   host_ = NULL;
@@ -304,7 +306,7 @@ void RenderWidgetHostViewChildFrame::SurfaceDrawn(uint32_t output_surface_id,
 
 void RenderWidgetHostViewChildFrame::OnSwapCompositorFrame(
     uint32_t output_surface_id,
-    scoped_ptr<cc::CompositorFrame> frame) {
+    std::unique_ptr<cc::CompositorFrame> frame) {
   TRACE_EVENT0("content",
                "RenderWidgetHostViewChildFrame::OnSwapCompositorFrame");
 
@@ -336,7 +338,7 @@ void RenderWidgetHostViewChildFrame::OnSwapCompositorFrame(
 
   if (!surface_factory_) {
     cc::SurfaceManager* manager = GetSurfaceManager();
-    surface_factory_ = make_scoped_ptr(new cc::SurfaceFactory(manager, this));
+    surface_factory_ = base::WrapUnique(new cc::SurfaceFactory(manager, this));
   }
 
   if (surface_id_.is_null()) {
@@ -370,7 +372,7 @@ void RenderWidgetHostViewChildFrame::ProcessFrameSwappedCallbacks() {
   // before we start, and discard the old list entries when we are done.
   FrameSwappedCallbackList process_callbacks;
   process_callbacks.swap(frame_swapped_callbacks_);
-  for (scoped_ptr<base::Closure>& callback : process_callbacks)
+  for (std::unique_ptr<base::Closure>& callback : process_callbacks)
     callback->Run();
 }
 
@@ -487,7 +489,7 @@ void RenderWidgetHostViewChildFrame::StopSpeaking() {
 #endif  // defined(OS_MACOSX)
 
 void RenderWidgetHostViewChildFrame::RegisterFrameSwappedCallback(
-    scoped_ptr<base::Closure> callback) {
+    std::unique_ptr<base::Closure> callback) {
   frame_swapped_callbacks_.push_back(std::move(callback));
 }
 
@@ -499,7 +501,7 @@ void RenderWidgetHostViewChildFrame::CopyFromCompositingSurface(
   if (!IsSurfaceAvailableForCopy()) {
     // Defer submitting the copy request until after a frame is drawn, at which
     // point we should be guaranteed that the surface is available.
-    RegisterFrameSwappedCallback(make_scoped_ptr(new base::Closure(base::Bind(
+    RegisterFrameSwappedCallback(base::WrapUnique(new base::Closure(base::Bind(
         &RenderWidgetHostViewChildFrame::SubmitSurfaceCopyRequest, AsWeakPtr(),
         src_subrect, output_size, callback, preferred_color_type))));
     return;
@@ -516,7 +518,7 @@ void RenderWidgetHostViewChildFrame::SubmitSurfaceCopyRequest(
     const SkColorType preferred_color_type) {
   DCHECK(IsSurfaceAvailableForCopy());
 
-  scoped_ptr<cc::CopyOutputRequest> request =
+  std::unique_ptr<cc::CopyOutputRequest> request =
       cc::CopyOutputRequest::CreateRequest(
           base::Bind(&CopyFromCompositingSurfaceHasResult, output_size,
                      preferred_color_type, callback));

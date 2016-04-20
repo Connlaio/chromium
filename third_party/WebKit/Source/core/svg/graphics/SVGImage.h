@@ -86,6 +86,8 @@ public:
     String debugName() const final { return "SVGImage"; }
     LayoutRect visualRect() const override;
 
+    bool hasIntrinsicDimensions() const;
+
 private:
     friend class AXLayoutObject;
     friend class SVGImageChromeClient;
@@ -137,17 +139,15 @@ public:
     ImageObserverDisabler(Image* image)
         : m_image(image)
     {
-        m_observer = m_image->getImageObserver();
-        m_image->setImageObserver(0);
+        m_image->setImageObserverDisabled(true);
     }
 
     ~ImageObserverDisabler()
     {
-        m_image->setImageObserver(m_observer);
+        m_image->setImageObserverDisabled(false);
     }
 private:
     Image* m_image;
-    Member<ImageObserver> m_observer;
 };
 
 } // namespace blink

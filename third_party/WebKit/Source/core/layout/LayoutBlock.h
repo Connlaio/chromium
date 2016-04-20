@@ -269,7 +269,7 @@ public:
 protected:
     bool recalcNormalFlowChildOverflowIfNeeded(LayoutObject*);
 public:
-    bool recalcChildOverflowAfterStyleChange();
+    virtual bool recalcChildOverflowAfterStyleChange();
     bool recalcOverflowAfterStyleChange();
 
     // An example explaining layout tree structure about first-line style:
@@ -353,7 +353,7 @@ protected:
     static void startDelayUpdateScrollInfo();
     static bool finishDelayUpdateScrollInfo(SubtreeLayoutScope*, ScrollPositionMap*);
 
-    void updateScrollInfoAfterLayout();
+    void updateAfterLayout();
 
     void styleWillChange(StyleDifference, const ComputedStyle& newStyle) override;
     void styleDidChange(StyleDifference, const ComputedStyle* oldStyle) override;

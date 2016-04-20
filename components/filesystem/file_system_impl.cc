@@ -16,13 +16,13 @@
 #include "build/build_config.h"
 #include "components/filesystem/directory_impl.h"
 #include "components/filesystem/lock_table.h"
-#include "mojo/shell/public/cpp/connection.h"
+#include "services/shell/public/cpp/connection.h"
 #include "url/gurl.h"
 
 namespace filesystem {
 
-FileSystemImpl::FileSystemImpl(mojo::Connection* connection,
-                               mojo::InterfaceRequest<FileSystem> request,
+FileSystemImpl::FileSystemImpl(shell::Connection* connection,
+                               FileSystemRequest request,
                                base::FilePath persistent_dir,
                                scoped_refptr<LockTable> lock_table)
     : remote_application_name_(connection->GetRemoteIdentity().name()),

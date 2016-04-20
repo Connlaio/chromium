@@ -1,4 +1,9 @@
 {
+  "Linux ChromiumOS Builder": {
+    "additional_compile_targets": [
+      "All"
+    ]
+  },
   "Linux ChromiumOS GN": {
     "additional_compile_targets": [
       "gn_all"
@@ -37,7 +42,7 @@
         "swarming": {
           "can_use_on_swarming_builders": true
         },
-        "test": "app_list_shower_unittests"
+        "test": "app_list_presenter_unittests"
       },
       {
         "swarming": {
@@ -328,7 +333,7 @@
         "swarming": {
           "can_use_on_swarming_builders": true
         },
-        "test": "app_list_shower_unittests"
+        "test": "app_list_presenter_unittests"
       },
       {
         "swarming": {
@@ -633,7 +638,7 @@
         "swarming": {
           "can_use_on_swarming_builders": true
         },
-        "test": "app_list_shower_unittests"
+        "test": "app_list_presenter_unittests"
       },
       {
         "swarming": {

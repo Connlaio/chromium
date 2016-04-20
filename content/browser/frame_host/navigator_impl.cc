@@ -171,7 +171,8 @@ void NavigatorImpl::DidStartProvisionalLoad(
     // This ensures that notifications about the end of the previous
     // navigation are sent before notifications about the start of the
     // new navigation.
-    render_frame_host->SetNavigationHandle(scoped_ptr<NavigationHandleImpl>());
+    render_frame_host->SetNavigationHandle(
+        std::unique_ptr<NavigationHandleImpl>());
   }
 
   NavigationEntry* pending_entry = controller_->GetPendingEntry();
@@ -226,7 +227,12 @@ void NavigatorImpl::DidFailProvisionalLoadWithError(
     // TODO(creis): Find a way to cancel any pending RFH here.
   }
 
-  DiscardPendingEntryOnFailureIfNeeded(render_frame_host->navigation_handle());
+  // Discard the pending navigation entry if needed.
+  // PlzNavigate: the entry has already been discarded in FailedNavigation.
+  if (!IsBrowserSideNavigationEnabled()) {
+    DiscardPendingEntryOnFailureIfNeeded(
+        render_frame_host->navigation_handle());
+  }
 
   if (delegate_)
     delegate_->DidFailProvisionalLoadWithError(render_frame_host, params);
@@ -645,9 +651,15 @@ void NavigatorImpl::RequestOpenURL(RenderFrameHostImpl* render_frame_host,
   DCHECK(!render_frame_host->GetParent() ||
          SiteIsolationPolicy::AreCrossProcessFramesPossible());
 
-  SiteInstance* current_site_instance = render_frame_host->frame_tree_node()
-                                            ->current_frame_host()
-                                            ->GetSiteInstance();
+  // Only the current RenderFrameHost should be sending an OpenURL request.
+  // Pending RenderFrameHost should know where it is navigating and pending
+  // deletion RenderFrameHost shouldn't be trying to navigate.
+  if (render_frame_host !=
+      render_frame_host->frame_tree_node()->current_frame_host()) {
+    return;
+  }
+
+  SiteInstance* current_site_instance = render_frame_host->GetSiteInstance();
 
   // TODO(creis): Pass the redirect_chain into this method to support client
   // redirects.  http://crbug.com/311721.
@@ -928,7 +940,7 @@ void NavigatorImpl::RequestNavigation(
       frame_tree_node->current_frame_host()->ShouldDispatchBeforeUnload();
   FrameMsg_Navigate_Type::Value navigation_type =
       GetNavigationType(controller_->GetBrowserContext(), entry, reload_type);
-  scoped_ptr<NavigationRequest> scoped_request =
+  std::unique_ptr<NavigationRequest> scoped_request =
       NavigationRequest::CreateBrowserInitiated(
           frame_tree_node, dest_url, dest_referrer, frame_entry, entry,
           navigation_type, lofi_state, is_same_document_history_load,
@@ -1024,8 +1036,13 @@ void NavigatorImpl::DidStartMainFrameNavigation(
   NavigationEntryImpl* pending_entry = controller_->GetPendingEntry();
   bool has_browser_initiated_pending_entry =
       pending_entry && !pending_entry->is_renderer_initiated();
-  if (!has_browser_initiated_pending_entry) {
-    scoped_ptr<NavigationEntryImpl> entry =
+
+  // If there is a transient entry, creating a new pending entry will result
+  // in deleting it, which leads to inconsistent state.
+  bool has_transient_entry = !!controller_->GetTransientEntry();
+
+  if (!has_browser_initiated_pending_entry && !has_transient_entry) {
+    std::unique_ptr<NavigationEntryImpl> entry =
         NavigationEntryImpl::FromNavigationEntry(
             controller_->CreateNavigationEntry(
                 url, content::Referrer(), ui::PAGE_TRANSITION_LINK,

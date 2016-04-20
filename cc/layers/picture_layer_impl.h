@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "base/macros.h"
+#include "base/memory/ptr_util.h"
 #include "cc/base/cc_export.h"
 #include "cc/layers/layer_impl.h"
 #include "cc/tiles/picture_layer_tiling.h"
@@ -28,10 +29,10 @@ class CC_EXPORT PictureLayerImpl
     : public LayerImpl,
       NON_EXPORTED_BASE(public PictureLayerTilingClient) {
  public:
-  static scoped_ptr<PictureLayerImpl> Create(LayerTreeImpl* tree_impl,
-                                             int id,
-                                             bool is_mask) {
-    return make_scoped_ptr(new PictureLayerImpl(tree_impl, id, is_mask));
+  static std::unique_ptr<PictureLayerImpl> Create(LayerTreeImpl* tree_impl,
+                                                  int id,
+                                                  bool is_mask) {
+    return base::WrapUnique(new PictureLayerImpl(tree_impl, id, is_mask));
   }
   ~PictureLayerImpl() override;
 
@@ -39,7 +40,7 @@ class CC_EXPORT PictureLayerImpl
 
   // LayerImpl overrides.
   const char* LayerTypeAsString() const override;
-  scoped_ptr<LayerImpl> CreateLayerImpl(LayerTreeImpl* tree_impl) override;
+  std::unique_ptr<LayerImpl> CreateLayerImpl(LayerTreeImpl* tree_impl) override;
   void PushPropertiesTo(LayerImpl* layer) override;
   void AppendQuads(RenderPass* render_pass,
                    AppendQuadsData* append_quads_data) override;
@@ -120,11 +121,11 @@ class CC_EXPORT PictureLayerImpl
 
   virtual void UpdateIdealScales();
   float MaximumTilingContentsScale() const;
-  scoped_ptr<PictureLayerTilingSet> CreatePictureLayerTilingSet();
+  std::unique_ptr<PictureLayerTilingSet> CreatePictureLayerTilingSet();
 
   PictureLayerImpl* twin_layer_;
 
-  scoped_ptr<PictureLayerTilingSet> tilings_;
+  std::unique_ptr<PictureLayerTilingSet> tilings_;
   scoped_refptr<RasterSource> raster_source_;
   Region invalidation_;
 
@@ -139,6 +140,7 @@ class CC_EXPORT PictureLayerImpl
   float raster_contents_scale_;
   float low_res_raster_contents_scale_;
 
+  bool raster_source_scale_is_fixed_;
   bool was_screen_space_transform_animating_;
   bool only_used_low_res_last_append_quads_;
   const bool is_mask_;

@@ -7,6 +7,8 @@
 
 #include <stdint.h>
 
+#include <memory>
+
 #include "base/containers/scoped_ptr_hash_map.h"
 #include "base/macros.h"
 #include "ipc/ipc_listener.h"
@@ -33,7 +35,8 @@ class MediaService {
 
  private:
   gpu::GpuChannelManager* const channel_manager_;
-  base::ScopedPtrHashMap<int32_t, scoped_ptr<MediaChannel>> media_channels_;
+  base::ScopedPtrHashMap<int32_t, std::unique_ptr<MediaChannel>>
+      media_channels_;
   DISALLOW_COPY_AND_ASSIGN(MediaService);
 };
 

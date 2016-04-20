@@ -98,11 +98,7 @@ DEFINE_TRACE(ScriptController)
 
 void ScriptController::clearForClose()
 {
-    double start = currentTime();
     m_windowProxyManager->clearForClose();
-    double end = currentTime();
-    DEFINE_STATIC_LOCAL(CustomCountHistogram, clearForCloseHistogram, ("WebCore.ScriptController.clearForClose", 0, 10000, 50));
-    clearForCloseHistogram.count((end - start) * 1000);
 }
 
 void ScriptController::updateSecurityOrigin(SecurityOrigin* origin)
@@ -116,8 +112,6 @@ void ScriptController::updateSecurityOrigin(SecurityOrigin* origin)
 
 v8::MaybeLocal<v8::Value> ScriptController::callFunction(v8::Local<v8::Function> function, v8::Local<v8::Value> receiver, int argc, v8::Local<v8::Value> info[])
 {
-    // Keep LocalFrame (and therefore ScriptController) alive.
-    RawPtr<LocalFrame> protect(frame());
     return ScriptController::callFunction(frame()->document(), function, receiver, argc, info, isolate());
 }
 
@@ -152,8 +146,6 @@ v8::Local<v8::Value> ScriptController::executeScriptAndReturnValue(v8::Local<v8:
         if (compilationFinishTime) {
             *compilationFinishTime = WTF::monotonicallyIncreasingTime();
         }
-        // Keep LocalFrame (and therefore ScriptController) alive.
-        RawPtr<LocalFrame> protect(frame());
         if (!v8Call(V8ScriptRunner::runCompiledScript(isolate(), script, frame()->document()), result, tryCatch))
             return result;
     }
@@ -259,13 +251,7 @@ void ScriptController::clearWindowProxy()
 {
     // V8 binding expects ScriptController::clearWindowProxy only be called
     // when a frame is loading a new page. This creates a new context for the new page.
-
-    double start = currentTime();
-
     m_windowProxyManager->clearForNavigation();
-    double end = currentTime();
-    DEFINE_STATIC_LOCAL(CustomCountHistogram, clearWindowProxyHistogram, ("WebCore.ScriptController.clearWindowProxy", 0, 10000, 50));
-    clearWindowProxyHistogram.count((end - start) * 1000);
 }
 
 void ScriptController::setCaptureCallStackForUncaughtExceptions(v8::Isolate* isolate, bool value)
@@ -348,10 +334,7 @@ bool ScriptController::executeScriptIfJavaScriptURL(const KURL& url)
     if (progressNotificationsNeeded)
         frame()->loader().progress().progressStarted();
 
-    // We need to hold onto the LocalFrame here because executing script can
-    // destroy the frame.
-    RawPtr<LocalFrame> protect(frame());
-    RawPtr<Document> ownerDocument(frame()->document());
+    Document* ownerDocument = frame()->document();
 
     const int javascriptSchemeLength = sizeof("javascript:") - 1;
 
@@ -378,7 +361,7 @@ bool ScriptController::executeScriptIfJavaScriptURL(const KURL& url)
     if (!locationChangeBefore && frame()->navigationScheduler().locationChangePending())
         return true;
 
-    frame()->loader().replaceDocumentWhileExecutingJavaScriptURL(scriptResult, ownerDocument.get());
+    frame()->loader().replaceDocumentWhileExecutingJavaScriptURL(scriptResult, ownerDocument);
     return true;
 }
 
@@ -410,7 +393,6 @@ v8::Local<v8::Value> ScriptController::evaluateScriptInMainWorld(const ScriptSou
     v8::EscapableHandleScope handleScope(isolate());
     ScriptState::Scope scope(scriptState);
 
-    RawPtr<LocalFrame> protect(frame());
     if (frame()->loader().stateMachine()->isDisplayingInitialEmptyDocument())
         frame()->loader().didAccessInitialDocument();
 

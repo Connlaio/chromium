@@ -56,10 +56,8 @@ AwRenderThreadContextProvider::AwRenderThreadContextProvider(
       gfx::PreferDiscreteGpu, gpu::GLInProcessContextSharedMemoryLimits(),
       nullptr, nullptr));
 
-  context_->SetContextLostCallback(base::Bind(
+  context_->GetImplementation()->SetLostContextCallback(base::Bind(
       &AwRenderThreadContextProvider::OnLostContext, base::Unretained(this)));
-
-  capabilities_.gpu = context_->GetImplementation()->capabilities();
 }
 
 AwRenderThreadContextProvider::~AwRenderThreadContextProvider() {
@@ -75,11 +73,9 @@ bool AwRenderThreadContextProvider::BindToCurrentThread() {
   return true;
 }
 
-cc::ContextProvider::Capabilities
-AwRenderThreadContextProvider::ContextCapabilities() {
+gpu::Capabilities AwRenderThreadContextProvider::ContextCapabilities() {
   DCHECK(main_thread_checker_.CalledOnValidThread());
-
-  return capabilities_;
+  return context_->GetImplementation()->capabilities();
 }
 
 gpu::gles2::GLES2Interface* AwRenderThreadContextProvider::ContextGL() {
@@ -145,7 +141,7 @@ void AwRenderThreadContextProvider::OnLostContext() {
   DCHECK(main_thread_checker_.CalledOnValidThread());
 
   if (!lost_context_callback_.is_null())
-    base::ResetAndReturn(&lost_context_callback_).Run();
+    lost_context_callback_.Run();
   if (gr_context_)
     gr_context_->abandonContext();
 }

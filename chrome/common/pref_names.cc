@@ -592,6 +592,10 @@ const char kAccessibilityScreenMagnifierScale[] =
 // due to lack of a physical keyboard.
 const char kAccessibilityVirtualKeyboardEnabled[] =
     "settings.a11y.virtual_keyboard";
+// A boolean pref which determines whether the mono audio output is enabled for
+// accessibility.
+const char kAccessibilityMonoAudioEnabled[] =
+    "settings.a11y.mono_audio";
 // A boolean pref which determines whether autoclick is enabled.
 const char kAccessibilityAutoclickEnabled[] = "settings.a11y.autoclick";
 // An integer pref which determines time in ms between when the mouse cursor
@@ -969,11 +973,12 @@ const char kPluginsMetadata[] = "plugins.metadata";
 const char kPluginsResourceCacheUpdate[] = "plugins.resource_cache_update";
 #endif
 
-// Boolean that indicates whether we should check if we are the default browser
-// on start-up.
-const char kCheckDefaultBrowser[] = "browser.check_default_browser";
-// Boolean that indicates whether the kCheckDefaultBrowser preference should be
-// reset on start-up.
+// Int64 containing the internal value of the time at which the default browser
+// infobar was last dismissed by the user.
+const char kDefaultBrowserLastDeclined[] =
+    "browser.default_browser_infobar_last_declined";
+// Boolean that indicates whether the kDefaultBrowserLastDeclined preference
+// should be reset on start-up.
 const char kResetCheckDefaultBrowser[] =
     "browser.should_reset_check_default_browser";
 
@@ -1197,6 +1202,9 @@ const char kLocalDiscoveryNotificationsEnabled[] =
 const char kPushMessagingAppIdentifierMap[] =
     "gcm.push_messaging_application_id_map";
 
+// Maps from origin to background budget information.
+const char kBackgroundBudgetMap[] = "push_messaging.background_budget_map";
+
 // Whether a user is allowed to use Easy Unlock.
 const char kEasyUnlockAllowed[] = "easy_unlock.allowed";
 
@@ -1360,6 +1368,9 @@ const char kTaskManagerWindowPlacement[] = "task_manager.window_placement";
 // The most recent stored column visibility of the task manager table to be
 // restored on startup.
 const char kTaskManagerColumnVisibility[] = "task_manager.column_visibility";
+
+// A boolean indicating if ending processes are enabled or disabled by policy.
+const char kTaskManagerEndProcessEnabled[] = "task_manager.end_process_enabled";
 
 // A collection of position, size, and other data relating to app windows to
 // restore on startup.
@@ -1989,7 +2000,7 @@ const char kMediaGalleriesRememberedGalleries[] =
     "media_galleries.remembered_galleries";
 #endif  // !defined(OS_ANDROID)
 
-#if defined(USE_ASH)
+#if defined(USE_AURA)
 // |kShelfAlignment| and |kShelfAutoHideBehavior| have a local variant. The
 // local variant is not synced and is used if set. If the local variant is not
 // set its value is set from the synced value (once prefs have been

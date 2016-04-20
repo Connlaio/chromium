@@ -4,6 +4,7 @@
 
 #include "content/common/gpu/media/gpu_video_decode_accelerator.h"
 
+#include <memory>
 #include <vector>
 
 #include "base/bind.h"
@@ -344,7 +345,7 @@ bool GpuVideoDecodeAccelerator::Initialize(
     return false;
 #endif
 
-  scoped_ptr<GpuVideoDecodeAcceleratorFactoryImpl> vda_factory =
+  std::unique_ptr<GpuVideoDecodeAcceleratorFactoryImpl> vda_factory =
       GpuVideoDecodeAcceleratorFactoryImpl::CreateWithGLES2Decoder(
           get_gl_context_cb_, make_context_current_cb_, bind_image_cb_,
           get_gles2_decoder_cb_);
@@ -401,13 +402,14 @@ void GpuVideoDecodeAccelerator::OnAssignPictureBuffers(
       command_decoder->GetContextGroup()->texture_manager();
 
   std::vector<media::PictureBuffer> buffers;
-  std::vector<scoped_refptr<gpu::gles2::TextureRef> > textures;
+  std::vector<std::vector<scoped_refptr<gpu::gles2::TextureRef>>> textures;
   for (uint32_t i = 0; i < buffer_ids.size(); ++i) {
     if (buffer_ids[i] < 0) {
       DLOG(ERROR) << "Buffer id " << buffer_ids[i] << " out of range";
       NotifyError(media::VideoDecodeAccelerator::INVALID_ARGUMENT);
       return;
     }
+    std::vector<scoped_refptr<gpu::gles2::TextureRef>> current_textures;
     media::PictureBuffer::TextureIds buffer_texture_ids = texture_ids[i];
     media::PictureBuffer::TextureIds service_ids;
     if (buffer_texture_ids.size() != textures_per_buffer_) {
@@ -463,8 +465,9 @@ void GpuVideoDecodeAccelerator::OnAssignPictureBuffers(
         }
       }
       service_ids.push_back(texture_ref->service_id());
-      textures.push_back(texture_ref);
+      current_textures.push_back(texture_ref);
     }
+    textures.push_back(current_textures);
     buffers.push_back(media::PictureBuffer(buffer_ids[i], texture_dimensions_,
                                            service_ids, buffer_texture_ids));
   }
@@ -505,17 +508,17 @@ void GpuVideoDecodeAccelerator::SetTextureCleared(
     const media::Picture& picture) {
   DCHECK(child_task_runner_->BelongsToCurrentThread());
   DebugAutoLock auto_lock(debug_uncleared_textures_lock_);
-  std::map<int32_t, scoped_refptr<gpu::gles2::TextureRef>>::iterator it;
-  it = uncleared_textures_.find(picture.picture_buffer_id());
+  auto it = uncleared_textures_.find(picture.picture_buffer_id());
   if (it == uncleared_textures_.end())
     return;  // the texture has been cleared
 
-  scoped_refptr<gpu::gles2::TextureRef> texture_ref = it->second;
-  GLenum target = texture_ref->texture()->target();
-  gpu::gles2::TextureManager* texture_manager =
-      stub_->decoder()->GetContextGroup()->texture_manager();
-  DCHECK(!texture_ref->texture()->IsLevelCleared(target, 0));
-  texture_manager->SetLevelCleared(texture_ref.get(), target, 0, true);
+  for (auto texture_ref : it->second) {
+    GLenum target = texture_ref->texture()->target();
+    gpu::gles2::TextureManager* texture_manager =
+        stub_->decoder()->GetContextGroup()->texture_manager();
+    DCHECK(!texture_ref->texture()->IsLevelCleared(target, 0));
+    texture_manager->SetLevelCleared(texture_ref.get(), target, 0, true);
+  }
   uncleared_textures_.erase(it);
 }
 

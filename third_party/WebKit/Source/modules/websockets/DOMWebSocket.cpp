@@ -52,6 +52,7 @@
 #include "platform/Logging.h"
 #include "platform/blob/BlobData.h"
 #include "platform/heap/Handle.h"
+#include "platform/weborigin/KnownPorts.h"
 #include "platform/weborigin/SecurityOrigin.h"
 #include "public/platform/Platform.h"
 #include "wtf/Assertions.h"
@@ -307,7 +308,7 @@ void DOMWebSocket::connect(const String& url, const Vector<String>& protocols, E
         return;
     }
 
-    if (!Platform::current()->portAllowed(m_url)) {
+    if (!isPortAllowedForScheme(m_url)) {
         m_state = CLOSED;
         exceptionState.throwSecurityError("The port " + String::number(m_url.port()) + " is not allowed.");
         return;
@@ -653,9 +654,9 @@ void DOMWebSocket::didReceiveBinaryMessage(PassOwnPtr<Vector<char>> binaryData)
     }
 
     case BinaryTypeArrayBuffer:
-        RefPtr<DOMArrayBuffer> arrayBuffer = DOMArrayBuffer::create(binaryData->data(), binaryData->size());
+        DOMArrayBuffer* arrayBuffer = DOMArrayBuffer::create(binaryData->data(), binaryData->size());
         recordReceiveTypeHistogram(WebSocketReceiveTypeArrayBuffer);
-        m_eventQueue->dispatch(MessageEvent::create(arrayBuffer.release(), SecurityOrigin::create(m_url)->toString()));
+        m_eventQueue->dispatch(MessageEvent::create(arrayBuffer, SecurityOrigin::create(m_url)->toString()));
         break;
     }
 }
@@ -716,7 +717,7 @@ DEFINE_TRACE(DOMWebSocket)
     visitor->trace(m_channel);
     visitor->trace(m_eventQueue);
     WebSocketChannelClient::trace(visitor);
-    RefCountedGarbageCollectedEventTargetWithInlineData<DOMWebSocket>::trace(visitor);
+    EventTargetWithInlineData::trace(visitor);
     ActiveDOMObject::trace(visitor);
 }
 

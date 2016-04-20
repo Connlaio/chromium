@@ -392,10 +392,10 @@ WebInspector.TextPrompt.prototype = {
     {
         this.clearAutoComplete(true);
         var selection = this._element.getComponentSelection();
-        if (!selection.rangeCount)
+        var selectionRange = selection && selection.rangeCount ? selection.getRangeAt(0) : null;
+        if (!selectionRange)
             return;
 
-        var selectionRange = selection.getRangeAt(0);
         var shouldExit;
 
         if (!force && !this.isCaretAtEndOfPrompt() && !this.isSuggestBoxVisible())
@@ -586,6 +586,11 @@ WebInspector.TextPrompt.prototype = {
      */
     _applySuggestion: function(completionText, isIntermediateSuggestion)
     {
+        if (!this._userEnteredRange) {
+            // We could have already cleared autocompletion range by the time this is called. (crbug.com/587683)
+            return;
+        }
+
         var wordPrefixLength = this._userEnteredText ? this._userEnteredText.length : 0;
 
         this._userEnteredRange.deleteContents();
@@ -679,10 +684,10 @@ WebInspector.TextPrompt.prototype = {
     isCaretAtEndOfPrompt: function()
     {
         var selection = this._element.getComponentSelection();
-        if (!selection.rangeCount || !selection.isCollapsed)
+        var selectionRange = selection && selection.rangeCount ? selection.getRangeAt(0) : null;
+        if (!selectionRange || !selection.isCollapsed)
             return false;
 
-        var selectionRange = selection.getRangeAt(0);
         var node = selectionRange.startContainer;
         if (!node.isSelfOrDescendant(this._element))
             return false;
@@ -814,6 +819,8 @@ WebInspector.TextPromptWithHistory = function(completions, stopCharacters)
      * @type {number}
      */
     this._historyOffset = 1;
+
+    this._addCompletionsFromHistory = true;
 }
 
 WebInspector.TextPromptWithHistory.prototype = {
@@ -833,7 +840,7 @@ WebInspector.TextPromptWithHistory.prototype = {
      */
     additionalCompletions: function(prefix)
     {
-        if (!this.isCaretAtEndOfPrompt())
+        if (!this._addCompletionsFromHistory || !this.isCaretAtEndOfPrompt())
             return [];
         var result = [];
         var text = this.text();
@@ -857,6 +864,14 @@ WebInspector.TextPromptWithHistory.prototype = {
     {
         this._data = [].concat(data);
         this._historyOffset = 1;
+    },
+
+    /**
+     * @param {boolean} value
+     */
+    setAddCompletionsFromHistory: function(value)
+    {
+        this._addCompletionsFromHistory = value;
     },
 
     /**

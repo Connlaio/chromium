@@ -4,17 +4,17 @@
 
 #include "content/shell/utility/shell_content_utility_client.h"
 
+#include <memory>
+
 #include "base/bind.h"
-#include "base/memory/scoped_ptr.h"
-#include "content/common/mojo/static_loader.h"
 #include "content/public/test/test_mojo_app.h"
 
 namespace content {
 
 namespace {
 
-scoped_ptr<mojo::ShellClient> CreateTestApp() {
-  return scoped_ptr<mojo::ShellClient>(new TestMojoApp);
+std::unique_ptr<shell::ShellClient> CreateTestApp() {
+  return std::unique_ptr<shell::ShellClient>(new TestMojoApp);
 }
 
 }  // namespace

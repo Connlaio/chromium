@@ -260,10 +260,10 @@ std::vector<const ServerWindow*> WindowTree::GetWindowTree(
 bool WindowTree::SetWindowVisibility(const ClientWindowId& window_id,
                                      bool visible) {
   ServerWindow* window = GetWindowByClientId(window_id);
-  if (!window || window->visible() == visible ||
-      !access_policy_->CanChangeWindowVisibility(window)) {
+  if (!window || !access_policy_->CanChangeWindowVisibility(window))
     return false;
-  }
+  if (window->visible() == visible)
+    return true;
   Operation op(this, window_server_, OperationType::SET_WINDOW_VISIBILITY);
   window->SetVisible(visible);
   return true;
@@ -496,8 +496,8 @@ void WindowTree::ProcessWindowHierarchyChanged(const ServerWindow* window,
   const ClientWindowId client_window_id =
       window ? ClientWindowIdForWindow(window) : ClientWindowId();
   client()->OnWindowHierarchyChanged(
-      client_window_id.id, new_parent_client_window_id.id,
-      old_parent_client_window_id.id, WindowsToWindowDatas(to_send));
+      client_window_id.id, old_parent_client_window_id.id,
+      new_parent_client_window_id.id, WindowsToWindowDatas(to_send));
   window_server_->OnTreeMessagedClient(id_);
 }
 
@@ -1219,7 +1219,8 @@ void WindowTree::SetImeVisibility(Id transport_window_id,
   }
 }
 
-void WindowTree::OnWindowInputEventAck(uint32_t event_id, bool handled) {
+void WindowTree::OnWindowInputEventAck(uint32_t event_id,
+                                       mojom::EventResult result) {
   if (event_ack_id_ == 0 || event_id != event_ack_id_) {
     // TODO(sad): Something bad happened. Kill the client?
     NOTIMPLEMENTED() << "Wrong event acked.";
@@ -1229,7 +1230,7 @@ void WindowTree::OnWindowInputEventAck(uint32_t event_id, bool handled) {
   WindowManagerState* event_source_wms = event_source_wms_;
   event_source_wms_ = nullptr;
   if (event_source_wms)
-    event_source_wms->OnEventAck(this, handled);
+    event_source_wms->OnEventAck(this, result);
 
   if (!event_queue_.empty()) {
     DCHECK(!event_ack_id_);

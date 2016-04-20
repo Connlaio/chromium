@@ -6,12 +6,13 @@
 #define CC_PLAYBACK_DISPLAY_ITEM_LIST_H_
 
 #include <stddef.h>
+
+#include <memory>
 #include <utility>
 
 #include "base/gtest_prod_util.h"
 #include "base/macros.h"
 #include "base/memory/ref_counted.h"
-#include "base/memory/scoped_ptr.h"
 #include "base/trace_event/trace_event.h"
 #include "cc/base/cc_export.h"
 #include "cc/base/contiguous_container.h"
@@ -98,7 +99,7 @@ class CC_EXPORT DisplayItemList
 
   bool RetainsIndividualDisplayItems() const;
 
-  scoped_ptr<base::trace_event::ConvertableToTraceFormat> AsValue(
+  std::unique_ptr<base::trace_event::ConvertableToTraceFormat> AsValue(
       bool include_items) const;
 
   void EmitTraceSnapshot() const;
@@ -107,7 +108,6 @@ class CC_EXPORT DisplayItemList
   void GetDiscardableImagesInRect(const gfx::Rect& rect,
                                   float raster_scale,
                                   std::vector<DrawImage>* images);
-  bool MayHaveDiscardableImages() const;
 
   gfx::Rect VisualRectForTesting(int index) { return visual_rects_[index]; }
 
@@ -128,7 +128,7 @@ class CC_EXPORT DisplayItemList
   std::vector<gfx::Rect> visual_rects_;
   sk_sp<SkPicture> picture_;
 
-  scoped_ptr<SkPictureRecorder> recorder_;
+  std::unique_ptr<SkPictureRecorder> recorder_;
   skia::RefPtr<SkCanvas> canvas_;
   const DisplayItemListSettings settings_;
   bool retain_individual_display_items_;

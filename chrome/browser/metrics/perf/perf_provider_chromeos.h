@@ -61,7 +61,7 @@ class PerfProvider : public base::NonThreadSafe,
       }
 
      private:
-      TriggerParams() = default;  // POD
+      TriggerParams() = delete;
 
       // Limit the number of profiles collected.
       int64_t sampling_factor_;
@@ -70,6 +70,8 @@ class PerfProvider : public base::NonThreadSafe,
       // The delay should be randomly selected between 0 and this value.
       TimeDeltaInternalType max_collection_delay_;
     };
+
+    CollectionParams();
 
     CollectionParams(base::TimeDelta collection_duration,
                      base::TimeDelta periodic_interval,
@@ -104,8 +106,6 @@ class PerfProvider : public base::NonThreadSafe,
     }
 
    private:
-    CollectionParams() = default;  // POD
-
     // Time perf is run for.
     TimeDeltaInternalType collection_duration_;
 
@@ -117,6 +117,8 @@ class PerfProvider : public base::NonThreadSafe,
     // Parameters for RESUME_FROM_SUSPEND and RESTORE_SESSION collections:
     TriggerParams resume_from_suspend_;
     TriggerParams restore_session_;
+
+    DISALLOW_COPY_AND_ASSIGN(CollectionParams);
   };
 
   // Parses a PerfDataProto from serialized data |perf_data|, if it exists.
@@ -130,8 +132,8 @@ class PerfProvider : public base::NonThreadSafe,
   // |result| is the return value of running perf/quipper. It is 0 if successful
   // and nonzero if not successful.
   void ParseOutputProtoIfValid(
-      scoped_ptr<WindowedIncognitoObserver> incognito_observer,
-      scoped_ptr<SampledProfile> sampled_profile,
+      std::unique_ptr<WindowedIncognitoObserver> incognito_observer,
+      std::unique_ptr<SampledProfile> sampled_profile,
       int result,
       const std::vector<uint8_t>& perf_data,
       const std::vector<uint8_t>& perf_stat);
@@ -155,8 +157,6 @@ class PerfProvider : public base::NonThreadSafe,
   }
 
  private:
-  static const CollectionParams kDefaultParameters;
-
   // Class that listens for changes to the login state. When a normal user logs
   // in, it updates PerfProvider to start collecting data.
   class LoginObserver : public chromeos::LoginState::Observer {
@@ -194,7 +194,7 @@ class PerfProvider : public base::NonThreadSafe,
 
   // Collects perf data for a given |trigger_event|. Calls perf via the ChromeOS
   // debug daemon's dbus interface.
-  void CollectIfNecessary(scoped_ptr<SampledProfile> sampled_profile);
+  void CollectIfNecessary(std::unique_ptr<SampledProfile> sampled_profile);
 
   // Collects perf data on a repeating basis by calling CollectIfNecessary() and
   // reschedules it to be collected again.

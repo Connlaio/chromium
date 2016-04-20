@@ -5,6 +5,8 @@
 #ifndef CONTENT_BROWSER_COMPOSITOR_GPU_SURFACELESS_BROWSER_COMPOSITOR_OUTPUT_SURFACE_H_
 #define CONTENT_BROWSER_COMPOSITOR_GPU_SURFACELESS_BROWSER_COMPOSITOR_OUTPUT_SURFACE_H_
 
+#include <memory>
+
 #include "content/browser/compositor/gpu_browser_compositor_output_surface.h"
 
 namespace gpu {
@@ -24,7 +26,8 @@ class GpuSurfacelessBrowserCompositorOutputSurface
       const scoped_refptr<ContextProviderCommandBuffer>& worker_context,
       int surface_id,
       const scoped_refptr<ui::CompositorVSyncManager>& vsync_manager,
-      scoped_ptr<BrowserCompositorOverlayCandidateValidator>
+      base::SingleThreadTaskRunner* task_runner,
+      std::unique_ptr<BrowserCompositorOverlayCandidateValidator>
           overlay_candidate_validator,
       unsigned int target,
       unsigned int internalformat,
@@ -46,8 +49,8 @@ class GpuSurfacelessBrowserCompositorOutputSurface
       gfx::SwapResult result) override;
 
   unsigned int internalformat_;
-  scoped_ptr<GLHelper> gl_helper_;
-  scoped_ptr<BufferQueue> output_surface_;
+  std::unique_ptr<GLHelper> gl_helper_;
+  std::unique_ptr<BufferQueue> output_surface_;
   gpu::GpuMemoryBufferManager* gpu_memory_buffer_manager_;
 };
 

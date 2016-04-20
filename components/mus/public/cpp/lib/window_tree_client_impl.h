@@ -45,7 +45,7 @@ class WindowTreeClientImpl : public WindowTreeConnection,
   ~WindowTreeClientImpl() override;
 
   // Establishes the connection by way of the WindowTreeFactory.
-  void ConnectViaWindowTreeFactory(mojo::Connector* connector);
+  void ConnectViaWindowTreeFactory(shell::Connector* connector);
 
   // Wait for OnEmbed(), returning when done.
   void WaitForEmbed();
@@ -122,6 +122,8 @@ class WindowTreeClientImpl : public WindowTreeConnection,
   // the last step of ~Window).
   void OnWindowDestroyed(Window* window);
 
+  Window* GetWindowByServerId(Id id);
+
   // WindowTreeConnection:
   Window* GetCaptureWindow() override;
 
@@ -163,7 +165,6 @@ class WindowTreeClientImpl : public WindowTreeConnection,
   // Overridden from WindowTreeConnection:
   void SetDeleteOnNoRoots(bool value) override;
   const std::set<Window*>& GetRoots() override;
-  Window* GetWindowById(Id id) override;
   Window* GetFocusedWindow() override;
   void ClearFocus() override;
   Window* NewWindow(const Window::SharedProperties* properties) override;
@@ -202,8 +203,8 @@ class WindowTreeClientImpl : public WindowTreeConnection,
       mojom::ViewportMetricsPtr new_metrics) override;
   void OnWindowHierarchyChanged(
       Id window_id,
-      Id new_parent_id,
       Id old_parent_id,
+      Id new_parent_id,
       mojo::Array<mojom::WindowDataPtr> windows) override;
   void OnWindowReordered(Id window_id,
                          Id relative_window_id,

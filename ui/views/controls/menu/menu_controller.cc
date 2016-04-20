@@ -41,7 +41,7 @@
 #if defined(OS_WIN)
 #include "ui/aura/window_tree_host.h"
 #include "ui/base/win/internal_constants.h"
-#include "ui/gfx/win/dpi.h"
+#include "ui/display/win/screen_win.h"
 #include "ui/views/win/hwnd_util.h"
 #endif
 
@@ -176,7 +176,8 @@ static void RepostEventImpl(const ui::LocatedEvent* event,
     return;
 
 #if defined(OS_WIN)
-  gfx::Point screen_loc_pixels = gfx::win::DIPToScreenPoint(screen_loc);
+  gfx::Point screen_loc_pixels =
+      display::win::ScreenWin::DIPToScreenPoint(screen_loc);
   HWND target_window = ::WindowFromPoint(screen_loc_pixels.ToPOINT());
   // If we don't find a native window for the HWND at the current location,
   // then attempt to find a native window from its parent if one exists.
@@ -490,6 +491,11 @@ MenuItemView* MenuController::Run(Widget* parent,
 
   if (result_event_flags)
     *result_event_flags = accept_event_flags_;
+
+  // The nested message loop could have been killed externally. Check to see if
+  // there are nested asynchronous menus to shutdown.
+  if (async_run_ && delegate_stack_.size() > 1)
+    ExitAsyncRun();
 
   return ExitMenuRun();
 }
@@ -1030,7 +1036,10 @@ ui::PostDispatchAction MenuController::OnWillDispatchKeyEvent(
   else
     OnKeyDown(key_code);
 
-  TerminateNestedMessageLoopIfNecessary();
+  // MenuController may have been deleted, so check for an active instance
+  // before accessing member variables.
+  if (GetActiveInstance())
+    TerminateNestedMessageLoopIfNecessary();
 
   return ui::POST_DISPATCH_NONE;
 }
@@ -1182,7 +1191,7 @@ void MenuController::StartDrag(SubmenuView* source,
   View::ConvertPointFromScreen(item, &press_loc);
   gfx::Point widget_loc(press_loc);
   View::ConvertPointToWidget(item, &widget_loc);
-  scoped_ptr<gfx::Canvas> canvas(GetCanvasForDragImage(
+  std::unique_ptr<gfx::Canvas> canvas(GetCanvasForDragImage(
       source->GetWidget(), gfx::Size(item->width(), item->height())));
   item->PaintButton(canvas.get(), MenuItemView::PB_FOR_DRAG);
 

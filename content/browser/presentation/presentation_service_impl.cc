@@ -65,10 +65,10 @@ mojom::SessionMessagePtr ToMojoSessionMessage(
   return output;
 }
 
-scoped_ptr<PresentationSessionMessage> GetPresentationSessionMessage(
+std::unique_ptr<PresentationSessionMessage> GetPresentationSessionMessage(
     mojom::SessionMessagePtr input) {
   DCHECK(!input.is_null());
-  scoped_ptr<content::PresentationSessionMessage> output;
+  std::unique_ptr<content::PresentationSessionMessage> output;
   switch (input->type) {
     case mojom::PresentationMessageType::TEXT: {
       DCHECK(!input->message.is_null());
@@ -155,8 +155,7 @@ void PresentationServiceImpl::CreateMojoService(
   DCHECK(web_contents);
 
   // This object will be deleted when the RenderFrameHost is about to be
-  // deleted (RenderFrameDeleted) or if a connection error occurred
-  // (OnConnectionError).
+  // deleted (RenderFrameDeleted).
   PresentationServiceImpl* impl = new PresentationServiceImpl(
       render_frame_host,
       web_contents,
@@ -169,10 +168,6 @@ void PresentationServiceImpl::Bind(
     mojo::InterfaceRequest<mojom::PresentationService> request) {
   binding_.reset(
       new mojo::Binding<mojom::PresentationService>(this, std::move(request)));
-  binding_->set_connection_error_handler([this]() {
-    DVLOG(1) << "Connection error";
-    delete this;
-  });
 }
 
 void PresentationServiceImpl::SetClient(
@@ -194,7 +189,7 @@ void PresentationServiceImpl::ListenForScreenAvailability(
   if (screen_availability_listeners_.count(availability_url))
     return;
 
-  scoped_ptr<ScreenAvailabilityListenerImpl> listener(
+  std::unique_ptr<ScreenAvailabilityListenerImpl> listener(
       new ScreenAvailabilityListenerImpl(availability_url, this));
   if (delegate_->AddScreenAvailabilityListener(
       render_process_id_,

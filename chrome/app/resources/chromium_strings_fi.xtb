@@ -66,7 +66,6 @@
 <translation id="3130323860337406239">Chromium käyttää mikrofoniasi.</translation>
 <translation id="313551035350905294">Olet kirjautumassa sisään hallinnoidulla tilillä ja antamassa tilin järjestelmänvalvojalle oikeuden hallita Chromium-profiiliasi. Chromium-tietosi, kuten sovelluksesi, kirjanmerkkisi, historiasi, salasanasi ja muut asetuksesi, yhdistetään pysyvästi käyttäjätiliin <ph name="USER_NAME" />. Voit poistaa nämä tiedot Google-tilien hallintapaneelissa, mutta et voi liittää tietoja toiseen tiliin.</translation>
 <translation id="3190315855212034486">Hups! Chromium kaatui. Käynnistetäänkö uudelleen?</translation>
-<translation id="3197823471738295152">Laite on ajan tasalla.</translation>
 <translation id="3244477511402911926">Chromiumin ilmoituskeskus</translation>
 <translation id="3256316712990552818">Kopioitiin Chromiumiin.</translation>
 <translation id="3258596308407688501">Chromium ei voi lukea tietohakemistoaan ja kirjoittaa siihen:
@@ -112,6 +111,7 @@
 <translation id="4987820182225656817">Vierailijat voivat käyttää Chromiumia jälkiä jättämättä.</translation>
 <translation id="4994636714258228724">Lisää itsesi Chromiumiin</translation>
 <translation id="5032989939245619637">Tallenna tiedot Chromiumiin</translation>
+<translation id="5116586539350239523">Chromium tallentaa tietosi turvalliseen paikkaan, jottei sinun tarvitse kirjoittaa tietoja uudelleen.</translation>
 <translation id="5358375970380395591">Olet kirjautumassa sisään hallinnoidulla tilillä ja antamassa tilin järjestelmänvalvojalle oikeuden hallita Chromium-profiiliasi. Chromium-tietosi, kuten sovelluksesi, kirjanmerkkisi, historiasi, salasanasi ja muut asetuksesi, yhdistetään pysyvästi käyttäjätiliin <ph name="USER_NAME" />. Voit poistaa nämä tiedot Google-tilien Hallintapaneelissa, mutta et voi liittää tietoja toiseen tiliin. <ph name="LEARN_MORE" /></translation>
 <translation id="5398878173008909840">Chromiumista on saatavilla uusi versio.</translation>
 <translation id="5427571867875391349">Aseta Chromium oletusselaimeksi</translation>
@@ -119,6 +119,7 @@
 <translation id="549669000822060376">Odota hetki, Chromium asentaa uusimpia järjestelmäpäivityksiä.</translation>
 <translation id="5563479599352954471">Etsi yhdellä kosketuksella</translation>
 <translation id="5620765574781326016">Tutustu verkkosivuston aiheisiin poistumatta sivulta.</translation>
+<translation id="5634636535844844681">Chromium vaatii Windows 7:n tai uudemman version.</translation>
 <translation id="5680901439334282664">Kirjaudu sisään Chromiumiin</translation>
 <translation id="5772805321386874569">(vaatii Chromiumin <ph name="BEGIN_BUTTON" />uudelleenkäynnistyksen<ph name="END_BUTTON" />)</translation>
 <translation id="5796460469508169315">Chromium on lähes valmis.</translation>
@@ -222,7 +223,6 @@ Chromium ei voi palauttaa asetuksiasi.</translation>
 
 Jos kirjaudut silti sisään, Chromium-tiedot, kuten kirjanmerkit, historia ja asetukset, yhdistetään tilin <ph name="ACCOUNT_EMAIL_NEW" /> tietoihin.</translation>
 <translation id="9013087743919948559">Lisää Chromiumiin</translation>
-<translation id="9013262824292842194">Chromium edellyttää, että käyttöjärjestelmä on Windows Vista tai Windows XP SP2 tai uudempi.</translation>
 <translation id="9019929317751753759">Paransimme Chromiumin turvallisuutta poistamalla käytöstä sovelluksia, joita <ph name="IDS_EXTENSION_WEB_STORE_TITLE" /> ei tarjoa ja jotka on voitu lisätä ilman lupaasi.</translation>
 <translation id="9022552996538154597">Kirjaudu sisään Chromiumiin</translation>
 <translation id="9036189287518468038">Chromium-sovellusten käynnistysohjelma</translation>

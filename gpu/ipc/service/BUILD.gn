@@ -55,6 +55,7 @@ source_set("ipc_service_sources") {
   deps = [
     "//gpu/command_buffer/common:common_sources",
     "//gpu/command_buffer/service:service_sources",
+    "//gpu/config:config_sources",
     "//gpu/ipc/common:ipc_common_sources",
   ]
   libs = []
@@ -147,9 +148,12 @@ test("gpu_ipc_service_unittests") {
     "//gpu/ipc/common",
     "//ipc:test_support",
     "//skia",
+    "//testing/gmock",
     "//testing/gtest",
     "//third_party/mesa:mesa_headers",
     "//ui/gfx:test_support",
+    "//ui/gl:gl_unittest_utils",
+    "//ui/gl:test_support",
     "//url",
   ]
   libs = []

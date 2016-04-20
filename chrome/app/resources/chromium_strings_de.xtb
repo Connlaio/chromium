@@ -66,7 +66,6 @@
 <translation id="3130323860337406239">Chromium verwendet Ihr Mikrofon.</translation>
 <translation id="313551035350905294">Sie melden sich mit einem verwalteten Konto an und ermöglichen dessen Administrator Zugriff auf Ihr Chromium-Profil. Ihre Chromium-Daten, wie Apps, Lesezeichen, Verlauf, Passwörter und andere Einstellungen, werden dauerhaft mit <ph name="USER_NAME" /> verknüpft. Sie können diese Daten über das Google Dashboard löschen, aber nicht mit einem anderen Konto verknüpfen.</translation>
 <translation id="3190315855212034486">Chromium ist abgestürzt. Jetzt neu starten?</translation>
-<translation id="3197823471738295152">Ihr Gerät ist auf dem neuesten Stand.</translation>
 <translation id="3244477511402911926">Chromium-Benachrichtigungscenter</translation>
 <translation id="3256316712990552818">In Chromium kopiert</translation>
 <translation id="3258596308407688501">Chromium kann im folgenden Datenverzeichnis weder lesen noch schreiben:
@@ -112,6 +111,7 @@
 <translation id="4987820182225656817">Gastnutzer können Chromium verwenden, ohne Daten zu hinterlassen.</translation>
 <translation id="4994636714258228724">Mich zu Chromium hinzufügen</translation>
 <translation id="5032989939245619637">Details in Chromium speichern</translation>
+<translation id="5116586539350239523">Ihre personenbezogenen Daten werden von Chromium sicher gespeichert. Dadurch brauchen Sie sie nicht noch einmal einzugeben.</translation>
 <translation id="5358375970380395591">Sie melden sich mit einem verwalteten Konto an und ermöglichen dessen Administrator Zugriff auf Ihr Chromium-Profil. Ihre Chromium-Daten, wie Apps, Lesezeichen, Verlauf, Passwörter und andere Einstellungen, werden dauerhaft mit <ph name="USER_NAME" /> verknüpft. Sie können diese Daten über das Google Konten-Dashboard löschen, aber nicht mit einem anderen Konto verknüpfen. <ph name="LEARN_MORE" /></translation>
 <translation id="5398878173008909840">Eine neue Version von Chromium ist verfügbar.</translation>
 <translation id="5427571867875391349">Chromium als Standardbrowser festlegen</translation>
@@ -119,6 +119,7 @@
 <translation id="549669000822060376">Bitte warten Sie, bis die aktuellen Systemupdates von Chromium installiert wurden.</translation>
 <translation id="5563479599352954471">Suchen durch einfaches Tippen</translation>
 <translation id="5620765574781326016">Erfahren Sie mehr über Website-Themen, ohne die Seite zu verlassen.</translation>
+<translation id="5634636535844844681">Für Chromium ist Windows 7 oder höher erforderlich.</translation>
 <translation id="5680901439334282664">In Chromium anmelden</translation>
 <translation id="5772805321386874569">Ein <ph name="BEGIN_BUTTON" />Neustart<ph name="END_BUTTON" /> von Chromium ist erforderlich.</translation>
 <translation id="5796460469508169315">Chromium ist gleich bereit.</translation>
@@ -222,7 +223,6 @@ Chromium kann Ihre Einstellungen nicht wiederherstellen.</translation>
 
 Sollten Sie sich trotzdem anmelden, werden die Chromium-Daten wie Lesezeichen, Verlauf und andere Einstellungen in <ph name="ACCOUNT_EMAIL_NEW" /> zusammengeführt.</translation>
 <translation id="9013087743919948559">Zu Chromium hinzufügen</translation>
-<translation id="9013262824292842194">Für Chromium ist Windows Vista oder Windows XP SP2 oder höher erforderlich.</translation>
 <translation id="9019929317751753759">Um Chromium sicherer zu machen, haben wir die folgende Erweiterung deaktiviert. Sie ist nicht im <ph name="IDS_EXTENSION_WEB_STORE_TITLE" /> aufgeführt und wurde möglicherweise ohne Ihr Wissen hinzugefügt.</translation>
 <translation id="9022552996538154597">In Chromium anmelden</translation>
 <translation id="9036189287518468038">Chromium App Launcher</translation>

@@ -19,11 +19,13 @@
 #include "ios/web/public/web_client.h"
 #include "ios/web/public/web_state/credential.h"
 #include "ios/web/public/web_state/ui/crw_content_view.h"
+#include "ios/web/public/web_state/web_state_delegate.h"
 #include "ios/web/public/web_state/web_state_observer.h"
 #include "ios/web/public/web_state/web_state_policy_decider.h"
 #include "ios/web/web_state/global_web_state_event_tracker.h"
 #import "ios/web/web_state/ui/crw_web_controller.h"
 #import "ios/web/web_state/ui/crw_web_controller_container_view.h"
+#import "ios/web/web_state/ui/crw_wk_web_view_web_controller.h"
 #include "ios/web/web_state/web_state_facade_delegate.h"
 #import "ios/web/webui/web_ui_ios_controller_factory_registry.h"
 #import "ios/web/webui/web_ui_ios_impl.h"
@@ -32,7 +34,8 @@
 namespace web {
 
 WebStateImpl::WebStateImpl(BrowserState* browser_state)
-    : is_loading_(false),
+    : delegate_(nullptr),
+      is_loading_(false),
       is_being_destroyed_(false),
       facade_delegate_(nullptr),
       web_controller_(nil),
@@ -40,9 +43,12 @@ WebStateImpl::WebStateImpl(BrowserState* browser_state)
       interstitial_(nullptr),
       weak_factory_(this) {
   GlobalWebStateEventTracker::GetInstance()->OnWebStateCreated(this);
+  web_controller_.reset(
+      [[CRWWKWebViewWebController alloc] initWithWebState:this]);
 }
 
 WebStateImpl::~WebStateImpl() {
+  [web_controller_ close];
   is_being_destroyed_ = true;
 
   // WebUI depends on web state so it must be destroyed first in case any WebUI
@@ -61,6 +67,22 @@ WebStateImpl::~WebStateImpl() {
   DCHECK(script_command_callbacks_.empty());
   if (request_tracker_.get())
     CloseRequestTracker();
+  SetDelegate(nullptr);
+}
+
+WebStateDelegate* WebStateImpl::GetDelegate() {
+  return delegate_;
+}
+
+void WebStateImpl::SetDelegate(WebStateDelegate* delegate) {
+  if (delegate == delegate_)
+    return;
+  if (delegate_)
+    delegate_->Detach(this);
+  delegate_ = delegate;
+  if (delegate_) {
+    delegate_->Attach(this);
+  }
 }
 
 void WebStateImpl::AddObserver(WebStateObserver* observer) {
@@ -93,9 +115,13 @@ bool WebStateImpl::Configured() const {
   return web_controller_ != nil;
 }
 
+CRWWebController* WebStateImpl::GetWebController() {
+  return web_controller_;
+}
+
 void WebStateImpl::SetWebController(CRWWebController* web_controller) {
-  DCHECK(!web_controller_);
-  web_controller_ = web_controller;
+  [web_controller_ close];
+  web_controller_.reset([web_controller retain]);
 }
 
 WebStateFacadeDelegate* WebStateImpl::GetFacadeDelegate() const {
@@ -298,6 +324,10 @@ WebInterstitial* WebStateImpl::GetWebInterstitial() const {
   return interstitial_;
 }
 
+int WebStateImpl::GetCertGroupId() const {
+  return request_tracker_->identifier();
+}
+
 net::HttpResponseHeaders* WebStateImpl::GetHttpResponseHeaders() const {
   return http_response_headers_.get();
 }
@@ -365,6 +395,12 @@ void WebStateImpl::ClearTransientContentView() {
     FOR_EACH_OBSERVER(WebStateObserver, observers_, InsterstitialDismissed());
   }
   [web_controller_ clearTransientContentView];
+}
+
+void WebStateImpl::SendChangeLoadProgress(double progress) {
+  if (delegate_) {
+    delegate_->LoadProgressChanged(this, progress);
+  }
 }
 
 WebUIIOS* WebStateImpl::CreateWebUIIOS(const GURL& url) {
@@ -462,6 +498,14 @@ base::WeakPtr<WebState> WebStateImpl::AsWeakPtr() {
 
 #pragma mark - WebState implementation
 
+bool WebStateImpl::IsWebUsageEnabled() const {
+  return [web_controller_ webUsageEnabled];
+}
+
+void WebStateImpl::SetWebUsageEnabled(bool enabled) {
+  [web_controller_ setWebUsageEnabled:enabled];
+}
+
 UIView* WebStateImpl::GetView() {
   return [web_controller_ view];
 }
@@ -482,6 +526,26 @@ NavigationManager* WebStateImpl::GetNavigationManager() {
 
 CRWJSInjectionReceiver* WebStateImpl::GetJSInjectionReceiver() const {
   return [web_controller_ jsInjectionReceiver];
+}
+
+void WebStateImpl::ExecuteJavaScript(const base::string16& javascript) {
+  [web_controller_ executeJavaScript:base::SysUTF16ToNSString(javascript)
+                   completionHandler:nil];
+}
+
+void WebStateImpl::ExecuteJavaScript(const base::string16& javascript,
+                                     const JavaScriptResultCallback& callback) {
+  JavaScriptResultCallback stackCallback = callback;
+  [web_controller_ executeJavaScript:base::SysUTF16ToNSString(javascript)
+                   completionHandler:^(id value, NSError* error) {
+                     if (error) {
+                       DLOG(WARNING)
+                           << "Script execution has failed: "
+                           << base::SysNSStringToUTF16(
+                                  error.userInfo[NSLocalizedDescriptionKey]);
+                     }
+                     stackCallback.Run(ValueResultFromWKResult(value).get());
+                   }];
 }
 
 const std::string& WebStateImpl::GetContentLanguageHeader() const {

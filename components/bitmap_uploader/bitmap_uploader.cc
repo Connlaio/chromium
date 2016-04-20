@@ -16,7 +16,7 @@
 #include "mojo/converters/surfaces/surfaces_utils.h"
 #include "mojo/public/c/gles2/chromium_extension.h"
 #include "mojo/public/c/gles2/gles2.h"
-#include "mojo/shell/public/cpp/connector.h"
+#include "services/shell/public/cpp/connector.h"
 
 namespace bitmap_uploader {
 namespace {
@@ -45,7 +45,7 @@ BitmapUploader::~BitmapUploader() {
   MojoGLES2DestroyContext(gles2_context_);
 }
 
-void BitmapUploader::Init(mojo::Connector* connector) {
+void BitmapUploader::Init(shell::Connector* connector) {
   surface_ = window_->RequestSurface(mus::mojom::SurfaceType::DEFAULT);
   surface_->BindToThread();
   surface_->set_client(this);

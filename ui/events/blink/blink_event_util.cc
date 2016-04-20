@@ -169,7 +169,9 @@ blink::WebTouchEvent CreateWebTouchEventFromMotionEvent(
   blink::WebTouchEvent result;
 
   result.type = ToWebInputEventType(event.GetAction());
-  result.cancelable = (result.type != WebInputEvent::TouchCancel);
+  result.dispatchType = result.type == WebInputEvent::TouchCancel
+                            ? WebInputEvent::EventNonBlocking
+                            : WebInputEvent::Blocking;
   result.timeStampSeconds =
       (event.GetEventTime() - base::TimeTicks()).InSecondsF();
   result.movedBeyondSlopRegion = moved_beyond_slop_region;
@@ -339,10 +341,10 @@ WebGestureEvent CreateWebGestureEventFromGestureEventData(
                                gfx::PointF(data.raw_x, data.raw_y), data.flags);
 }
 
-scoped_ptr<blink::WebInputEvent> ScaleWebInputEvent(
+std::unique_ptr<blink::WebInputEvent> ScaleWebInputEvent(
     const blink::WebInputEvent& event,
     float scale) {
-  scoped_ptr<blink::WebInputEvent> scaled_event;
+  std::unique_ptr<blink::WebInputEvent> scaled_event;
   if (scale == 1.f)
     return scaled_event;
   if (event.type == blink::WebMouseEvent::MouseWheel) {

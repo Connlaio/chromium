@@ -5,10 +5,11 @@
 #ifndef CONTENT_BROWSER_COMPOSITOR_GL_HELPER_H_
 #define CONTENT_BROWSER_COMPOSITOR_GL_HELPER_H_
 
+#include <memory>
+
 #include "base/atomicops.h"
 #include "base/callback.h"
 #include "base/macros.h"
-#include "base/memory/scoped_ptr.h"
 #include "content/common/content_export.h"
 #include "gpu/command_buffer/client/gles2_interface.h"
 #include "gpu/command_buffer/common/mailbox_holder.h"
@@ -24,10 +25,6 @@ namespace gpu {
 class ContextSupport;
 struct Mailbox;
 }
-
-namespace media {
-class VideoFrame;
-};
 
 class SkRegion;
 
@@ -342,9 +339,9 @@ class CONTENT_EXPORT GLHelper {
 
   gpu::gles2::GLES2Interface* gl_;
   gpu::ContextSupport* context_support_;
-  scoped_ptr<CopyTextureToImpl> copy_texture_to_impl_;
-  scoped_ptr<GLHelperScaling> scaler_impl_;
-  scoped_ptr<GLHelperReadbackSupport> readback_support_;
+  std::unique_ptr<CopyTextureToImpl> copy_texture_to_impl_;
+  std::unique_ptr<GLHelperScaling> scaler_impl_;
+  std::unique_ptr<GLHelperReadbackSupport> readback_support_;
 
   DISALLOW_COPY_AND_ASSIGN(GLHelper);
 };
@@ -368,7 +365,13 @@ class CONTENT_EXPORT ReadbackYUVInterface {
   // |target->visible_rect()|.
   virtual void ReadbackYUV(const gpu::Mailbox& mailbox,
                            const gpu::SyncToken& sync_token,
-                           const scoped_refptr<media::VideoFrame>& target,
+                           const gfx::Rect& target_visible_rect,
+                           int y_plane_row_stride_bytes,
+                           unsigned char* y_plane_data,
+                           int u_plane_row_stride_bytes,
+                           unsigned char* u_plane_data,
+                           int v_plane_row_stride_bytes,
+                           unsigned char* v_plane_data,
                            const gfx::Point& paste_location,
                            const base::Callback<void(bool)>& callback) = 0;
   virtual GLHelper::ScalerInterface* scaler() = 0;

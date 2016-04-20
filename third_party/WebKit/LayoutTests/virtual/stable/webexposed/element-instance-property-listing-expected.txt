@@ -211,6 +211,7 @@ namespace http://www.w3.org/1999/xhtml
     property tagName
     property textContent
     property title
+    property toString
     property translate
     property webkitMatchesSelector
     property webkitRequestFullScreen
@@ -309,6 +310,7 @@ html element audio
     property setSinkId
     property sinkId
     property src
+    property srcObject
     property textTracks
     property volume
     property webkitAudioDecodedByteCount
@@ -1033,6 +1035,7 @@ html element video
     property setSinkId
     property sinkId
     property src
+    property srcObject
     property textTracks
     property videoHeight
     property videoWidth
@@ -1258,6 +1261,7 @@ namespace http://www.w3.org/2000/svg
     property tagName
     property textContent
     property title
+    property toString
     property translate
     property webkitMatchesSelector
     property webkitRequestFullScreen

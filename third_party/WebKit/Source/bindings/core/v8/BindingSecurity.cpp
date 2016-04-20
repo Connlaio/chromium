@@ -34,6 +34,7 @@
 #include "core/dom/Document.h"
 #include "core/frame/LocalDOMWindow.h"
 #include "core/frame/LocalFrame.h"
+#include "core/frame/Location.h"
 #include "core/frame/Settings.h"
 #include "core/html/HTMLFrameElementBase.h"
 #include "core/workers/MainThreadWorkletGlobalScope.h"
@@ -50,7 +51,11 @@ static bool canAccessFrame(v8::Isolate* isolate, const LocalDOMWindow* accessing
 {
     ASSERT_WITH_SECURITY_IMPLICATION(!(targetWindow && targetWindow->frame()) || targetWindow == targetWindow->frame()->domWindow());
 
-    if (isOriginAccessibleFromDOMWindow(targetFrameOrigin, accessingWindow))
+    // It's important to check that targetWindow is a LocalDOMWindow: it's
+    // possible for a remote frame and local frame to have the same security
+    // origin, depending on the model being used to allocate Frames between
+    // processes. See https://crbug.com/601629.
+    if (targetWindow && targetWindow->isLocalDOMWindow() && isOriginAccessibleFromDOMWindow(targetFrameOrigin, accessingWindow))
         return true;
 
     if (targetWindow)
@@ -62,7 +67,11 @@ static bool canAccessFrame(v8::Isolate* isolate, const LocalDOMWindow* accessing
 {
     ASSERT_WITH_SECURITY_IMPLICATION(!(targetWindow && targetWindow->frame()) || targetWindow == targetWindow->frame()->domWindow());
 
-    if (isOriginAccessibleFromDOMWindow(targetFrameOrigin, accessingWindow))
+    // It's important to check that targetWindow is a LocalDOMWindow: it's
+    // possible for a remote frame and local frame to have the same security
+    // origin, depending on the model being used to allocate Frames between
+    // processes. See https://crbug.com/601629.
+    if (targetWindow->isLocalDOMWindow() && isOriginAccessibleFromDOMWindow(targetFrameOrigin, accessingWindow))
         return true;
 
     if (reportingOption == ReportSecurityError && targetWindow)
@@ -91,7 +100,7 @@ bool BindingSecurity::shouldAllowAccessTo(v8::Isolate* isolate, const LocalDOMWi
 bool BindingSecurity::shouldAllowAccessTo(v8::Isolate* isolate, const LocalDOMWindow* accessingWindow, const EventTarget* target, ExceptionState& exceptionState)
 {
     ASSERT(target);
-    const DOMWindow* window = target->toDOMWindow();
+    const DOMWindow* window = target->toLocalDOMWindow();
     if (!window) {
         // We only need to check the access to Window objects which are
         // cross-origin accessible.  If it's not a Window, the object's

@@ -9,8 +9,8 @@
 #include "media/base/media_log.h"
 #include "media/mojo/services/mojo_media_client.h"
 #include "media/mojo/services/service_factory_impl.h"
-#include "mojo/shell/public/cpp/connection.h"
-#include "mojo/shell/public/cpp/connector.h"
+#include "services/shell/public/cpp/connection.h"
+#include "services/shell/public/cpp/connector.h"
 
 namespace media {
 
@@ -25,20 +25,25 @@ MojoMediaApplication::MojoMediaApplication(
 
 MojoMediaApplication::~MojoMediaApplication() {}
 
-void MojoMediaApplication::Initialize(mojo::Connector* connector,
-                                      const mojo::Identity& identity,
+void MojoMediaApplication::Initialize(shell::Connector* connector,
+                                      const shell::Identity& identity,
                                       uint32_t /* id */) {
   connector_ = connector;
   mojo_media_client_->Initialize();
 }
 
-bool MojoMediaApplication::AcceptConnection(mojo::Connection* connection) {
+bool MojoMediaApplication::AcceptConnection(shell::Connection* connection) {
   connection->AddInterface<interfaces::ServiceFactory>(this);
   return true;
 }
 
+bool MojoMediaApplication::ShellConnectionLost() {
+  mojo_media_client_->WillQuit();
+  return true;
+}
+
 void MojoMediaApplication::Create(
-    mojo::Connection* connection,
+    shell::Connection* connection,
     mojo::InterfaceRequest<interfaces::ServiceFactory> request) {
   // The created object is owned by the pipe.
   new ServiceFactoryImpl(std::move(request), connection->GetRemoteInterfaces(),

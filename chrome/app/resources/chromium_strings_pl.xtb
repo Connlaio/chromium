@@ -66,7 +66,6 @@
 <translation id="3130323860337406239">Chromium używa Twojego mikrofonu.</translation>
 <translation id="313551035350905294">Logujesz się na konto zarządzane i przyznajesz jego administratorowi kontrolę nad swoim profilem Chromium. Twoje dane Chromium, takie jak aplikacje, zakładki, historia, hasła i inne ustawienia, zostaną trwale powiązane z użytkownikiem <ph name="USER_NAME" />. Będzie można je usunąć w sekcji kont Panelu Google, ale nie będzie można powiązać ich z innym kontem.</translation>
 <translation id="3190315855212034486">O kurczę! Chromium uległ awarii. Uruchomić go teraz ponownie?</translation>
-<translation id="3197823471738295152">Urządzenie używa aktualnej wersji oprogramowania.</translation>
 <translation id="3244477511402911926">Centrum powiadomień Chromium</translation>
 <translation id="3256316712990552818">Skopiowana do Chromium</translation>
 <translation id="3258596308407688501">Chromium nie może odczytać ani zapisać danych w katalogu <ph name="USER_DATA_DIRECTORY" />.</translation>
@@ -110,6 +109,7 @@
 <translation id="4987820182225656817">Goście mogą korzystać z Chromium, nie pozostawiając żadnych danych.</translation>
 <translation id="4994636714258228724">Dodaj siebie do Chromium</translation>
 <translation id="5032989939245619637">Zapisz szczegóły w Chromium</translation>
+<translation id="5116586539350239523">Chromium będzie bezpiecznie przechowywać Twoje dane, dzięki czemu nie będzie trzeba wpisywać ich ponownie.</translation>
 <translation id="5358375970380395591">Logujesz się na zarządzane konto i przekazujesz jego administratorowi kontrolę nad swoim profilem Chromium. Twoje dane Chromium, takie jak aplikacje, zakładki, historia, hasła i inne ustawienia, zostaną trwale powiązane z użytkownikiem <ph name="USER_NAME" />. Będzie można je usunąć w Panelu kont Google, ale nie będzie można ich powiązać z innym kontem. <ph name="LEARN_MORE" /></translation>
 <translation id="5398878173008909840">Pojawiła się nowa wersja Chromium.</translation>
 <translation id="5427571867875391349">Ustaw Chromium jako domyślną przeglądarkę</translation>
@@ -117,6 +117,7 @@
 <translation id="549669000822060376">Poczekaj, aż Chromium zainstaluje najnowsze aktualizacje systemu.</translation>
 <translation id="5563479599352954471">Szukaj jednym kliknięciem</translation>
 <translation id="5620765574781326016">Poznaj tematy omawiane w witrynach, nie opuszczając strony.</translation>
+<translation id="5634636535844844681">Chromium wymaga systemu Windows 7 lub nowszego.</translation>
 <translation id="5680901439334282664">zaloguj się w Chromium</translation>
 <translation id="5772805321386874569">(wymaga <ph name="BEGIN_BUTTON" />ponownego uruchomienia<ph name="END_BUTTON" /> Chromium)</translation>
 <translation id="5796460469508169315">Chromium jest prawie gotowy.</translation>
@@ -220,7 +221,6 @@ Chromium nie może odzyskać ustawień.</translation>
 
 Jeśli jednak zalogujesz się teraz, informacje Chromium, takie jak zakładki, historia i inne ustawienia, zostaną połączone z kontem <ph name="ACCOUNT_EMAIL_NEW" />.</translation>
 <translation id="9013087743919948559">Dodaj do Chromium</translation>
-<translation id="9013262824292842194">Chromium wymaga systemu Windows Vista bądź Windows XP z dodatkiem SP2 lub nowszym.</translation>
 <translation id="9019929317751753759">Aby poprawić bezpieczeństwo Chromium, wyłączyliśmy to rozszerzenie. Nie jest ono dostępne w <ph name="IDS_EXTENSION_WEB_STORE_TITLE" /> i mogło zostać dodane bez Twojej wiedzy.</translation>
 <translation id="9022552996538154597">Zaloguj się do Chromium</translation>
 <translation id="9036189287518468038">Program uruchamiający aplikacje Chromium</translation>

@@ -14,7 +14,7 @@
 #include "gpu/command_buffer/client/gl_in_process_context.h"
 #include "gpu/command_buffer/client/gles2_implementation.h"
 #include "gpu/command_buffer/client/gles2_lib.h"
-#include "gpu/skia_bindings/gl_bindings_skia_cmd_buffer.h"
+#include "gpu/skia_bindings/grcontext_for_gles2_interface.h"
 #include "third_party/skia/include/gpu/GrContext.h"
 #include "third_party/skia/include/gpu/gl/GrGLInterface.h"
 
@@ -75,8 +75,6 @@ InProcessContextProvider::InProcessContextProvider(
 InProcessContextProvider::~InProcessContextProvider() {
   DCHECK(main_thread_checker_.CalledOnValidThread() ||
          context_thread_checker_.CalledOnValidThread());
-  if (gr_context_)
-    gr_context_->releaseResourcesAndAbandonContext();
 }
 
 bool InProcessContextProvider::BindToCurrentThread() {
@@ -98,8 +96,6 @@ bool InProcessContextProvider::BindToCurrentThread() {
       return false;
   }
 
-  capabilities_.gpu = context_->GetImplementation()->capabilities();
-
   std::string unique_context_name =
       base::StringPrintf("%s-%p", debug_name_.c_str(), context_.get());
   context_->GetImplementation()->TraceBeginCHROMIUM(
@@ -112,10 +108,9 @@ void InProcessContextProvider::DetachFromThread() {
   context_thread_checker_.DetachFromThread();
 }
 
-cc::ContextProvider::Capabilities
-InProcessContextProvider::ContextCapabilities() {
+gpu::Capabilities InProcessContextProvider::ContextCapabilities() {
   DCHECK(context_thread_checker_.CalledOnValidThread());
-  return capabilities_;
+  return context_->GetImplementation()->capabilities();
 }
 
 gpu::gles2::GLES2Interface* InProcessContextProvider::ContextGL() {
@@ -134,21 +129,18 @@ class GrContext* InProcessContextProvider::GrContext() {
   DCHECK(context_thread_checker_.CalledOnValidThread());
 
   if (gr_context_)
-    return gr_context_.get();
+    return gr_context_->get();
 
-  sk_sp<GrGLInterface> interface(
-      skia_bindings::CreateGLES2InterfaceBindings(ContextGL()));
-  gr_context_ = skia::AdoptRef(GrContext::Create(
-      // GrContext takes ownership of |interface|.
-      kOpenGL_GrBackend, reinterpret_cast<GrBackendContext>(interface.get())));
-  return gr_context_.get();
+  gr_context_.reset(new skia_bindings::GrContextForGLES2Interface(ContextGL()));
+
+  return gr_context_->get();
 }
 
 void InProcessContextProvider::InvalidateGrContext(uint32_t state) {
   DCHECK(context_thread_checker_.CalledOnValidThread());
 
   if (gr_context_)
-    gr_context_.get()->resetContext(state);
+    gr_context_->ResetContext(state);
 }
 
 void InProcessContextProvider::SetupLock() {
@@ -161,11 +153,8 @@ base::Lock* InProcessContextProvider::GetLock() {
 void InProcessContextProvider::DeleteCachedResources() {
   DCHECK(context_thread_checker_.CalledOnValidThread());
 
-  if (gr_context_) {
-    TRACE_EVENT_INSTANT0("gpu", "GrContext::freeGpuResources",
-                         TRACE_EVENT_SCOPE_THREAD);
-    gr_context_->freeGpuResources();
-  }
+  if (gr_context_)
+    gr_context_->FreeGpuResources();
 }
 
 void InProcessContextProvider::SetLostContextCallback(

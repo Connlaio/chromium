@@ -68,7 +68,6 @@ Sommige functies zijn wellicht niet beschikbaar en wijzigingen in voorkeuren wor
 <translation id="3130323860337406239">Chromium gebruikt je microfoon.</translation>
 <translation id="313551035350905294">Je logt in met een beheerd account en geeft de beheerderscontrole over aan je Chromium-profiel. Je Chromium-gegevens zoals je apps, bladwijzers, geschiedenis, wachtwoorden en andere instellingen worden permanent gekoppeld aan <ph name="USER_NAME" />. Je kunt deze gegevens verwijderen via het Google Accounts Dashboard, maar je kunt deze gegevens niet koppelen aan een ander account.</translation>
 <translation id="3190315855212034486">Chromium is gecrasht. Nu opnieuw starten?</translation>
-<translation id="3197823471738295152">Het apparaat is bijgewerkt.</translation>
 <translation id="3244477511402911926">Meldingscentrum van Chromium</translation>
 <translation id="3256316712990552818">Gekopieerd naar Chromium</translation>
 <translation id="3258596308407688501">Chrome kan niet lezen van en schrijven naar de eigen gegevensdirectory :
@@ -114,6 +113,7 @@ Sommige functies zijn wellicht niet beschikbaar en wijzigingen in voorkeuren wor
 <translation id="4987820182225656817">Gasten kunnen Chromium gebruiken zonder iets achter te laten.</translation>
 <translation id="4994636714258228724">Jezelf toevoegen aan Chromium</translation>
 <translation id="5032989939245619637">Details opslaan in Chromium</translation>
+<translation id="5116586539350239523">Chromium slaat je persoonlijke gegevens veilig op, zodat je ze niet opnieuw hoeft op te geven.</translation>
 <translation id="5358375970380395591">Je logt in op een beheerd account waarmee de eigenaar van dat account beheer krijgt over je Chromium-profiel. Je Chromium-gegevens zoals je apps, bladwijzers, geschiedenis, wachtwoorden en andere instellingen worden permanent gekoppeld aan <ph name="USER_NAME" />. Je kunt deze gegevens verwijderen via het Google Accounts Dashboard, maar je kunt deze gegevens niet koppelen aan een ander account.<ph name="LEARN_MORE" /></translation>
 <translation id="5398878173008909840">Er is een nieuwe versie van Chromium beschikbaar.</translation>
 <translation id="5427571867875391349">Chromium instellen als je standaardbrowser</translation>
@@ -121,6 +121,7 @@ Sommige functies zijn wellicht niet beschikbaar en wijzigingen in voorkeuren wor
 <translation id="549669000822060376">Wacht terwijl Chromium de nieuwste systeemupdates installeert.</translation>
 <translation id="5563479599352954471">Zoeken met een aanraking</translation>
 <translation id="5620765574781326016">Bekijk informatie over onderwerpen op websites zonder de pagina te verlaten.</translation>
+<translation id="5634636535844844681">Voor Chromium is Windows 7 of hoger vereist.</translation>
 <translation id="5680901439334282664">inloggen bij Chromium</translation>
 <translation id="5772805321386874569">(je moet Chromium <ph name="BEGIN_BUTTON" />opnieuw starten<ph name="END_BUTTON" />)</translation>
 <translation id="5796460469508169315">Chromium is bijna klaar.</translation>
@@ -224,7 +225,6 @@ Chromium kan je instellingen niet herstellen.</translation>
 
 Als je toch inlogt, worden Chromium-gegevens zoals bladwijzers, geschiedenis en andere instellingen samengevoegd met <ph name="ACCOUNT_EMAIL_NEW" />.</translation>
 <translation id="9013087743919948559">Toevoegen aan Chromium</translation>
-<translation id="9013262824292842194">Voor Chromium is Windows Vista of Windows XP met SP2 of hoger vereist.</translation>
 <translation id="9019929317751753759">We hebben de volgende extensie uitgeschakeld die niet wordt vermeld in de <ph name="IDS_EXTENSION_WEB_STORE_TITLE" /> en mogelijk zonder je medeweten is toegevoegd. We doen dit om Chromium veiliger te maken.</translation>
 <translation id="9022552996538154597">Inloggen bij Chromium</translation>
 <translation id="9036189287518468038">App-opstartprogramma van Chromium</translation>

@@ -43,23 +43,13 @@
 #include "core/loader/FrameLoaderClient.h"
 #include "core/page/FocusController.h"
 #include "core/page/Page.h"
+#include "platform/Histogram.h"
+#include "platform/UserGestureIndicator.h"
 #include "wtf/PassOwnPtr.h"
 
 namespace blink {
 
 using namespace HTMLNames;
-
-namespace {
-
-int64_t generateFrameID()
-{
-    // Initialize to the current time to reduce the likelihood of generating
-    // identifiers that overlap with those from past/future browser sessions.
-    static int64_t next = static_cast<int64_t>(currentTime() * 1000000.0);
-    return ++next;
-}
-
-} // namespace
 
 Frame::~Frame()
 {
@@ -186,10 +176,29 @@ static bool canAccessAncestor(const SecurityOrigin& activeSecurityOrigin, const 
 
 bool Frame::canNavigate(const Frame& targetFrame)
 {
-    // Frame-busting is generally allowed, but blocked for sandboxed frames lacking the 'allow-top-navigation' flag.
-    if (!securityContext()->isSandboxed(SandboxTopNavigation) && targetFrame == tree().top())
-        return true;
+    String errorReason;
+    bool isAllowedNavigation = canNavigateWithoutFramebusting(targetFrame, errorReason);
 
+    // Frame-busting is generally allowed, but blocked for sandboxed frames lacking the 'allow-top-navigation' flag.
+    if (targetFrame != this && !securityContext()->isSandboxed(SandboxTopNavigation) && targetFrame == tree().top()) {
+        DEFINE_STATIC_LOCAL(EnumerationHistogram, framebustHistogram, ("WebCore.Framebust", 4));
+        const unsigned userGestureBit = 0x1;
+        const unsigned allowedBit = 0x2;
+        unsigned framebustParams = 0;
+        if (UserGestureIndicator::processingUserGesture())
+            framebustParams |= userGestureBit;
+        if (isAllowedNavigation)
+            framebustParams |= allowedBit;
+        framebustHistogram.count(framebustParams);
+        return true;
+    }
+    if (!isAllowedNavigation && !errorReason.isNull())
+        printNavigationErrorMessage(targetFrame, errorReason.latin1().data());
+    return isAllowedNavigation;
+}
+
+bool Frame::canNavigateWithoutFramebusting(const Frame& targetFrame, String& reason)
+{
     if (securityContext()->isSandboxed(SandboxNavigation)) {
         // Sandboxed frames can navigate their own children.
         if (targetFrame.tree().isDescendantOf(this))
@@ -200,11 +209,10 @@ bool Frame::canNavigate(const Frame& targetFrame)
             return true;
 
         // Otherwise, block the navigation.
-        const char* reason = "The frame attempting navigation is sandboxed, and is therefore disallowed from navigating its ancestors.";
         if (securityContext()->isSandboxed(SandboxTopNavigation) && targetFrame == tree().top())
             reason = "The frame attempting navigation of the top-level window is sandboxed, but the 'allow-top-navigation' flag is not set.";
-
-        printNavigationErrorMessage(targetFrame, reason);
+        else
+            reason = "The frame attempting navigation is sandboxed, and is therefore disallowed from navigating its ancestors.";
         return false;
     }
 
@@ -239,7 +247,7 @@ bool Frame::canNavigate(const Frame& targetFrame)
             return true;
     }
 
-    printNavigationErrorMessage(targetFrame, "The frame attempting navigation is neither same-origin with the target, nor is it the target's parent or opener.");
+    reason = "The frame attempting navigation is neither same-origin with the target, nor is it the target's parent or opener.";
     return false;
 }
 
@@ -285,7 +293,6 @@ Frame::Frame(FrameClient* client, FrameHost* host, FrameOwner* owner)
     , m_host(host)
     , m_owner(owner)
     , m_client(client)
-    , m_frameID(generateFrameID())
     , m_isLoading(false)
 {
     InstanceCounters::incrementCounter(InstanceCounters::FrameCounter);

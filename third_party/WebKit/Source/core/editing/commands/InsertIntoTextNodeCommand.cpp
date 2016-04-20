@@ -33,15 +33,15 @@
 
 namespace blink {
 
-InsertIntoTextNodeCommand::InsertIntoTextNodeCommand(RawPtr<Text> node, unsigned offset, const String& text)
+InsertIntoTextNodeCommand::InsertIntoTextNodeCommand(Text* node, unsigned offset, const String& text)
     : SimpleEditCommand(node->document())
     , m_node(node)
     , m_offset(offset)
     , m_text(text)
 {
-    ASSERT(m_node);
-    ASSERT(m_offset <= m_node->length());
-    ASSERT(!m_text.isEmpty());
+    DCHECK(m_node);
+    DCHECK_LE(m_offset, m_node->length());
+    DCHECK(!m_text.isEmpty());
 }
 
 void InsertIntoTextNodeCommand::doApply(EditingState*)

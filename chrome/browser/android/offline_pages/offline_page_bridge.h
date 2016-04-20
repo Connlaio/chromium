@@ -39,9 +39,20 @@ class OfflinePageBridge : public OfflinePageModel::Observer,
   void OfflinePageDeleted(int64_t offline_id,
                           const ClientId& client_id) override;
 
+  void HasPages(JNIEnv* env,
+                const base::android::JavaParamRef<jobject>& obj,
+                const base::android::JavaParamRef<jstring>& name_space,
+                const base::android::JavaParamRef<jobject>& j_callback_obj);
+
+  bool MaybeHasPages(JNIEnv* env,
+                     const base::android::JavaParamRef<jobject>& obj,
+                     const base::android::JavaParamRef<jstring>& name_space);
+
   void GetAllPages(JNIEnv* env,
                    const base::android::JavaParamRef<jobject>& obj,
-                   const base::android::JavaParamRef<jobject>& j_result_obj);
+                   const base::android::JavaParamRef<jobject>& j_result_obj,
+                   const base::android::JavaParamRef<jobject>& j_callback_obj);
+
   void GetPagesToCleanUp(
       JNIEnv* env,
       const base::android::JavaParamRef<jobject>& obj,
@@ -79,11 +90,6 @@ class OfflinePageBridge : public OfflinePageModel::Observer,
   void MarkPageAccessed(JNIEnv* env,
                         const base::android::JavaParamRef<jobject>& obj,
                         jlong offline_id);
-
-  void DeletePage(JNIEnv* env,
-                  const base::android::JavaParamRef<jobject>& obj,
-                  const base::android::JavaParamRef<jobject>& j_callback_obj,
-                  jlong offline_id);
 
   void DeletePages(
       JNIEnv* env,

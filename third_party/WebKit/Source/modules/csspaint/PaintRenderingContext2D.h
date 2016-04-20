@@ -37,7 +37,7 @@ public:
     int width() const final;
     int height() const final;
 
-    bool hasImageBuffer() const final { return m_imageBuffer; }
+    bool hasImageBuffer() const final { return m_imageBuffer.get(); }
     ImageBuffer* imageBuffer() const final { return m_imageBuffer.get(); }
 
     bool parseColorOrCurrentColor(Color&, const String& colorString) const final;
@@ -56,6 +56,7 @@ public:
     // that we don't have a filter set.
     bool stateHasFilter() final { return false; }
     SkImageFilter* stateGetFilter() final { return nullptr; }
+    void snapshotStateForFilter() final { }
 
     void validateStateStack() final;
 

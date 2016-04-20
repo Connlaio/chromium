@@ -36,7 +36,6 @@
 #include "ui/gfx/path_win.h"
 #include "ui/gfx/screen.h"
 #include "ui/gfx/win/direct_manipulation.h"
-#include "ui/gfx/win/dpi.h"
 #include "ui/gfx/win/hwnd_util.h"
 #include "ui/gfx/win/rendering_window_manager.h"
 #include "ui/native_theme/native_theme_win.h"
@@ -683,7 +682,7 @@ bool HWNDMessageHandler::IsMinimized() const {
 }
 
 bool HWNDMessageHandler::IsMaximized() const {
-  return !!::IsZoomed(hwnd());
+  return !!::IsZoomed(hwnd()) && !IsFullscreen();
 }
 
 bool HWNDMessageHandler::IsFullscreen() const {
@@ -1405,8 +1404,8 @@ void HWNDMessageHandler::OnGetMinMaxInfo(MINMAXINFO* minmax_info) {
   gfx::Size min_window_size;
   gfx::Size max_window_size;
   delegate_->GetMinMaxSize(&min_window_size, &max_window_size);
-  min_window_size = gfx::win::DIPToScreenSize(min_window_size);
-  max_window_size = gfx::win::DIPToScreenSize(max_window_size);
+  min_window_size = delegate_->DIPToScreenSize(min_window_size);
+  max_window_size = delegate_->DIPToScreenSize(max_window_size);
 
 
   // Add the native frame border size to the minimum and maximum size if the
@@ -1558,6 +1557,29 @@ LRESULT HWNDMessageHandler::OnMouseRange(UINT message,
                                          WPARAM w_param,
                                          LPARAM l_param) {
   return HandleMouseEventInternal(message, w_param, l_param, true);
+}
+
+// On some systems with a high-resolution track pad and running Windows 10,
+// using the scrolling gesture (two-finger scroll) on the track pad
+// causes it to also generate a WM_POINTERDOWN message if the window
+// isn't focused. This leads to a WM_POINTERACTIVATE message and the window
+// gaining focus and coming to the front. This code detects a
+// WM_POINTERACTIVATE coming from the track pad and kills the activation
+// of the window. NOTE: most other trackpad messages come in as mouse
+// messages, including WM_MOUSEWHEEL instead of WM_POINTERWHEEL.
+LRESULT HWNDMessageHandler::OnPointerActivate(UINT message,
+                                              WPARAM w_param,
+                                              LPARAM l_param) {
+  using GetPointerTypeFn = BOOL(WINAPI*)(UINT32, POINTER_INPUT_TYPE*);
+  UINT32 pointer_id = GET_POINTERID_WPARAM(w_param);
+  POINTER_INPUT_TYPE pointer_type;
+  static GetPointerTypeFn get_pointer_type = reinterpret_cast<GetPointerTypeFn>(
+      GetProcAddress(GetModuleHandleA("user32.dll"), "GetPointerType"));
+  if (get_pointer_type && get_pointer_type(pointer_id, &pointer_type) &&
+      pointer_type == PT_TOUCHPAD)
+    return PA_NOACTIVATE;
+  SetMsgHandled(FALSE);
+  return -1;
 }
 
 void HWNDMessageHandler::OnMove(const gfx::Point& point) {
@@ -1723,6 +1745,21 @@ LRESULT HWNDMessageHandler::OnNCHitTest(const gfx::Point& point) {
     return 0;
   }
 
+  // Some views may overlap the non client area of the window.
+  // This means that we should look for these views before handing the
+  // hittest message off to DWM or DefWindowProc.
+  // If the hittest returned from the search for a view returns HTCLIENT
+  // then it means that we have a view overlapping the non client area.
+  // In all other cases we can fallback to the system default handling.
+
+  // Allow the NonClientView to handle the hittest to see if we have a view
+  // overlapping the non client area of the window.
+  POINT temp = { point.x(), point.y() };
+  MapWindowPoints(HWND_DESKTOP, hwnd(), &temp, 1);
+  int component = delegate_->GetNonClientComponent(gfx::Point(temp));
+  if (component == HTCLIENT)
+    return component;
+
   // If the DWM is rendering the window controls, we need to give the DWM's
   // default window procedure first chance to handle hit testing.
   if (HasSystemFrame()) {
@@ -1733,11 +1770,7 @@ LRESULT HWNDMessageHandler::OnNCHitTest(const gfx::Point& point) {
     }
   }
 
-  // First, give the NonClientView a chance to test the point to see if it
-  // provides any of the non-client area.
-  POINT temp = { point.x(), point.y() };
-  MapWindowPoints(HWND_DESKTOP, hwnd(), &temp, 1);
-  int component = delegate_->GetNonClientComponent(gfx::Point(temp));
+  // If the point is specified as custom or system nonclient item, return it.
   if (component != HTNOWHERE)
     return component;
 
@@ -2121,7 +2154,7 @@ LRESULT HWNDMessageHandler::OnTouchEvent(UINT message,
                                          LPARAM l_param) {
   // Handle touch events only on Aura for now.
   int num_points = LOWORD(w_param);
-  scoped_ptr<TOUCHINPUT[]> input(new TOUCHINPUT[num_points]);
+  std::unique_ptr<TOUCHINPUT[]> input(new TOUCHINPUT[num_points]);
   if (ui::GetTouchInputInfoWrapper(reinterpret_cast<HTOUCHINPUT>(l_param),
                                    num_points, input.get(),
                                    sizeof(TOUCHINPUT))) {

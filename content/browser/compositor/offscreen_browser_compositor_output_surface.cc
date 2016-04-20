@@ -35,11 +35,13 @@ OffscreenBrowserCompositorOutputSurface::
         const scoped_refptr<ContextProviderCommandBuffer>& context,
         const scoped_refptr<ContextProviderCommandBuffer>& worker_context,
         const scoped_refptr<ui::CompositorVSyncManager>& vsync_manager,
-        scoped_ptr<BrowserCompositorOverlayCandidateValidator>
+        base::SingleThreadTaskRunner* task_runner,
+        std::unique_ptr<BrowserCompositorOverlayCandidateValidator>
             overlay_candidate_validator)
     : BrowserCompositorOutputSurface(context,
                                      worker_context,
                                      vsync_manager,
+                                     task_runner,
                                      std::move(overlay_candidate_validator)),
       fbo_(0),
       is_backbuffer_discarded_(false),
@@ -60,8 +62,8 @@ void OffscreenBrowserCompositorOutputSurface::EnsureBackbuffer() {
 
     GLES2Interface* gl = context_provider_->ContextGL();
 
-    int max_texture_size =
-        context_provider_->ContextCapabilities().gpu.max_texture_size;
+    const int max_texture_size =
+        context_provider_->ContextCapabilities().max_texture_size;
     int texture_width = std::min(max_texture_size, surface_size_.width());
     int texture_height = std::min(max_texture_size, surface_size_.height());
 

@@ -12,9 +12,11 @@
 #include "ash/shell_window_ids.h"
 #include "ash/test/ash_test_base.h"
 #include "ash/test/display_manager_test_api.h"
+#include "ash/wm/common/window_positioning_utils.h"
+#include "ash/wm/common/wm_event.h"
 #include "ash/wm/window_state.h"
+#include "ash/wm/window_state_aura.h"
 #include "ash/wm/window_util.h"
-#include "ash/wm/wm_event.h"
 #include "ash/wm/workspace/phantom_window_controller.h"
 #include "ash/wm/workspace_controller.h"
 #include "base/command_line.h"
@@ -157,8 +159,7 @@ class WorkspaceWindowResizerTest : public test::AshTestBase {
       aura::client::WindowMoveSource source,
       const std::vector<aura::Window*>& attached_windows) {
     wm::WindowState* window_state = wm::GetWindowState(window);
-    window_state->CreateDragDetails(
-        window, point_in_parent, window_component, source);
+    window_state->CreateDragDetails(point_in_parent, window_component, source);
     return WorkspaceWindowResizer::Create(window_state, attached_windows);
   }
 
@@ -565,7 +566,8 @@ TEST_F(WorkspaceWindowResizerTest, Edge) {
 
   {
     gfx::Rect expected_bounds_in_parent(
-        wm::GetDefaultLeftSnappedWindowBoundsInParent(window_.get()));
+        wm::GetDefaultLeftSnappedWindowBoundsInParent(
+            wm::WmWindowAura::Get(window_.get())));
 
     std::unique_ptr<WindowResizer> resizer(
         CreateResizerForTest(window_.get(), gfx::Point(), HTCAPTION));
@@ -582,7 +584,8 @@ TEST_F(WorkspaceWindowResizerTest, Edge) {
   // Try the same with the right side.
   {
     gfx::Rect expected_bounds_in_parent(
-        wm::GetDefaultRightSnappedWindowBoundsInParent(window_.get()));
+        wm::GetDefaultRightSnappedWindowBoundsInParent(
+            wm::WmWindowAura::Get(window_.get())));
 
     std::unique_ptr<WindowResizer> resizer(
         CreateResizerForTest(window_.get(), gfx::Point(), HTCAPTION));
@@ -916,8 +919,8 @@ TEST_F(WorkspaceWindowResizerTest, ResizeWindowOutsideLeftWorkArea) {
   ASSERT_TRUE(resizer.get());
   resizer->Drag(CalculateDragPoint(*resizer, -window_width, 0), 0);
   EXPECT_EQ(base::IntToString(window_x) + ",100 " +
-            base::IntToString(kMinimumOnScreenArea - window_x) +
-            "x380", window_->bounds().ToString());
+                base::IntToString(wm::kMinimumOnScreenArea - window_x) + "x380",
+            window_->bounds().ToString());
 }
 
 TEST_F(WorkspaceWindowResizerTest, ResizeWindowOutsideRightWorkArea) {
@@ -933,11 +936,11 @@ TEST_F(WorkspaceWindowResizerTest, ResizeWindowOutsideRightWorkArea) {
       CreateResizerForTest(window_.get(), gfx::Point(window_x, 0), HTLEFT));
   ASSERT_TRUE(resizer.get());
   resizer->Drag(CalculateDragPoint(*resizer, window_width, 0), 0);
-  EXPECT_EQ(base::IntToString(right - kMinimumOnScreenArea) +
-            ",100 " +
-            base::IntToString(window_width - pixels_to_right_border +
-                              kMinimumOnScreenArea) +
-            "x380", window_->bounds().ToString());
+  EXPECT_EQ(base::IntToString(right - wm::kMinimumOnScreenArea) + ",100 " +
+                base::IntToString(window_width - pixels_to_right_border +
+                                  wm::kMinimumOnScreenArea) +
+                "x380",
+            window_->bounds().ToString());
 }
 
 TEST_F(WorkspaceWindowResizerTest, ResizeWindowOutsideBottomWorkArea) {
@@ -952,11 +955,10 @@ TEST_F(WorkspaceWindowResizerTest, ResizeWindowOutsideBottomWorkArea) {
       window_.get(), gfx::Point(0, bottom - delta_to_bottom), HTTOP));
   ASSERT_TRUE(resizer.get());
   resizer->Drag(CalculateDragPoint(*resizer, 0, bottom), 0);
-  EXPECT_EQ("100," +
-            base::IntToString(bottom - kMinimumOnScreenArea) +
-            " 300x" +
-            base::IntToString(height - (delta_to_bottom -
-                                        kMinimumOnScreenArea)),
+  EXPECT_EQ("100," + base::IntToString(bottom - wm::kMinimumOnScreenArea) +
+                " 300x" +
+                base::IntToString(height -
+                                  (delta_to_bottom - wm::kMinimumOnScreenArea)),
             window_->bounds().ToString());
 }
 
@@ -977,10 +979,9 @@ TEST_F(WorkspaceWindowResizerTest, DragWindowOutsideRightToSecondaryDisplay) {
       CreateResizerForTest(window_.get(), gfx::Point(window_x, 0), HTCAPTION));
   ASSERT_TRUE(resizer.get());
   resizer->Drag(CalculateDragPoint(*resizer, window_width, 0), 0);
-  EXPECT_EQ(base::IntToString(right - kMinimumOnScreenArea) +
-            ",100 " +
-            base::IntToString(window_width) +
-            "x380", window_->bounds().ToString());
+  EXPECT_EQ(base::IntToString(right - wm::kMinimumOnScreenArea) + ",100 " +
+                base::IntToString(window_width) + "x380",
+            window_->bounds().ToString());
 
   if (!SupportsMultipleDisplays())
     return;

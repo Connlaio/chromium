@@ -34,7 +34,6 @@
 #include "core/page/FrameTree.h"
 #include "platform/heap/Handle.h"
 #include "wtf/Forward.h"
-#include "wtf/RefCounted.h"
 
 namespace blink {
 
@@ -120,8 +119,6 @@ public:
 
     LayoutPart* ownerLayoutObject() const; // LayoutObject for the element that contains this frame.
 
-    int64_t frameID() const { return m_frameID; }
-
     Settings* settings() const; // can be null
 
     // isLoading() is true when the embedder should think a load is in progress.
@@ -142,9 +139,9 @@ protected:
     Member<FrameOwner> m_owner;
 
 private:
+    bool canNavigateWithoutFramebusting(const Frame&, String& errorReason);
+
     Member<FrameClient> m_client;
-    // Needed to identify Frame Timing requests.
-    int64_t m_frameID;
     bool m_isLoading;
 };
 

@@ -6,14 +6,13 @@
 
 #include <stddef.h>
 
+#include <memory>
+
 #include "base/logging.h"
-#include "base/memory/scoped_ptr.h"
 #include "base/trace_event/trace_event.h"
-#include "cc/animation/animation_events.h"
 #include "cc/animation/animation_host.h"
 #include "cc/animation/animation_id_provider.h"
 #include "cc/animation/animation_player.h"
-#include "cc/animation/animation_registrar.h"
 #include "cc/animation/animation_timeline.h"
 #include "cc/animation/element_animations.h"
 #include "cc/animation/layer_animation_controller.h"
@@ -87,26 +86,26 @@ LayerAnimator* LayerAnimator::CreateImplicitAnimator() {
 // It is worth noting that SetFoo avoids invoking the usual animation machinery
 // if the transition duration is zero -- in this case we just set the property
 // on the layer animation delegate immediately.
-#define ANIMATED_PROPERTY(type, property, name, member_type, member)  \
-void LayerAnimator::Set##name(type value) {                           \
-  base::TimeDelta duration = GetTransitionDuration();                 \
-  if (duration == base::TimeDelta() && delegate() &&                  \
-      (preemption_strategy_ != ENQUEUE_NEW_ANIMATION)) {              \
-    StopAnimatingProperty(LayerAnimationElement::property);           \
-    delegate()->Set##name##FromAnimation(value);                      \
-    return;                                                           \
-  }                                                                   \
-  scoped_ptr<LayerAnimationElement> element(                          \
-      LayerAnimationElement::Create##name##Element(value, duration)); \
-  element->set_tween_type(tween_type_);                               \
-  StartAnimation(new LayerAnimationSequence(element.release()));      \
-}                                                                     \
-                                                                      \
-member_type LayerAnimator::GetTarget##name() const {                  \
-  LayerAnimationElement::TargetValue target(delegate());              \
-  GetTargetValue(&target);                                            \
-  return target.member;                                               \
-}
+#define ANIMATED_PROPERTY(type, property, name, member_type, member)    \
+  void LayerAnimator::Set##name(type value) {                           \
+    base::TimeDelta duration = GetTransitionDuration();                 \
+    if (duration == base::TimeDelta() && delegate() &&                  \
+        (preemption_strategy_ != ENQUEUE_NEW_ANIMATION)) {              \
+      StopAnimatingProperty(LayerAnimationElement::property);           \
+      delegate()->Set##name##FromAnimation(value);                      \
+      return;                                                           \
+    }                                                                   \
+    std::unique_ptr<LayerAnimationElement> element(                     \
+        LayerAnimationElement::Create##name##Element(value, duration)); \
+    element->set_tween_type(tween_type_);                               \
+    StartAnimation(new LayerAnimationSequence(element.release()));      \
+  }                                                                     \
+                                                                        \
+  member_type LayerAnimator::GetTarget##name() const {                  \
+    LayerAnimationElement::TargetValue target(delegate());              \
+    GetTargetValue(&target);                                            \
+    return target.member;                                               \
+  }
 
 ANIMATED_PROPERTY(
     const gfx::Transform&, TRANSFORM, Transform, gfx::Transform, transform);
@@ -160,7 +159,6 @@ void LayerAnimator::SetCompositor(Compositor* compositor) {
     DCHECK_EQ(animation_controller_state_->id(),
               delegate_->GetCcLayer()->id());
     timeline->animation_host()
-        ->animation_registrar()
         ->RegisterAnimationController(animation_controller_state_.get());
   }
 
@@ -175,16 +173,19 @@ void LayerAnimator::SetCompositor(Compositor* compositor) {
 void LayerAnimator::ResetCompositor(Compositor* compositor) {
   DCHECK(compositor);
 
+  cc::AnimationTimeline* timeline = compositor->GetAnimationTimeline();
+  DCHECK(timeline);
+
+  const int layer_id = animation_player_->layer_id();
+
   // Store a reference to LAC if any so it may be picked up in SetCompositor.
-  if (animation_player_->element_animations()) {
+  if (layer_id) {
     animation_controller_state_ =
-        animation_player_->element_animations()->layer_animation_controller();
+        timeline->animation_host()->GetControllerForLayerId(layer_id);
   }
 
   DetachLayerFromAnimationPlayer();
 
-  cc::AnimationTimeline* timeline = compositor->GetAnimationTimeline();
-  DCHECK(timeline);
   timeline->DetachPlayer(animation_player_);
 }
 
@@ -194,25 +195,18 @@ void LayerAnimator::AttachLayerToAnimationPlayer(int layer_id) {
   else
     DCHECK_EQ(animation_player_->layer_id(), layer_id);
 
-  if (animation_player_->element_animations()) {
-    animation_player_->element_animations()
-        ->layer_animation_controller()
-        ->AddEventObserver(this);
-  }
+  animation_player_->set_layer_animation_delegate(this);
 }
 
 void LayerAnimator::DetachLayerFromAnimationPlayer() {
-  if (animation_player_->element_animations()) {
-    animation_player_->element_animations()
-        ->layer_animation_controller()
-        ->RemoveEventObserver(this);
-  }
+  animation_player_->set_layer_animation_delegate(nullptr);
 
   if (animation_player_->layer_id())
     animation_player_->DetachLayer();
 }
 
-void LayerAnimator::AddThreadedAnimation(scoped_ptr<cc::Animation> animation) {
+void LayerAnimator::AddThreadedAnimation(
+    std::unique_ptr<cc::Animation> animation) {
   animation_player_->AddAnimation(std::move(animation));
 }
 
@@ -408,23 +402,26 @@ void LayerAnimator::RemoveObserver(LayerAnimationObserver* observer) {
 }
 
 void LayerAnimator::OnThreadedAnimationStarted(
-    const cc::AnimationEvent& event) {
+    base::TimeTicks monotonic_time,
+    cc::TargetProperty::Type target_property,
+    int group_id) {
   LayerAnimationElement::AnimatableProperty property =
-    LayerAnimationElement::ToAnimatableProperty(event.target_property);
+      LayerAnimationElement::ToAnimatableProperty(target_property);
 
   RunningAnimation* running = GetRunningAnimation(property);
   if (!running)
     return;
   DCHECK(running->is_sequence_alive());
 
-  if (running->sequence()->animation_group_id() != event.group_id)
+  if (running->sequence()->animation_group_id() != group_id)
     return;
 
-  running->sequence()->OnThreadedAnimationStarted(event);
+  running->sequence()->OnThreadedAnimationStarted(monotonic_time,
+                                                  target_property, group_id);
   if (!running->sequence()->waiting_for_group_start())
     return;
 
-  base::TimeTicks start_time = event.monotonic_time;
+  base::TimeTicks start_time = monotonic_time;
 
   running->sequence()->set_waiting_for_group_start(false);
 
@@ -435,7 +432,7 @@ void LayerAnimator::OnThreadedAnimationStarted(
        iter != running_animations_.end(); ++iter) {
     // Ensure that each sequence is only Started once, regardless of the
     // number of sequences in the group that have threaded first elements.
-    if (((*iter).sequence()->animation_group_id() == event.group_id) &&
+    if (((*iter).sequence()->animation_group_id() == group_id) &&
         !(*iter).sequence()->IsFirstElementThreaded() &&
         (*iter).sequence()->waiting_for_group_start()) {
       (*iter).sequence()->set_start_time(start_time);
@@ -616,7 +613,7 @@ LayerAnimationSequence* LayerAnimator::RemoveAnimation(
 void LayerAnimator::FinishAnimation(
     LayerAnimationSequence* sequence, bool abort) {
   scoped_refptr<LayerAnimator> retain(this);
-  scoped_ptr<LayerAnimationSequence> removed(RemoveAnimation(sequence));
+  std::unique_ptr<LayerAnimationSequence> removed(RemoveAnimation(sequence));
   if (abort)
     sequence->Abort(delegate());
   else
@@ -640,7 +637,7 @@ void LayerAnimator::FinishAnyAnimationWithZeroDuration() {
     if (running_animations_copy[i].sequence()->IsFinished(
           running_animations_copy[i].sequence()->start_time())) {
       SAFE_INVOKE_VOID(ProgressAnimationToEnd, running_animations_copy[i]);
-      scoped_ptr<LayerAnimationSequence> removed(
+      std::unique_ptr<LayerAnimationSequence> removed(
           SAFE_INVOKE_PTR(RemoveAnimation, running_animations_copy[i]));
     }
   }
@@ -692,7 +689,7 @@ void LayerAnimator::RemoveAllAnimationsWithACommonProperty(
 
     if (running_animations_copy[i].sequence()->HasConflictingProperty(
             sequence->properties())) {
-      scoped_ptr<LayerAnimationSequence> removed(
+      std::unique_ptr<LayerAnimationSequence> removed(
           SAFE_INVOKE_PTR(RemoveAnimation, running_animations_copy[i]));
       if (abort)
         running_animations_copy[i].sequence()->Abort(delegate());
@@ -713,7 +710,7 @@ void LayerAnimator::RemoveAllAnimationsWithACommonProperty(
       continue;
 
     if (sequences[i]->HasConflictingProperty(sequence->properties())) {
-      scoped_ptr<LayerAnimationSequence> removed(
+      std::unique_ptr<LayerAnimationSequence> removed(
           RemoveAnimation(sequences[i].get()));
       if (abort)
         sequences[i]->Abort(delegate());
@@ -930,7 +927,7 @@ void LayerAnimator::ClearAnimationsInternal() {
     if (!SAFE_INVOKE_BOOL(HasAnimation, running_animations_copy[i]))
       continue;
 
-    scoped_ptr<LayerAnimationSequence> removed(
+    std::unique_ptr<LayerAnimationSequence> removed(
         RemoveAnimation(running_animations_copy[i].sequence()));
     if (removed.get())
       removed->Abort(delegate());
@@ -955,8 +952,11 @@ LayerAnimatorCollection* LayerAnimator::GetLayerAnimatorCollection() {
   return delegate_ ? delegate_->GetLayerAnimatorCollection() : NULL;
 }
 
-void LayerAnimator::OnAnimationStarted(const cc::AnimationEvent& event) {
-  OnThreadedAnimationStarted(event);
+void LayerAnimator::NotifyAnimationStarted(
+    base::TimeTicks monotonic_time,
+    cc::TargetProperty::Type target_property,
+    int group) {
+  OnThreadedAnimationStarted(monotonic_time, target_property, group);
 }
 
 LayerAnimator::RunningAnimation::RunningAnimation(

@@ -5,6 +5,8 @@
 import("//build/config/nacl/config.gni")
 import("//testing/test.gni")
 
+assert(!is_ios)
+
 component("ipc") {
   sources = [
     "attachment_broker.cc",
@@ -197,6 +199,10 @@ test("ipc_tests") {
     "//crypto",
     "//testing/gtest",
   ]
+
+  if (is_mac) {
+    deps += [ "//sandbox/mac:seatbelt" ]
+  }
 }
 
 test("ipc_perftests") {

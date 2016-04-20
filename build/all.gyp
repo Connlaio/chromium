@@ -30,6 +30,7 @@
         '../sql/sql.gyp:*',
         '../testing/gmock.gyp:*',
         '../testing/gtest.gyp:*',
+        '../third_party/boringssl/boringssl.gyp:*',
         '../third_party/icu/icu.gyp:*',
         '../third_party/libxml/libxml.gyp:*',
         '../third_party/sqlite/sqlite.gyp:*',
@@ -141,6 +142,7 @@
             '../ppapi/ppapi.gyp:*',
             '../ppapi/ppapi_internal.gyp:*',
             '../ppapi/tools/ppapi_tools.gyp:*',
+            '../services/shell/shell.gyp:*',
             '../skia/skia.gyp:*',
             '../sync/tools/sync_tools.gyp:*',
             '../third_party/catapult/telemetry/telemetry.gyp:*',
@@ -165,11 +167,6 @@
             '../v8/tools/gyp/v8.gyp:*',
             '<(libjpeg_gyp_path):*',
           ],
-        }],
-        ['use_openssl==0 and OS=="ios"', {
-          'dependencies': [
-            '../third_party/nss/nss.gyp:*',
-           ],
         }],
         ['OS=="win" or OS=="ios" or OS=="linux"', {
           'dependencies': [
@@ -253,14 +250,8 @@
             '../remoting/remoting_all.gyp:remoting_all',
           ],
         }],
-        ['use_openssl==0', {
+        ['OS!="ios"', {
           'dependencies': [
-            '../net/third_party/nss/ssl.gyp:*',
-          ],
-        }],
-        ['use_openssl==1', {
-          'dependencies': [
-            '../third_party/boringssl/boringssl.gyp:*',
             '../third_party/boringssl/boringssl_tests.gyp:*',
           ],
         }],
@@ -468,7 +459,7 @@
           'dependencies': [
             '../ash/ash.gyp:ash_unittests',
             '../ui/app_list/app_list.gyp:app_list_unittests',
-            '../ui/app_list/shower/app_list_shower.gyp:app_list_shower_unittests',
+            '../ui/app_list/presenter/app_list_presenter.gyp:app_list_presenter_unittests',
             '../ui/aura/aura.gyp:aura_unittests',
             '../ui/compositor/compositor.gyp:compositor_unittests',
           ],

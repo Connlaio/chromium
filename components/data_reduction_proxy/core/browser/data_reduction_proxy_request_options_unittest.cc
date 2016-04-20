@@ -5,12 +5,12 @@
 #include "components/data_reduction_proxy/core/browser/data_reduction_proxy_request_options.h"
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "base/command_line.h"
 #include "base/md5.h"
-#include "base/memory/scoped_ptr.h"
 #include "base/metrics/field_trial.h"
 #include "base/strings/string16.h"
 #include "base/strings/utf_string_conversions.h"
@@ -175,8 +175,8 @@ class DataReductionProxyRequestOptionsTest : public testing::Test {
   }
 
   base::MessageLoopForIO message_loop_;
-  scoped_ptr<TestDataReductionProxyRequestOptions> request_options_;
-  scoped_ptr<DataReductionProxyTestContext> test_context_;
+  std::unique_ptr<TestDataReductionProxyRequestOptions> request_options_;
+  std::unique_ptr<DataReductionProxyTestContext> test_context_;
 };
 
 TEST_F(DataReductionProxyRequestOptionsTest, AuthHashForSalt) {
@@ -212,23 +212,8 @@ TEST_F(DataReductionProxyRequestOptionsTest, AuthorizationOnIOThread) {
   // Don't write headers with a valid proxy, that's not a data reduction proxy.
   VerifyExpectedHeader(kOtherProxy, std::string());
 
-  // Don't write headers with a valid data reduction ssl proxy.
-  VerifyExpectedHeader(params()->DefaultSSLOrigin(), std::string());
-
   // Write headers with a valid data reduction proxy.
   VerifyExpectedHeader(params()->DefaultOrigin(), expected_header);
-
-  // Write headers with a valid data reduction ssl proxy when one is expected.
-  net::HttpRequestHeaders ssl_headers;
-  request_options()->MaybeAddProxyTunnelRequestHandler(
-      net::ProxyServer::FromURI(
-        params()->DefaultSSLOrigin(),
-        net::ProxyServer::SCHEME_HTTP).host_port_pair(),
-      &ssl_headers);
-  EXPECT_TRUE(ssl_headers.HasHeader(kChromeProxyHeader));
-  std::string ssl_header_value;
-  ssl_headers.GetHeader(kChromeProxyHeader, &ssl_header_value);
-  EXPECT_EQ(expected_header, ssl_header_value);
 
   // Fast forward 24 hours. The header should be the same.
   request_options()->set_offset(base::TimeDelta::FromSeconds(24 * 60 * 60));

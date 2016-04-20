@@ -34,8 +34,7 @@ namespace test {
 
 AuraTestHelper::AuraTestHelper(base::MessageLoopForUI* message_loop)
     : setup_called_(false),
-      teardown_called_(false),
-      env_created_(false) {
+      teardown_called_(false) {
   DCHECK(message_loop);
   message_loop_ = message_loop;
   // Disable animations during tests.
@@ -57,10 +56,8 @@ AuraTestHelper::~AuraTestHelper() {
 void AuraTestHelper::SetUp(ui::ContextFactory* context_factory) {
   setup_called_ = true;
 
-  if (!Env::GetInstanceDontCreate()) {
-    env_created_ = true;
-    Env::CreateInstance(true);
-  }
+  if (!Env::GetInstanceDontCreate())
+    env_ = aura::Env::CreateInstance();
   Env::GetInstance()->set_context_factory(context_factory);
   // Unit tests generally don't want to query the system, rather use the state
   // from RootWindow.
@@ -70,9 +67,12 @@ void AuraTestHelper::SetUp(ui::ContextFactory* context_factory) {
 
   ui::InitializeInputMethodForTesting();
 
-  gfx::Size host_size(800, 600);
+  gfx::Screen* screen = gfx::Screen::GetScreen();
+  gfx::Size host_size(screen ? screen->GetPrimaryDisplay().GetSizeInPixel()
+                             : gfx::Size(800, 600));
   test_screen_.reset(TestScreen::Create(host_size));
-  gfx::Screen::SetScreenInstance(test_screen_.get());
+  if (!screen)
+    gfx::Screen::SetScreenInstance(test_screen_.get());
   host_.reset(test_screen_->CreateHostForPrimaryDisplay());
 
   focus_client_.reset(new TestFocusClient);
@@ -103,8 +103,7 @@ void AuraTestHelper::TearDown() {
 
   ui::ShutdownInputMethodForTesting();
 
-  if (env_created_)
-    Env::DeleteInstance();
+  env_.reset();
 }
 
 void AuraTestHelper::RunAllPendingInMessageLoop() {

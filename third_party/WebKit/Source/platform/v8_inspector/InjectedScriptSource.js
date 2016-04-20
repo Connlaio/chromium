@@ -419,19 +419,6 @@ InjectedScript.prototype = {
         return "{\"injectedScriptId\":" + injectedScriptId + ",\"id\":" + id + "}";
     },
 
-    clearLastEvaluationResult: function()
-    {
-        delete this._lastResult;
-    },
-
-    /**
-     * @param {*} result
-     */
-    setLastEvaluationResult: function(result)
-    {
-        this._lastResult = result;
-    },
-
     /**
      * @param {!Object} object
      * @param {string} objectGroupName
@@ -1185,9 +1172,6 @@ function CommandLineAPI(commandLineAPIImpl)
         var member = "$" + i;
         this[member] = bind(commandLineAPIImpl._inspectedObject, commandLineAPIImpl, i);
     }
-
-    this.$_ = injectedScript._lastResult;
-
     this.__proto__ = null;
 }
 
@@ -1393,10 +1377,34 @@ CommandLineAPIImpl.prototype = {
         var result = nullifyObjectProto(InjectedScriptHost.getEventListeners(node));
         if (!result)
             return;
-        /** @this {{type: string, listener: function(), useCapture: boolean}} */
+
+        // TODO(dtapuska): Remove this one closure compiler is updated
+        // to handle EventListenerOptions and passive event listeners
+        // has shipped. Don't JSDoc these otherwise it will fail.
+        // @param {boolean} capture
+        // @param {boolean} passive
+        // @return {boolean|undefined|{capture: (boolean|undefined), passive: boolean}}
+        function eventListenerOptions(capture, passive)
+        {
+            return {"capture": capture, "passive": passive};
+        }
+
+        /**
+         * @param {!Node} node
+         * @param {string} type
+         * @param {function()} listener
+         * @param {boolean} capture
+         * @param {boolean} passive
+         */
+        function removeEventListenerWrapper(node, type, listener, capture, passive)
+        {
+            node.removeEventListener(type, listener, eventListenerOptions(capture, passive));
+        }
+
+        /** @this {{type: string, listener: function(), useCapture: boolean, passive: boolean}} */
         var removeFunc = function()
         {
-            node.removeEventListener(this.type, this.listener, this.useCapture);
+            removeEventListenerWrapper(node, this.type, this.listener, this.useCapture, this.passive);
         }
         for (var type in result) {
             var listeners = result[type];

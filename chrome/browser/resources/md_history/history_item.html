@@ -10,12 +10,11 @@
 
 <dom-module id="history-item">
   <template>
-    <style include="shared-style"></style>
-    <style>
+    <style include="shared-style">
       :host {
         @apply(--layout-center);
         @apply(--layout-vertical);
-        padding: 0 24px;
+        padding: 0 var(--card-padding-side);
       }
 
       #main-container {
@@ -136,7 +135,7 @@
             on-tap="onMenuButtonTap_">
         </paper-icon-button>
       </div>
-      <template is="dom-if" if="[[item.hasTimeGap]]">
+      <template is="dom-if" if="[[hasTimeGap]]">
         <div id="time-gap-separator"></div>
       </template>
     </div>

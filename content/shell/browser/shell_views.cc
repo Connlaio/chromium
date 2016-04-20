@@ -371,8 +371,8 @@ class ShellWindowDelegateView : public views::WidgetDelegateView,
   views::LabelButton* refresh_button_;
   views::LabelButton* stop_button_;
   views::Textfield* url_entry_;
-  scoped_ptr<ContextMenuModel> context_menu_model_;
-  scoped_ptr<views::MenuRunner> context_menu_runner_;
+  std::unique_ptr<ContextMenuModel> context_menu_model_;
+  std::unique_ptr<views::MenuRunner> context_menu_runner_;
 
   // Contents view contains the web contents view
   View* contents_view_;
@@ -418,7 +418,6 @@ void Shell::PlatformExit() {
   views_delegate_ = NULL;
   delete platform_;
   platform_ = NULL;
-  aura::Env::DeleteInstance();
 }
 
 void Shell::PlatformCleanUp() {
@@ -471,6 +470,8 @@ void Shell::PlatformCreateWindow(int width, int height) {
   views::Widget::InitParams params;
   params.bounds = gfx::Rect(0, 0, width, height);
   params.delegate = new ShellWindowDelegateView(this);
+  params.wm_class_class = "chromium-content_shell";
+  params.wm_class_name = params.wm_class_class;
   window_widget_->Init(params);
 #endif
 

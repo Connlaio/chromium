@@ -40,6 +40,7 @@
 #include "ui/views/metrics.h"
 #include "ui/views/native_cursor.h"
 #include "ui/views/painter.h"
+#include "ui/views/style/platform_style.h"
 #include "ui/views/views_delegate.h"
 #include "ui/views/widget/widget.h"
 
@@ -292,7 +293,7 @@ Textfield::Textfield()
   set_context_menu_controller(this);
   set_drag_controller(this);
   GetRenderText()->SetFontList(GetDefaultFontList());
-  SetBorder(scoped_ptr<Border>(new FocusableBorder()));
+  SetBorder(std::unique_ptr<Border>(new FocusableBorder()));
   SetFocusable(true);
 
   if (ViewsDelegate::GetInstance()) {
@@ -572,7 +573,7 @@ void Textfield::ExecuteCommand(int command_id) {
   ExecuteCommand(command_id, ui::EF_NONE);
 }
 
-void Textfield::SetFocusPainter(scoped_ptr<Painter> focus_painter) {
+void Textfield::SetFocusPainter(std::unique_ptr<Painter> focus_painter) {
   focus_painter_ = std::move(focus_painter);
 }
 
@@ -1102,7 +1103,7 @@ void Textfield::WriteDragDataForView(View* sender,
       gfx::Screen::GetScreen()->GetDisplayNearestWindow(native_view);
   size.SetToMin(gfx::Size(display.size().width(), height()));
   label.SetBoundsRect(gfx::Rect(size));
-  scoped_ptr<gfx::Canvas> canvas(
+  std::unique_ptr<gfx::Canvas> canvas(
       GetCanvasForDragImage(GetWidget(), label.size()));
   label.SetEnabledColor(GetTextColor());
 #if defined(OS_LINUX) && !defined(OS_CHROMEOS)
@@ -1746,7 +1747,18 @@ void Textfield::MoveCursorTo(const gfx::Point& point, bool select) {
 
 void Textfield::SelectThroughLastDragLocation() {
   OnBeforeUserAction();
-  model_->MoveCursorTo(last_drag_location_, true);
+
+  const bool drags_to_end = PlatformStyle::kTextfieldDragVerticallyDragsToEnd;
+  if (drags_to_end && last_drag_location_.y() < 0) {
+    model_->MoveCursor(gfx::BreakType::LINE_BREAK,
+                       gfx::VisualCursorDirection::CURSOR_LEFT, true);
+  } else if (drags_to_end && last_drag_location_.y() > height()) {
+    model_->MoveCursor(gfx::BreakType::LINE_BREAK,
+                       gfx::VisualCursorDirection::CURSOR_RIGHT, true);
+  } else {
+    model_->MoveCursorTo(last_drag_location_, true);
+  }
+
   if (aggregated_clicks_ == 1) {
     model_->SelectWord();
     // Expand the selection so the initially selected word remains selected.

@@ -10,6 +10,7 @@
 #include "platform/v8_inspector/InjectedScriptHost.h"
 #include "platform/v8_inspector/InspectorWrapper.h"
 #include "platform/v8_inspector/JavaScriptCallFrame.h"
+#include "platform/v8_inspector/V8Compat.h"
 #include "platform/v8_inspector/V8DebuggerImpl.h"
 #include "platform/v8_inspector/V8StringUtil.h"
 #include "platform/v8_inspector/public/V8DebuggerClient.h"
@@ -179,6 +180,7 @@ static v8::Local<v8::Array> wrapListenerFunctions(v8::Isolate* isolate, const V8
         v8::Local<v8::Object> listenerEntry = v8::Object::New(isolate);
         listenerEntry->Set(toV8StringInternalized(isolate, "listener"), function);
         listenerEntry->Set(toV8StringInternalized(isolate, "useCapture"), v8::Boolean::New(isolate, listeners[i].useCapture));
+        listenerEntry->Set(toV8StringInternalized(isolate, "passive"), v8::Boolean::New(isolate, listeners[i].passive));
         result->Set(v8::Number::New(isolate, outputIndex++), listenerEntry);
     }
     return result;

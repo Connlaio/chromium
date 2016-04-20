@@ -36,9 +36,13 @@ class NonInterpolableList : public NonInterpolableValue {
 public:
     ~NonInterpolableList() final { }
 
-    static PassRefPtr<NonInterpolableList> create(Vector<RefPtr<NonInterpolableValue>>& list)
+    static PassRefPtr<NonInterpolableList> create()
     {
-        return adoptRef(new NonInterpolableList(list));
+        return adoptRef(new NonInterpolableList());
+    }
+    static PassRefPtr<NonInterpolableList> create(Vector<RefPtr<NonInterpolableValue>>&& list)
+    {
+        return adoptRef(new NonInterpolableList(std::move(list)));
     }
 
     size_t length() const { return m_list.size(); }
@@ -49,10 +53,11 @@ public:
     DECLARE_NON_INTERPOLABLE_VALUE_TYPE();
 
 private:
-    NonInterpolableList(Vector<RefPtr<NonInterpolableValue>>& list)
-    {
-        m_list.swap(list);
-    }
+    NonInterpolableList()
+    { }
+    NonInterpolableList(Vector<RefPtr<NonInterpolableValue>>&& list)
+        : m_list(list)
+    { }
 
     Vector<RefPtr<NonInterpolableValue>> m_list;
 };
@@ -73,7 +78,7 @@ InterpolationValue ListInterpolationFunctions::createList(size_t length, CreateI
         interpolableList->set(i, item.interpolableValue.release());
         nonInterpolableValues[i] = item.nonInterpolableValue.release();
     }
-    return InterpolationValue(interpolableList.release(), NonInterpolableList::create(nonInterpolableValues));
+    return InterpolationValue(interpolableList.release(), NonInterpolableList::create(std::move(nonInterpolableValues)));
 }
 
 } // namespace blink

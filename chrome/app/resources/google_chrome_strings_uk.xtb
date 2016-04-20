@@ -69,7 +69,6 @@
 <translation id="3080151273017101988">Продовжувати роботу фонових програм, коли Google Chrome закрито</translation>
 <translation id="3089968997497233615">Доступна нова, безпечніша версія Google Chrome.</translation>
 <translation id="3149510190863420837">Додатки Chrome</translation>
-<translation id="3197823471738295152">Пристрій оновлено.</translation>
 <translation id="3282568296779691940">Вхід у Chrome</translation>
 <translation id="3311976847535831054">Цей комп’ютер більше не отримуватиме оновлення для 32-розрядної версії Google Chrome. Установіть 64-розрядну версію.</translation>
 <translation id="3360895254066713204">Помічник Chrome</translation>
@@ -205,13 +204,13 @@
 <translation id="7808348361785373670">Видалити з Chrome…</translation>
 <translation id="7825851276765848807">Програму не вдалося встановити через невизначену помилку. Завантажте Google Chrome ще раз.</translation>
 <translation id="7890208801193284374">Якщо вашим комп’ютером користуєтесь не лише ви, а й ваші друзі чи сім’я, вони можуть налаштувати Chrome на свій смак.</translation>
-<translation id="8000275528373650868">Для роботи Google Chrome потрібно мати ОС Windows Vista чи Windows XP із SP2 або новішу версію.</translation>
 <translation id="8005540215158006229">Chrome майже готовий.</translation>
 <translation id="8008534537613507642">Перевстановити Chrome</translation>
 <translation id="8030318113982266900">Оновлення пристрою до каналу <ph name="CHANNEL_NAME" />…</translation>
 <translation id="8032142183999901390">Якщо видалити обліковий запис із Chrome, можливо, потрібно оновити відкриті вкладки, щоб зміни почали діяти.</translation>
 <translation id="8037887340639533879">Неможливо виконати оновлення, оскільки не знайдено встановленої версії Google Chrome.</translation>
 <translation id="8129812357326543296">Про &amp;Google Chrome</translation>
+<translation id="8183957050892517584">Chrome надійно зберігатиме ваші особисті дані, тож вам не потрібно буде вводити їх знову.</translation>
 <translation id="8205111949707227942">Додатково. Допоможіть покращити ОС Chrome, автоматично надсилаючи статистику використання та звіти про аварійне завершення роботи до Google.</translation>
 <translation id="8227755444512189073">Google Chrome потребує запуску зовнішньої прикладної програми для опрацювання посилань <ph name="SCHEME" />. Посилання, на яке здійснено запит, - <ph name="PROTOLINK" />.</translation>
 <translation id="8255190535488645436">Google Chrome використовує вашу камеру та мікрофон.</translation>
@@ -226,6 +225,7 @@
 <translation id="8556340503434111824">Доступна нова версія Google Chrome – швидша, ніж будь-коли.</translation>
 <translation id="8568392309447938879">Щоб користуватися програмами, потрібно ввійти в Chrome. Це дозволяє веб-переглядачу Chrome синхронізувати ваші програми, закладки, історію, паролі й інші налаштування на різних пристроях.</translation>
 <translation id="8614913330719544658">Google Chrome не відповідає. Перезапустити зараз?</translation>
+<translation id="8667808506758191620">Ваш пристрій <ph name="DEVICE_TYPE" /> оновлено.</translation>
 <translation id="8669527147644353129">Помічник Google Chrome</translation>
 <translation id="8679801911857917785">Розширення також змінило сторінку, яка відкривається під час запуску Chrome.</translation>
 <translation id="870251953148363156">Оновити &amp;Google Chrome</translation>
@@ -234,6 +234,7 @@
 <translation id="8851136666856101339">головний</translation>
 <translation id="8862326446509486874">У вас немає відповідних прав для встановлення на рівні системи. Спробуйте запустити програму встановлення, увійшовши з правами адміністратора.</translation>
 <translation id="9026991721384951619">ОС Chrome не вдалося синхронізувати ваші дані, оскільки дані для входу в обліковий запис застаріли.</translation>
+<translation id="9067395829937117663">Для роботи Google Chrome потрібно мати ОС Windows 7 або новішої версії.</translation>
 <translation id="9102715433345326100">Цей файл шкідливий, тому Chrome заблокував його.</translation>
 <translation id="9107728822479888688"><ph name="BEGIN_BOLD" />Застереження:<ph name="END_BOLD" /> Google Chrome не може заборонити розширенням реєструвати вашу історію веб-перегляду. Щоб вимкнути це розширення в режимі анонімного перегляду, зніміть прапорець поруч із цим параметром.</translation>
 <translation id="911206726377975832">Також видалити дані веб-перегляду?</translation>

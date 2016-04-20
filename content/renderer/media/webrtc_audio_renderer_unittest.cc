@@ -79,7 +79,7 @@ class WebRtcAudioRendererTest : public testing::Test,
   }
   MOCK_METHOD1(CreateAudioCapturerSource,
                scoped_refptr<media::AudioCapturerSource>(int));
-  MOCK_METHOD4(CreateAudioRendererMixerSink,
+  MOCK_METHOD4(CreateFinalAudioRendererSink,
                scoped_refptr<media::AudioRendererSink>(int,
                                                        int,
                                                        const std::string&,
@@ -129,9 +129,9 @@ class WebRtcAudioRendererTest : public testing::Test,
     blink::WebHeap::collectAllGarbageForTesting();
   }
 
-  scoped_ptr<base::MessageLoopForIO> message_loop_;
+  std::unique_ptr<base::MessageLoopForIO> message_loop_;
   scoped_refptr<media::MockAudioRendererSink> mock_sink_;
-  scoped_ptr<MockAudioRendererSource> source_;
+  std::unique_ptr<MockAudioRendererSource> source_;
   blink::WebMediaStream stream_;
   scoped_refptr<WebRtcAudioRenderer> renderer_;
   scoped_refptr<MediaStreamAudioRenderer> renderer_proxy_;

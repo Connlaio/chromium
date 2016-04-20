@@ -66,6 +66,16 @@ no-historical-ligatures
 contextual
 no-contextual
 
+// font-variant-caps:
+//
+// normal
+small-caps
+all-small-caps
+petite-caps
+all-petite-caps
+unicase
+titling-caps
+
 //
 // font-weigth
 //
@@ -242,6 +252,7 @@ justify
 -webkit-right
 -webkit-center
 -webkit-match-parent
+-internal-center
 //
 // text-justify
 //

@@ -11,8 +11,9 @@
 #include "components/mus/public/cpp/window_tree_connection.h"
 #include "components/mus/public/interfaces/window_tree.mojom.h"
 #include "mojo/converters/geometry/geometry_type_converters.h"
-#include "mojo/shell/public/cpp/connection.h"
-#include "mojo/shell/public/cpp/connector.h"
+#include "services/shell/public/cpp/connection.h"
+#include "services/shell/public/cpp/connector.h"
+#include "ui/events/devices/device_data_manager.h"
 #include "ui/views/mus/native_widget_mus.h"
 #include "ui/views/mus/screen_mus.h"
 #include "ui/views/views_delegate.h"
@@ -30,7 +31,7 @@ base::LazyInstance<WindowManagerConnectionPtr>::Leaky lazy_tls_ptr =
 }  // namespace
 
 // static
-void WindowManagerConnection::Create(mojo::Connector* connector) {
+void WindowManagerConnection::Create(shell::Connector* connector) {
   DCHECK(!lazy_tls_ptr.Pointer()->Get());
   lazy_tls_ptr.Pointer()->Set(new WindowManagerConnection(connector));
 }
@@ -68,13 +69,18 @@ NativeWidget* WindowManagerConnection::CreateNativeWidgetMus(
                              mus::mojom::SurfaceType::DEFAULT);
 }
 
-WindowManagerConnection::WindowManagerConnection(mojo::Connector* connector)
+WindowManagerConnection::WindowManagerConnection(shell::Connector* connector)
     : connector_(connector), window_tree_connection_(nullptr) {
   window_tree_connection_.reset(
       mus::WindowTreeConnection::Create(this, connector_));
 
   screen_.reset(new ScreenMus(this));
   screen_->Init(connector);
+
+  // TODO(sad): We should have a DeviceDataManager implementation that talks to
+  // a mojo service to learn about the input-devices on the system.
+  // http://crbug.com/601981
+  ui::DeviceDataManager::CreateInstance();
 
   ViewsDelegate::GetInstance()->set_native_widget_factory(base::Bind(
       &WindowManagerConnection::CreateNativeWidgetMus,
@@ -86,6 +92,8 @@ WindowManagerConnection::~WindowManagerConnection() {
   // ~WindowTreeConnection calls back to us (we're the WindowTreeDelegate),
   // destroy it while we are still valid.
   window_tree_connection_.reset();
+
+  ui::DeviceDataManager::DeleteInstance();
 }
 
 void WindowManagerConnection::OnEmbed(mus::Window* root) {}

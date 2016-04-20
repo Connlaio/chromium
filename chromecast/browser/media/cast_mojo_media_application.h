@@ -9,9 +9,9 @@
 
 #include "base/memory/ref_counted.h"
 #include "media/mojo/interfaces/service_factory.mojom.h"
-#include "mojo/shell/public/cpp/interface_factory.h"
-#include "mojo/shell/public/cpp/message_loop_ref.h"
-#include "mojo/shell/public/cpp/shell_client.h"
+#include "services/shell/public/cpp/interface_factory.h"
+#include "services/shell/public/cpp/message_loop_ref.h"
+#include "services/shell/public/cpp/shell_client.h"
 
 namespace base {
 class SingleThreadTaskRunner;
@@ -27,8 +27,8 @@ namespace media {
 class CastMojoMediaClient;
 
 class CastMojoMediaApplication
-    : public mojo::ShellClient,
-      public mojo::InterfaceFactory<::media::interfaces::ServiceFactory> {
+    : public ::shell::ShellClient,
+      public ::shell::InterfaceFactory<::media::interfaces::ServiceFactory> {
  public:
   CastMojoMediaApplication(
       std::unique_ptr<CastMojoMediaClient> mojo_media_client,
@@ -36,21 +36,21 @@ class CastMojoMediaApplication
   ~CastMojoMediaApplication() final;
 
  private:
-  // mojo::ShellClient implementation.
-  void Initialize(mojo::Connector* connector,
-                  const mojo::Identity& identity,
+  // ::shell::ShellClient implementation.
+  void Initialize(::shell::Connector* connector,
+                  const ::shell::Identity& identity,
                   uint32_t id) final;
-  bool AcceptConnection(mojo::Connection* connection) final;
+  bool AcceptConnection(::shell::Connection* connection) final;
 
-  // mojo::InterfaceFactory<interfaces::ServiceFactory> implementation.
-  void Create(mojo::Connection* connection,
+  // ::shell::InterfaceFactory<interfaces::ServiceFactory> implementation.
+  void Create(::shell::Connection* connection,
               mojo::InterfaceRequest<::media::interfaces::ServiceFactory>
                   request) final;
 
   std::unique_ptr<CastMojoMediaClient> mojo_media_client_;
   scoped_refptr<base::SingleThreadTaskRunner> media_task_runner_;
   scoped_refptr<::media::MediaLog> media_log_;
-  mojo::MessageLoopRefFactory ref_factory_;
+  ::shell::MessageLoopRefFactory ref_factory_;
 };
 
 }  // namespace media

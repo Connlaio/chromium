@@ -25,7 +25,8 @@ GpuSurfacelessBrowserCompositorOutputSurface::
         const scoped_refptr<ContextProviderCommandBuffer>& worker_context,
         int surface_id,
         const scoped_refptr<ui::CompositorVSyncManager>& vsync_manager,
-        scoped_ptr<BrowserCompositorOverlayCandidateValidator>
+        base::SingleThreadTaskRunner* task_runner,
+        std::unique_ptr<BrowserCompositorOverlayCandidateValidator>
             overlay_candidate_validator,
         unsigned int target,
         unsigned int internalformat,
@@ -33,6 +34,7 @@ GpuSurfacelessBrowserCompositorOutputSurface::
     : GpuBrowserCompositorOutputSurface(context,
                                         worker_context,
                                         vsync_manager,
+                                        task_runner,
                                         std::move(overlay_candidate_validator)),
       internalformat_(internalformat),
       gpu_memory_buffer_manager_(gpu_memory_buffer_manager) {

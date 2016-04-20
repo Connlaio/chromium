@@ -534,7 +534,7 @@ void ChromeBrowserMainPartsChromeos::PreProfileInit() {
 
     user_manager::UserManager* user_manager = user_manager::UserManager::Get();
 
-    if (policy::IsDeviceLocalAccountUser(account_id.GetUserEmail(), NULL) &&
+    if (policy::IsDeviceLocalAccountUser(account_id.GetUserEmail(), nullptr) &&
         !user_manager->IsKnownUser(account_id)) {
       // When a device-local account is removed, its policy is deleted from disk
       // immediately. If a session using this account happens to be in progress,
@@ -665,7 +665,7 @@ void ChromeBrowserMainPartsChromeos::PostProfileInit() {
 
   manager->SetState(session_manager->GetDefaultIMEState(profile()));
 
-  bool is_running_test = parameters().ui_task != NULL;
+  bool is_running_test = parameters().ui_task != nullptr;
   g_browser_process->platform_part()->InitializeSessionManager(
       parsed_command_line(), profile(), is_running_test);
   g_browser_process->platform_part()->SessionManager()->Start();
@@ -812,7 +812,8 @@ void ChromeBrowserMainPartsChromeos::PostMainMessageLoopRun() {
   power_button_observer_.reset();
   idle_action_warning_observer_.reset();
 
-  MagnificationManager::Shutdown();
+  if (!IsRunningAsMusClient())
+    MagnificationManager::Shutdown();
 
   media::SoundsManager::Shutdown();
 
@@ -849,7 +850,8 @@ void ChromeBrowserMainPartsChromeos::PostMainMessageLoopRun() {
   // Ash needs to be closed before UserManager is destroyed.
   ChromeBrowserMainPartsLinux::PostMainMessageLoopRun();
 
-  AccessibilityManager::Shutdown();
+  if (!IsRunningAsMusClient())
+    AccessibilityManager::Shutdown();
 
   input_method::Shutdown();
 

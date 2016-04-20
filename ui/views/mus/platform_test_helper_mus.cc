@@ -2,27 +2,27 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "ui/views/test/platform_test_helper.h"
-
 #include "base/command_line.h"
+#include "base/memory/ptr_util.h"
 #include "base/run_loop.h"
-#include "mojo/shell/background/background_shell.h"
-#include "mojo/shell/background/tests/test_catalog_store.h"
-#include "mojo/shell/public/cpp/connector.h"
-#include "mojo/shell/public/cpp/shell_client.h"
-#include "mojo/shell/public/cpp/shell_connection.h"
+#include "services/shell/background/background_shell.h"
+#include "services/shell/background/tests/test_catalog_store.h"
+#include "services/shell/public/cpp/connector.h"
+#include "services/shell/public/cpp/shell_client.h"
+#include "services/shell/public/cpp/shell_connection.h"
 #include "ui/aura/env.h"
 #include "ui/views/mus/window_manager_connection.h"
+#include "ui/views/test/platform_test_helper.h"
 #include "ui/views/views_delegate.h"
 
-using mojo::shell::BackgroundShell;
+using shell::BackgroundShell;
 
 namespace views {
 namespace {
 
 const char kTestName[] = "mojo:test-app";
 
-class DefaultShellClient : public mojo::ShellClient {
+class DefaultShellClient : public shell::ShellClient {
  public:
   DefaultShellClient() {}
   ~DefaultShellClient() override {}
@@ -31,23 +31,22 @@ class DefaultShellClient : public mojo::ShellClient {
   DISALLOW_COPY_AND_ASSIGN(DefaultShellClient);
 };
 
-scoped_ptr<mojo::shell::TestCatalogStore> BuildTestCatalogStore() {
-  scoped_ptr<base::ListValue> apps(new base::ListValue);
-  apps->Append(
-      mojo::shell::BuildPermissiveSerializedAppInfo(kTestName, "test"));
-  return make_scoped_ptr(new mojo::shell::TestCatalogStore(std::move(apps)));
+std::unique_ptr<shell::TestCatalogStore> BuildTestCatalogStore() {
+  std::unique_ptr<base::ListValue> apps(new base::ListValue);
+  apps->Append(shell::BuildPermissiveSerializedAppInfo(kTestName, "test"));
+  return base::WrapUnique(new shell::TestCatalogStore(std::move(apps)));
 }
 
 class PlatformTestHelperMus : public PlatformTestHelper {
  public:
   PlatformTestHelperMus() {
     background_shell_.reset(new BackgroundShell);
-    scoped_ptr<BackgroundShell::InitParams> init_params(
+    std::unique_ptr<BackgroundShell::InitParams> init_params(
         new BackgroundShell::InitParams);
     init_params->catalog_store = BuildTestCatalogStore();
     background_shell_->Init(std::move(init_params));
     shell_client_.reset(new DefaultShellClient);
-    shell_connection_.reset(new mojo::ShellConnection(
+    shell_connection_.reset(new shell::ShellConnection(
         shell_client_.get(),
         background_shell_->CreateShellClientRequest(kTestName)));
 
@@ -58,7 +57,7 @@ class PlatformTestHelperMus : public PlatformTestHelper {
 
     // ui/views/mus requires a WindowManager running, for now use the desktop
     // one.
-    mojo::Connector* connector = shell_connection_->connector();
+    shell::Connector* connector = shell_connection_->connector();
     connector->Connect("mojo:desktop_wm");
     WindowManagerConnection::Create(connector);
 
@@ -92,9 +91,9 @@ class PlatformTestHelperMus : public PlatformTestHelper {
     return result;
   }
 
-  scoped_ptr<BackgroundShell> background_shell_;
-  scoped_ptr<mojo::ShellConnection> shell_connection_;
-  scoped_ptr<DefaultShellClient> shell_client_;
+  std::unique_ptr<BackgroundShell> background_shell_;
+  std::unique_ptr<shell::ShellConnection> shell_connection_;
+  std::unique_ptr<DefaultShellClient> shell_client_;
 
   DISALLOW_COPY_AND_ASSIGN(PlatformTestHelperMus);
 };
@@ -102,8 +101,8 @@ class PlatformTestHelperMus : public PlatformTestHelper {
 }  // namespace
 
 // static
-scoped_ptr<PlatformTestHelper> PlatformTestHelper::Create() {
-  return make_scoped_ptr(new PlatformTestHelperMus);
+std::unique_ptr<PlatformTestHelper> PlatformTestHelper::Create() {
+  return base::WrapUnique(new PlatformTestHelperMus);
 }
 
 }  // namespace views

@@ -1142,6 +1142,12 @@ void CompositedLayerMapping::updatePaintingPhases()
             paintPhase |= GraphicsLayerPaintForeground;
         m_scrollingContentsLayer->setPaintingPhase(paintPhase);
     }
+    if (m_foregroundLayer) {
+        GraphicsLayerPaintingPhase paintPhase = GraphicsLayerPaintForeground;
+        if (m_scrollingContentsLayer)
+            paintPhase |= GraphicsLayerPaintOverflowContents;
+        m_foregroundLayer->setPaintingPhase(paintPhase);
+    }
 }
 
 void CompositedLayerMapping::updateContentsRect()
@@ -1523,7 +1529,6 @@ bool CompositedLayerMapping::updateForegroundLayer(bool needsForegroundLayer)
     if (needsForegroundLayer) {
         if (!m_foregroundLayer) {
             m_foregroundLayer = createGraphicsLayer(CompositingReasonLayerForForeground);
-            m_foregroundLayer->setPaintingPhase(GraphicsLayerPaintForeground);
             layerChanged = true;
         }
     } else if (m_foregroundLayer) {
@@ -2053,23 +2058,25 @@ struct SetContentsNeedsDisplayInRectFunctor {
         if (layer->drawsContent()) {
             IntRect layerDirtyRect = r;
             layerDirtyRect.move(-layer->offsetFromLayoutObject());
-            layer->setNeedsDisplayInRect(layerDirtyRect, invalidationReason);
+            layer->setNeedsDisplayInRect(layerDirtyRect, invalidationReason, client);
         }
     }
 
     IntRect r;
     PaintInvalidationReason invalidationReason;
+    const DisplayItemClient& client;
 };
 
 // r is in the coordinate space of the layer's layout object
-void CompositedLayerMapping::setContentsNeedDisplayInRect(const LayoutRect& r, PaintInvalidationReason invalidationReason)
+void CompositedLayerMapping::setContentsNeedDisplayInRect(const LayoutRect& r, PaintInvalidationReason invalidationReason, const DisplayItemClient& client)
 {
     // TODO(wangxianzhu): Enable the following assert after paint invalidation for spv2 is ready.
     // ASSERT(!RuntimeEnabledFeatures::slimmingPaintV2Enabled());
 
     SetContentsNeedsDisplayInRectFunctor functor = {
         enclosingIntRect(LayoutRect(r.location() + m_owningLayer.subpixelAccumulation(), r.size())),
-        invalidationReason
+        invalidationReason,
+        client
     };
     ApplyToGraphicsLayers(this, functor, ApplyToContentLayers);
 }
@@ -2182,8 +2189,6 @@ static void paintScrollbar(const Scrollbar* scrollbar, GraphicsContext& context,
     scrollbar->paint(context, CullRect(transformedClip));
 }
 
-// The following should be kept in sync with the code computing potential_new_recorded_viewport in
-// cc::RecordingSource::UpdateAndExpandInvalidation() before we keep only one copy of the algorithm.
 static const int kPixelDistanceToRecord = 4000;
 
 IntRect CompositedLayerMapping::recomputeInterestRect(const GraphicsLayer* graphicsLayer) const
@@ -2243,8 +2248,6 @@ IntRect CompositedLayerMapping::recomputeInterestRect(const GraphicsLayer* graph
     return localInterestRect;
 }
 
-// The following should be kept in sync with cc::RecordingSource::ExposesEnoughNewArea()
-// before we keep only one copy of the algorithm.
 static const int kMinimumDistanceBeforeRepaint = 512;
 
 bool CompositedLayerMapping::interestRectChangedEnoughToRepaint(const IntRect& previousInterestRect, const IntRect& newInterestRect, const IntSize& layerSize)
@@ -2360,7 +2363,7 @@ void CompositedLayerMapping::paintContents(const GraphicsLayer* graphicsLayer, G
     } else if (isScrollableAreaLayer(graphicsLayer)) {
         paintScrollableArea(graphicsLayer, context, interestRect);
     }
-    InspectorInstrumentation::didPaint(m_owningLayer.layoutObject(), graphicsLayer, context, LayoutRect(interestRect));
+    InspectorInstrumentation::didPaint(m_owningLayer.layoutObject()->frame(), graphicsLayer, context, LayoutRect(interestRect));
 #if ENABLE(ASSERT)
     if (Page* page = layoutObject()->frame()->page())
         page->setIsPainting(false);

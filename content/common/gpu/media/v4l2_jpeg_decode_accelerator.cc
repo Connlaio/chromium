@@ -2,15 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "content/common/gpu/media/v4l2_jpeg_decode_accelerator.h"
+
 #include <errno.h>
 #include <linux/videodev2.h>
 #include <string.h>
 #include <sys/mman.h>
 
+#include <memory>
+
 #include "base/big_endian.h"
 #include "base/bind.h"
 #include "base/thread_task_runner_handle.h"
-#include "content/common/gpu/media/v4l2_jpeg_decode_accelerator.h"
 #include "media/filters/jpeg_parser.h"
 #include "third_party/libyuv/include/libyuv.h"
 
@@ -247,7 +250,7 @@ void V4L2JpegDecodeAccelerator::Decode(
     return;
   }
 
-  scoped_ptr<JobRecord> job_record(
+  std::unique_ptr<JobRecord> job_record(
       new JobRecord(bitstream_buffer, video_frame));
 
   decoder_task_runner_->PostTask(
@@ -267,7 +270,8 @@ bool V4L2JpegDecodeAccelerator::IsSupported() {
   return false;
 }
 
-void V4L2JpegDecodeAccelerator::DecodeTask(scoped_ptr<JobRecord> job_record) {
+void V4L2JpegDecodeAccelerator::DecodeTask(
+    std::unique_ptr<JobRecord> job_record) {
   DCHECK(decoder_task_runner_->BelongsToCurrentThread());
   if (!job_record->shm.Map()) {
     PLOG(ERROR) << __func__ << ": could not map bitstream_buffer";

@@ -4,6 +4,7 @@
 
 #include "content/common/gpu/media/android_video_encode_accelerator.h"
 
+#include <memory>
 #include <set>
 
 #include "base/bind.h"
@@ -419,7 +420,7 @@ void AndroidVideoEncodeAccelerator::DequeueOutput() {
 
   media::BitstreamBuffer bitstream_buffer = available_bitstream_buffers_.back();
   available_bitstream_buffers_.pop_back();
-  scoped_ptr<SharedMemoryRegion> shm(
+  std::unique_ptr<SharedMemoryRegion> shm(
       new SharedMemoryRegion(bitstream_buffer, false));
   RETURN_ON_FAILURE(shm->Map(), "Failed to map SHM", kPlatformFailureError);
   RETURN_ON_FAILURE(size <= shm->size(),

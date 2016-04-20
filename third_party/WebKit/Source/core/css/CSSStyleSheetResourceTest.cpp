@@ -112,7 +112,7 @@ TEST_F(CSSStyleSheetResourceTest, PruneCanCauseEviction)
         }
         ASSERT_TRUE(memoryCache()->isInSameLRUListForTest(cssResource, imageResource));
     }
-    Heap::collectAllGarbage();
+    ThreadHeap::collectAllGarbage();
     // This operation should not lead to crash!
     memoryCache()->pruneAll();
 }
@@ -125,7 +125,7 @@ TEST_F(CSSStyleSheetResourceTest, DuplicateResourceNotCached)
 
     // Emulate using <img> to do async stylesheet preloads.
 
-    Resource* imageResource = ImageResource::create(ResourceRequest(imageURL), nullptr);
+    Resource* imageResource = ImageResource::create(ResourceRequest(imageURL));
     ASSERT_TRUE(imageResource);
     memoryCache()->add(imageResource);
     ASSERT_TRUE(memoryCache()->contains(imageResource));

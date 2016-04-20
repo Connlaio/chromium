@@ -7,10 +7,10 @@
 
 #include <windows.h>
 
+#include <memory>
 #include <vector>
 
 #include "base/macros.h"
-#include "base/memory/scoped_ptr.h"
 #include "ui/display/display_export.h"
 #include "ui/gfx/display_change_notifier.h"
 #include "ui/gfx/native_widget_types.h"
@@ -21,6 +21,7 @@ namespace gfx {
 class Display;
 class Point;
 class Rect;
+class Size;
 }   // namespace gfx
 
 namespace display {
@@ -33,6 +34,60 @@ class DISPLAY_EXPORT ScreenWin : public gfx::Screen {
  public:
   ScreenWin();
   ~ScreenWin() override;
+
+  // Converts a screen physical point to a screen DIP point.
+  // The DPI scale is performed relative to the display containing the physical
+  // point.
+  static gfx::Point ScreenToDIPPoint(const gfx::Point& pixel_point);
+
+  // Converts a screen DIP point to a screen physical point.
+  // The DPI scale is performed relative to the display containing the DIP
+  // point.
+  static gfx::Point DIPToScreenPoint(const gfx::Point& dip_point);
+
+  // Converts a client physical point relative to |hwnd| to a client DIP point.
+  // The DPI scale is performed relative to |hwnd| using an origin of (0, 0).
+  static gfx::Point ClientToDIPPoint(HWND hwnd, const gfx::Point& client_point);
+
+  // Converts a client DIP point relative to |hwnd| to a client physical point.
+  // The DPI scale is performed relative to |hwnd| using an origin of (0, 0).
+  static gfx::Point DIPToClientPoint(HWND hwnd, const gfx::Point& dip_point);
+
+  // WARNING: There is no right way to scale sizes and rects.
+  // Sometimes you may need the enclosing rect (which favors transformations
+  // that stretch the bounds towards integral values) or the enclosed rect
+  // (transformations that shrink the bounds towards integral values).
+  // This implementation favors the enclosing rect.
+  //
+  // Understand which you need before blindly assuming this is the right way.
+
+  // Converts a screen physical rect to a screen DIP rect.
+  // The DPI scale is performed relative to the display nearest to |hwnd|.
+  // If |hwnd| is null, scaling will be performed to the display nearest to
+  // |pixel_bounds|.
+  static gfx::Rect ScreenToDIPRect(HWND hwnd, const gfx::Rect& pixel_bounds);
+
+  // Converts a screen DIP rect to a screen physical rect.
+  // The DPI scale is performed relative to the display nearest to |hwnd|.
+  // If |hwnd| is null, scaling will be performed to the display nearest to
+  // |dip_bounds|.
+  static gfx::Rect DIPToScreenRect(HWND hwnd, const gfx::Rect& dip_bounds);
+
+  // Converts a client physical rect to a client DIP rect.
+  // The DPI scale is performed relative to |hwnd| using an origin of (0, 0).
+  static gfx::Rect ClientToDIPRect(HWND hwnd, const gfx::Rect& pixel_bounds);
+
+  // Converts a client DIP rect to a client physical rect.
+  // The DPI scale is performed relative to |hwnd| using an origin of (0, 0).
+  static gfx::Rect DIPToClientRect(HWND hwnd, const gfx::Rect& dip_bounds);
+
+  // Converts a physical size to a DIP size.
+  // The DPI scale is performed relative to the display nearest to |hwnd|.
+  static gfx::Size ScreenToDIPSize(HWND hwnd, const gfx::Size& size_in_pixels);
+
+  // Converts a DIP size to a physical size.
+  // The DPI scale is performed relative to the display nearest to |hwnd|.
+  static gfx::Size DIPToScreenSize(HWND hwnd, const gfx::Size& dip_size);
 
   // Returns the HWND associated with the NativeView.
   virtual HWND GetHWNDFromNativeView(gfx::NativeView window) const;
@@ -88,7 +143,7 @@ class DISPLAY_EXPORT ScreenWin : public gfx::Screen {
   // Helper implementing the DisplayObserver handling.
   gfx::DisplayChangeNotifier change_notifier_;
 
-  scoped_ptr<gfx::SingletonHwndObserver> singleton_hwnd_observer_;
+  std::unique_ptr<gfx::SingletonHwndObserver> singleton_hwnd_observer_;
 
   // Current list of ScreenWinDisplays.
   std::vector<ScreenWinDisplay> screen_win_displays_;
