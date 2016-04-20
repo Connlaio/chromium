@@ -301,6 +301,10 @@ class CONTENT_EXPORT BluetoothDispatcherHost final
       int frame_routing_id,
       const std::string& characteristic_instance_id);
 
+  // Populate the chooser with existing devices.
+  void PopulateWithExistingDevices(RequestDeviceSession* session,
+                                   int chooser_id);
+
   int render_process_id_;
 
   // Maps a (thread_id,request_id) to information about its requestDevice call,

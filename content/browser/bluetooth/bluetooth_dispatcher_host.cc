@@ -1286,13 +1286,7 @@ void BluetoothDispatcherHost::OnRequestDeviceImpl(
     return;
   }
 
-  // Populate the initial list of devices.
-  VLOG(1) << "Populating " << adapter_->GetDevices().size()
-          << " devices in chooser " << chooser_id;
-  for (const device::BluetoothDevice* device : adapter_->GetDevices()) {
-    VLOG(1) << "\t" << device->GetAddress();
-    session->AddFilteredDevice(*device);
-  }
+  PopulateWithExistingDevices(session, chooser_id);
 
   if (!session->chooser) {
     // If the dialog's closing, no need to do any of the rest of this.
@@ -1353,6 +1347,7 @@ void BluetoothDispatcherHost::OnBluetoothChooserEvent(
                           << ") from a closed chooser.";
   switch (event) {
     case BluetoothChooser::Event::RESCAN:
+      PopulateWithExistingDevices(session, chooser_id);
       StartDeviceDiscovery(session, chooser_id);
       // No need to close the chooser so we return.
       return;
@@ -1681,6 +1676,22 @@ bool BluetoothDispatcherHost::CanFrameAccessCharacteristicInstance(
   return QueryCacheForCharacteristic(GetOrigin(frame_routing_id),
                                      characteristic_instance_id)
              .outcome != CacheQueryOutcome::BAD_RENDERER;
+}
+
+void BluetoothDispatcherHost::PopulateWithExistingDevices(
+    RequestDeviceSession* session,
+    int chooser_id) {
+#if defined(OS_ANDROID)
+  adapter_->RemoveTimedOutDevices();
+#endif  // defined(OS_ANDROID)
+
+  // Populate the initial list of devices.
+  VLOG(1) << "Populating " << adapter_->GetDevices().size()
+          << " devices in chooser " << chooser_id;
+  for (const device::BluetoothDevice* device : adapter_->GetDevices()) {
+    VLOG(1) << "\t" << device->GetAddress();
+    session->AddFilteredDevice(*device);
+  }
 }
 
 }  // namespace content

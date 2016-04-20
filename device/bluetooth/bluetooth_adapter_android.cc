@@ -168,6 +168,7 @@ void BluetoothAdapterAndroid::CreateOrUpdateDeviceOnScan(
     BluetoothDeviceAndroid* device_android =
         BluetoothDeviceAndroid::Create(this, bluetooth_device_wrapper);
     device_android->UpdateAdvertisedUUIDs(advertised_uuids);
+    device_android->UpdateTimestamp();
     devices_.add(device_address, scoped_ptr<BluetoothDevice>(device_android));
     FOR_EACH_OBSERVER(BluetoothAdapter::Observer, observers_,
                       DeviceAdded(this, device_android));
@@ -175,6 +176,7 @@ void BluetoothAdapterAndroid::CreateOrUpdateDeviceOnScan(
     // Existing device.
     BluetoothDeviceAndroid* device_android =
         static_cast<BluetoothDeviceAndroid*>(iter->second);
+    device_android->UpdateTimestamp();
     if (device_android->UpdateAdvertisedUUIDs(advertised_uuids)) {
       FOR_EACH_OBSERVER(BluetoothAdapter::Observer, observers_,
                         DeviceChanged(this, device_android));
